@@ -6,6 +6,7 @@ import { Controller, useForm } from "react-hook-form";
 import {
     KeyboardAvoidingView,
     Platform,
+    Pressable,
     SafeAreaView,
     ScrollView,
     StyleSheet,
@@ -22,7 +23,7 @@ import { colors, spacing } from "@/constants/theme";
 import { useAuth } from "@/context/AuthContext";
 
 const loginSchema = z.object({
-  email: z.string().email("Please enter a valid email"),
+  credentials: z.string().min(1, "Email or phone number is required"),
   password: z.string().min(1, "Password is required"),
   totpCode: z.string().optional(),
 });
@@ -39,24 +40,30 @@ export default function LoginScreen() {
   const {
     control,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isValid },
+    watch,
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      email: "",
+      credentials: "",
       password: "",
       totpCode: "",
     },
+    mode: "onChange", // Validate on change for real-time button state
   });
+
+  // Watch all fields to determine if form is filled
+  const credentials = watch("credentials");
+  const password = watch("password");
+  const isFormFilled = credentials.length > 0 && password.length > 0;
 
   const onSubmit = async (data: LoginFormData) => {
     try {
       setError(null);
-      await login(data.email, data.password, data.totpCode || undefined);
+      await login(data.credentials, data.password, data.totpCode || undefined);
       router.replace("/(tabs)");
     } catch (err: unknown) {
       if (err instanceof Error) {
-        // Check if 2FA is required
         if (err.message.includes("2FA") || err.message.includes("TOTP")) {
           setShowTwoFactor(true);
         } else {
@@ -78,47 +85,55 @@ export default function LoginScreen() {
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
         >
-          <View style={styles.header}>
-            <Text style={[styles.title, { color: theme.primary }]}>Nexus</Text>
-            <Text style={[styles.subtitle, { color: theme.mutedForeground }]}>
-              Sign in to your account
-            </Text>
-          </View>
-
           <Card variant="elevated" padding="lg" style={styles.card}>
+            {/* Header */}
+            <Text style={[styles.title, { color: theme.foreground }]}>Login</Text>
+            <Text style={[styles.subtitle, { color: theme.mutedForeground }]}>
+              Enter your email or phone number below to login to your account
+            </Text>
+
             {error && (
-              <View style={[styles.errorBox, { backgroundColor: `${theme.destructive}20` }]}>
+              <View style={[styles.errorBox, { backgroundColor: `${theme.destructive}15` }]}>
                 <Text style={[styles.errorText, { color: theme.destructive }]}>
                   {error}
                 </Text>
               </View>
             )}
 
+            {/* Email or Phone Field */}
             <Controller
               control={control}
-              name="email"
+              name="credentials"
               render={({ field: { onChange, onBlur, value } }) => (
                 <Input
-                  label="Email"
-                  placeholder="Enter your email"
+                  label="Email or Phone Number"
+                  placeholder="m@example.com or 08012345678"
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoComplete="email"
                   onBlur={onBlur}
                   onChangeText={onChange}
                   value={value}
-                  error={errors.email?.message}
+                  error={errors.credentials?.message}
                 />
               )}
             />
 
+            {/* Password Field with Forgot Link */}
+            <View style={styles.passwordHeader}>
+              <Text style={[styles.label, { color: theme.foreground }]}>Password</Text>
+              <Pressable onPress={() => router.push("/(auth)/forgot-password")}>
+                <Text style={[styles.forgotLink, { color: theme.foreground }]}>
+                  Forgot your password?
+                </Text>
+              </Pressable>
+            </View>
             <Controller
               control={control}
               name="password"
               render={({ field: { onChange, onBlur, value } }) => (
                 <Input
-                  label="Password"
-                  placeholder="Enter your password"
+                  placeholder="••••••••"
                   isPassword
                   autoComplete="password"
                   onBlur={onBlur}
@@ -148,22 +163,36 @@ export default function LoginScreen() {
               />
             )}
 
+            {/* Login Button - Disabled until form is valid */}
             <Button
               onPress={handleSubmit(onSubmit)}
               loading={isLoading}
+              disabled={!isValid || !isFormFilled}
               style={styles.submitButton}
             >
-              Sign In
+              Login
             </Button>
 
+            {/* Divider */}
+            <View style={styles.dividerContainer}>
+              <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
+              <Text style={[styles.dividerText, { color: theme.mutedForeground }]}>
+                OR CONTINUE WITH
+              </Text>
+              <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
+            </View>
+
+            {/* Sign Up Link */}
             <View style={styles.footer}>
               <Text style={{ color: theme.mutedForeground }}>
                 Don't have an account?{" "}
               </Text>
               <Link href="/(auth)/register" asChild>
-                <Text style={{ color: theme.primary, fontWeight: "600" }}>
-                  Sign Up
-                </Text>
+                <Pressable>
+                  <Text style={[styles.linkText, { color: theme.foreground }]}>
+                    Sign up
+                  </Text>
+                </Pressable>
               </Link>
             </View>
           </Card>
@@ -185,20 +214,18 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     padding: spacing.lg,
   },
-  header: {
-    alignItems: "center",
-    marginBottom: spacing.xl,
-  },
-  title: {
-    fontSize: 36,
-    fontWeight: "bold",
-  },
-  subtitle: {
-    fontSize: 16,
-    marginTop: spacing.sm,
-  },
   card: {
     width: "100%",
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: "bold",
+    marginBottom: spacing.xs,
+  },
+  subtitle: {
+    fontSize: 14,
+    marginBottom: spacing.lg,
+    lineHeight: 20,
   },
   errorBox: {
     padding: spacing.sm,
@@ -209,12 +236,43 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: "center",
   },
+  passwordHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: spacing.xs,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  forgotLink: {
+    fontSize: 14,
+    textDecorationLine: "underline",
+  },
   submitButton: {
-    marginTop: spacing.sm,
+    marginTop: spacing.md,
+  },
+  dividerContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginVertical: spacing.lg,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+  },
+  dividerText: {
+    paddingHorizontal: spacing.sm,
+    fontSize: 12,
+    textTransform: "uppercase",
   },
   footer: {
     flexDirection: "row",
     justifyContent: "center",
-    marginTop: spacing.lg,
+  },
+  linkText: {
+    fontWeight: "600",
+    textDecorationLine: "underline",
   },
 });

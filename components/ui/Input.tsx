@@ -101,22 +101,23 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
-    fontWeight: "500",
+    fontWeight: "600",
     marginBottom: spacing.xs,
   },
   inputContainer: {
     flexDirection: "row",
     alignItems: "center",
     borderWidth: 1,
-    borderRadius: borderRadius.md,
-    paddingHorizontal: spacing.sm,
+    borderRadius: borderRadius.lg,
+    paddingHorizontal: spacing.md,
+    minHeight: 48,
   },
   input: {
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.sm + 2,
     fontSize: 16,
   },
   leftIcon: {
-    marginRight: spacing.xs,
+    marginRight: spacing.sm,
   },
   eyeIcon: {
     padding: spacing.xs,

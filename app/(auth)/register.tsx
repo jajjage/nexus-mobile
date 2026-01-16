@@ -6,6 +6,7 @@ import { Controller, useForm } from "react-hook-form";
 import {
     KeyboardAvoidingView,
     Platform,
+    Pressable,
     SafeAreaView,
     ScrollView,
     StyleSheet,
@@ -20,22 +21,50 @@ import { Input } from "@/components/ui/Input";
 import { useColorScheme } from "@/components/useColorScheme";
 import { colors, spacing } from "@/constants/theme";
 
+// Valid Nigerian phone prefixes
+const VALID_NIGERIAN_PREFIXES = [
+  // MTN
+  "0703", "0706", "0803", "0806", "0810", "0813", "0814", "0816", "0903", "0906", "0913", "0916",
+  // Airtel
+  "0701", "0708", "0802", "0808", "0812", "0901", "0902", "0907", "0912",
+  // Glo
+  "0705", "0805", "0807", "0811", "0815", "0905", "0915",
+  // 9mobile
+  "0809", "0817", "0818", "0908", "0909",
+];
+
+const isValidNigerianPhone = (phone: string): boolean => {
+  if (phone.length !== 11) return false;
+  const prefix = phone.substring(0, 4);
+  return VALID_NIGERIAN_PREFIXES.includes(prefix);
+};
+
 const registerSchema = z
   .object({
-    email: z.string().email("Please enter a valid email"),
+    name: z.string().min(1, "Name is required"),
+    email: z.string().email("Invalid email address"),
     phone: z
       .string()
-      .regex(/^0[789]\d{9}$/, "Please enter a valid 11-digit Nigerian phone number"),
+      .min(1, "Phone number is required")
+      .refine(
+        (val) => val.length === 11,
+        "Please enter a valid Nigerian phone number (e.g., 08012345678)"
+      )
+      .refine(
+        (val) => isValidNigerianPhone(val),
+        "Please enter a valid Nigerian phone number (e.g., 08012345678)"
+      ),
     password: z
       .string()
-      .min(8, "Password must be at least 8 characters")
-      .regex(/[A-Z]/, "Password must contain an uppercase letter")
-      .regex(/[a-z]/, "Password must contain a lowercase letter")
-      .regex(/[0-9]/, "Password must contain a number"),
+      .min(8, "Password must be at least 8 characters long")
+      .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+      .regex(/[a-z]/, "Password must contain at least one lowercase letter")
+      .regex(/[0-9]/, "Password must contain at least one number")
+      .regex(/[!@#$%^&*(),.?":{}|<>]/, "Password must contain at least one special character"),
     confirmPassword: z.string(),
   })
   .refine((data) => data.password === data.confirmPassword, {
-    message: "Passwords don't match",
+    message: "Passwords do not match",
     path: ["confirmPassword"],
   });
 
@@ -50,16 +79,27 @@ export default function RegisterScreen() {
   const {
     control,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isValid },
+    watch,
   } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
+      name: "",
       email: "",
       phone: "",
       password: "",
       confirmPassword: "",
     },
+    mode: "onChange", // Validate on change for real-time button state
   });
+
+  // Watch all fields to determine if form is filled
+  const name = watch("name");
+  const email = watch("email");
+  const phone = watch("phone");
+  const password = watch("password");
+  const confirmPassword = watch("confirmPassword");
+  const isFormFilled = name.length > 0 && email.length > 0 && phone.length > 0 && password.length > 0 && confirmPassword.length > 0;
 
   const onSubmit = async (data: RegisterFormData) => {
     try {
@@ -69,7 +109,6 @@ export default function RegisterScreen() {
       // TODO: Implement registration API call
       console.log("Register data:", data);
       
-      // After successful registration, navigate to login
       router.replace("/(auth)/login");
     } catch (err: unknown) {
       if (err instanceof Error) {
@@ -92,29 +131,47 @@ export default function RegisterScreen() {
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
         >
-          <View style={styles.header}>
-            <Text style={[styles.title, { color: theme.primary }]}>Nexus</Text>
-            <Text style={[styles.subtitle, { color: theme.mutedForeground }]}>
-              Create your account
-            </Text>
-          </View>
-
           <Card variant="elevated" padding="lg" style={styles.card}>
+            {/* Header */}
+            <Text style={[styles.title, { color: theme.foreground }]}>Sign Up</Text>
+            <Text style={[styles.subtitle, { color: theme.mutedForeground }]}>
+              Enter your information to create an account
+            </Text>
+
             {error && (
-              <View style={[styles.errorBox, { backgroundColor: `${theme.destructive}20` }]}>
+              <View style={[styles.errorBox, { backgroundColor: `${theme.destructive}15` }]}>
                 <Text style={[styles.errorText, { color: theme.destructive }]}>
                   {error}
                 </Text>
               </View>
             )}
 
+            {/* Name Field */}
+            <Controller
+              control={control}
+              name="name"
+              render={({ field: { onChange, onBlur, value } }) => (
+                <Input
+                  label="Full Name"
+                  placeholder="John Doe"
+                  autoCapitalize="words"
+                  autoComplete="name"
+                  onBlur={onBlur}
+                  onChangeText={onChange}
+                  value={value}
+                  error={errors.name?.message}
+                />
+              )}
+            />
+
+            {/* Email Field */}
             <Controller
               control={control}
               name="email"
               render={({ field: { onChange, onBlur, value } }) => (
                 <Input
                   label="Email"
-                  placeholder="Enter your email"
+                  placeholder="m@example.com"
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoComplete="email"
@@ -126,6 +183,7 @@ export default function RegisterScreen() {
               )}
             />
 
+            {/* Phone Field */}
             <Controller
               control={control}
               name="phone"
@@ -139,18 +197,18 @@ export default function RegisterScreen() {
                   onChangeText={onChange}
                   value={value}
                   error={errors.phone?.message}
-                  hint="Nigerian phone number (11 digits)"
                 />
               )}
             />
 
+            {/* Password Field */}
             <Controller
               control={control}
               name="password"
               render={({ field: { onChange, onBlur, value } }) => (
                 <Input
                   label="Password"
-                  placeholder="Create a password"
+                  placeholder=""
                   isPassword
                   autoComplete="new-password"
                   onBlur={onBlur}
@@ -161,13 +219,14 @@ export default function RegisterScreen() {
               )}
             />
 
+            {/* Confirm Password Field */}
             <Controller
               control={control}
               name="confirmPassword"
               render={({ field: { onChange, onBlur, value } }) => (
                 <Input
                   label="Confirm Password"
-                  placeholder="Confirm your password"
+                  placeholder=""
                   isPassword
                   autoComplete="new-password"
                   onBlur={onBlur}
@@ -178,22 +237,27 @@ export default function RegisterScreen() {
               )}
             />
 
+            {/* Submit Button - Disabled until form is valid */}
             <Button
               onPress={handleSubmit(onSubmit)}
               loading={isLoading}
+              disabled={!isValid || !isFormFilled}
               style={styles.submitButton}
             >
-              Create Account
+              Create an account
             </Button>
 
+            {/* Login Link */}
             <View style={styles.footer}>
               <Text style={{ color: theme.mutedForeground }}>
                 Already have an account?{" "}
               </Text>
               <Link href="/(auth)/login" asChild>
-                <Text style={{ color: theme.primary, fontWeight: "600" }}>
-                  Sign In
-                </Text>
+                <Pressable>
+                  <Text style={[styles.linkText, { color: theme.foreground }]}>
+                    Login
+                  </Text>
+                </Pressable>
               </Link>
             </View>
           </Card>
@@ -215,20 +279,18 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     padding: spacing.lg,
   },
-  header: {
-    alignItems: "center",
-    marginBottom: spacing.xl,
-  },
-  title: {
-    fontSize: 36,
-    fontWeight: "bold",
-  },
-  subtitle: {
-    fontSize: 16,
-    marginTop: spacing.sm,
-  },
   card: {
     width: "100%",
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: "bold",
+    marginBottom: spacing.xs,
+  },
+  subtitle: {
+    fontSize: 14,
+    marginBottom: spacing.lg,
+    lineHeight: 20,
   },
   errorBox: {
     padding: spacing.sm,
@@ -240,11 +302,15 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   submitButton: {
-    marginTop: spacing.sm,
+    marginTop: spacing.md,
   },
   footer: {
     flexDirection: "row",
     justifyContent: "center",
     marginTop: spacing.lg,
+  },
+  linkText: {
+    fontWeight: "600",
+    textDecorationLine: "underline",
   },
 });
