@@ -1,0 +1,92 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Light Mode - Amber/Gold Theme */
+    --background: 0 0% 98%; /* #FAFAFA */
+    --foreground: 240 10% 20%; /* #2E3039 */
+    --card: 0 0% 98%; /* #FAFAFA */
+    --card-foreground: 240 10% 20%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 20%;
+    
+    /* Primary - Amber/Gold */
+    --primary: 39 80% 50%; /* #e69e19 */
+    --primary-foreground: 45 100% 98%; /* #FFFDF7 */
+    
+    /* Secondary */
+    --secondary: 210 10% 85%; /* #D4D6D9 */
+    --secondary-foreground: 240 10% 20%;
+    
+    /* Muted */
+    --muted: 210 5% 92%; /* #E8E9EA */
+    --muted-foreground: 217 8% 35%; /* #52575F */
+    
+    /* Accent (same as primary for consistency) */
+    --accent: 43 80% 46%;
+    --accent-foreground: 45 100% 98%;
+    
+    /* Destructive - Red */
+    --destructive: 1 76% 56%; /* #E53935 */
+    --destructive-foreground: 0 0% 100%;
+    
+    /* Border & Input */
+    --border: 210 10% 85%; /* #D4D6D9 */
+    --input: 210 10% 85%;
+    --ring: 43 80% 46%; /* #D4A017 - matches primary */
+    
+    /* Radius */
+    --radius: 0.75rem;
+    
+    /* Charts */
+    --chart-1: 43 80% 46%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+  }
+
+  .dark:root {
+    /* Dark Mode - Amber/Gold Theme */
+    --background: 200 20% 13%; /* #1A2329 */
+    --foreground: 39 62% 87%; /* #F5E6C8 */
+    --card: 200 20% 13%; /* #1A2329 */
+    --card-foreground: 39 62% 87%;
+    --popover: 200 20% 13%;
+    --popover-foreground: 39 62% 87%;
+    
+    /* Primary - Amber/Gold (same in dark) */
+    --primary: 39 80% 50%; /* #e69e19 */
+    --primary-foreground: 45 100% 98%; /* #FFFDF7 */
+    
+    /* Secondary */
+    --secondary: 192 10% 20%; /* #2E3639 */
+    --secondary-foreground: 39 62% 87%;
+    
+    /* Muted */
+    --muted: 195 12% 16%; /* #242C30 */
+    --muted-foreground: 42 48% 57%; /* #C9A85C */
+    
+    /* Accent */
+    --accent: 43 80% 46%;
+    --accent-foreground: 45 100% 98%;
+    
+    /* Destructive - Red (slightly darker for dark mode) */
+    --destructive: 0 65% 51%; /* #D32F2F */
+    --destructive-foreground: 0 0% 100%;
+    
+    /* Border & Input */
+    --border: 192 10% 20%; /* #2E3639 */
+    --input: 192 10% 20%;
+    --ring: 43 80% 46%; /* #D4A017 */
+    
+    /* Charts */
+    --chart-1: 43 80% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 43 65% 60%;
+    --chart-5: 39 75% 55%;
+  }
+}

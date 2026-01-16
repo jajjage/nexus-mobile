@@ -1,26 +1,36 @@
-// app/(auth)/login.tsx
+import { useLogin } from "@/hooks/useAuth";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link, router } from "expo-router";
 import React, { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
-    KeyboardAvoidingView,
+    Keyboard,
     Platform,
     Pressable,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    View,
+    TouchableWithoutFeedback,
 } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { z } from "zod";
 
-import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
-import { Input } from "@/components/ui/Input";
-import { useColorScheme } from "@/components/useColorScheme";
-import { colors, spacing } from "@/constants/theme";
-import { useAuth } from "@/context/AuthContext";
+// Gluestack UI components
+import { Button, ButtonSpinner, ButtonText } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Center } from "@/components/ui/center";
+import { Divider } from "@/components/ui/divider";
+import {
+    FormControl,
+    FormControlError,
+    FormControlErrorText,
+    FormControlLabel,
+    FormControlLabelText,
+} from "@/components/ui/form-control";
+import { Heading } from "@/components/ui/heading";
+import { HStack } from "@/components/ui/hstack";
+import { Image } from "@/components/ui/image";
+import { Input, InputField, InputSlot } from "@/components/ui/input";
+import { Text } from "@/components/ui/text";
+import { VStack } from "@/components/ui/vstack";
 
 const loginSchema = z.object({
   credentials: z.string().min(1, "Email or phone number is required"),
@@ -31,10 +41,8 @@ const loginSchema = z.object({
 type LoginFormData = z.infer<typeof loginSchema>;
 
 export default function LoginScreen() {
-  const colorScheme = useColorScheme() ?? "light";
-  const theme = colors[colorScheme];
-  const { login, isLoading } = useAuth();
-  const [error, setError] = useState<string | null>(null);
+  const { mutate: login, isPending } = useLogin();
+  const [showPassword, setShowPassword] = useState(false);
   const [showTwoFactor, setShowTwoFactor] = useState(false);
 
   const {
@@ -49,230 +57,214 @@ export default function LoginScreen() {
       password: "",
       totpCode: "",
     },
-    mode: "onChange", // Validate on change for real-time button state
+    mode: "onChange",
   });
 
-  // Watch all fields to determine if form is filled
   const credentials = watch("credentials");
   const password = watch("password");
   const isFormFilled = credentials.length > 0 && password.length > 0;
+  const canSubmit = isValid && isFormFilled && !isPending;
 
-  const onSubmit = async (data: LoginFormData) => {
-    try {
-      setError(null);
-      await login(data.credentials, data.password, data.totpCode || undefined);
-      router.replace("/(tabs)");
-    } catch (err: unknown) {
-      if (err instanceof Error) {
-        if (err.message.includes("2FA") || err.message.includes("TOTP")) {
-          setShowTwoFactor(true);
-        } else {
-          setError(err.message);
-        }
-      } else {
-        setError("An unexpected error occurred");
-      }
-    }
+  const onSubmit = (data: LoginFormData) => {
+    const isEmail = data.credentials.includes("@");
+    
+    login({
+      email: isEmail ? data.credentials : undefined,
+      phone: !isEmail ? data.credentials : undefined,
+      password: data.password,
+      totpCode: data.totpCode || undefined,
+    });
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={styles.keyboardView}
-      >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
+    <SafeAreaView className="flex-1 bg-background-50">
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <KeyboardAwareScrollView
+          enableOnAndroid={true}
+          extraScrollHeight={Platform.OS === "ios" ? 20 : 100}
+          contentContainerStyle={{ 
+            flexGrow: 1, 
+            paddingHorizontal: 20, 
+            paddingVertical: 24,
+            paddingBottom: 40,
+            justifyContent: "center",
+          }}
           keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-          <Card variant="elevated" padding="lg" style={styles.card}>
-            {/* Header */}
-            <Text style={[styles.title, { color: theme.foreground }]}>Login</Text>
-            <Text style={[styles.subtitle, { color: theme.mutedForeground }]}>
-              Enter your email or phone number below to login to your account
-            </Text>
-
-            {error && (
-              <View style={[styles.errorBox, { backgroundColor: `${theme.destructive}15` }]}>
-                <Text style={[styles.errorText, { color: theme.destructive }]}>
-                  {error}
-                </Text>
-              </View>
-            )}
-
-            {/* Email or Phone Field */}
-            <Controller
-              control={control}
-              name="credentials"
-              render={({ field: { onChange, onBlur, value } }) => (
-                <Input
-                  label="Email or Phone Number"
-                  placeholder="m@example.com or 08012345678"
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoComplete="email"
-                  onBlur={onBlur}
-                  onChangeText={onChange}
-                  value={value}
-                  error={errors.credentials?.message}
+            {/* Logo */}
+            <Center className="mb-8">
+              <HStack space="sm" className="items-center">
+                <Image
+                  source={require("@/assets/images/icon.png")}
+                  className="w-12 h-12"
+                  alt="Nexus Logo"
                 />
-              )}
-            />
+              </HStack>
+            </Center>
 
-            {/* Password Field with Forgot Link */}
-            <View style={styles.passwordHeader}>
-              <Text style={[styles.label, { color: theme.foreground }]}>Password</Text>
-              <Pressable onPress={() => router.push("/(auth)/forgot-password")}>
-                <Text style={[styles.forgotLink, { color: theme.foreground }]}>
-                  Forgot your password?
-                </Text>
-              </Pressable>
-            </View>
-            <Controller
-              control={control}
-              name="password"
-              render={({ field: { onChange, onBlur, value } }) => (
-                <Input
-                  placeholder="••••••••"
-                  isPassword
-                  autoComplete="password"
-                  onBlur={onBlur}
-                  onChangeText={onChange}
-                  value={value}
-                  error={errors.password?.message}
-                />
-              )}
-            />
-
-            {showTwoFactor && (
-              <Controller
-                control={control}
-                name="totpCode"
-                render={({ field: { onChange, onBlur, value } }) => (
-                  <Input
-                    label="2FA Code"
-                    placeholder="Enter your 6-digit code"
-                    keyboardType="number-pad"
-                    maxLength={6}
-                    onBlur={onBlur}
-                    onChangeText={onChange}
-                    value={value}
-                    hint="Enter the code from your authenticator app"
-                  />
-                )}
-              />
-            )}
-
-            {/* Login Button - Disabled until form is valid */}
-            <Button
-              onPress={handleSubmit(onSubmit)}
-              loading={isLoading}
-              disabled={!isValid || !isFormFilled}
-              style={styles.submitButton}
-            >
-              Login
-            </Button>
-
-            {/* Divider */}
-            <View style={styles.dividerContainer}>
-              <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
-              <Text style={[styles.dividerText, { color: theme.mutedForeground }]}>
-                OR CONTINUE WITH
-              </Text>
-              <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
-            </View>
-
-            {/* Sign Up Link */}
-            <View style={styles.footer}>
-              <Text style={{ color: theme.mutedForeground }}>
-                Don't have an account?{" "}
-              </Text>
-              <Link href="/(auth)/register" asChild>
-                <Pressable>
-                  <Text style={[styles.linkText, { color: theme.foreground }]}>
-                    Sign up
+            {/* Login Card */}
+            <Card variant="outline" className="p-6 bg-background-0 rounded-2xl">
+              <VStack space="xl">
+                {/* Header */}
+                <VStack space="sm">
+                  <Heading size="xl" className="text-typography-900">Login</Heading>
+                  <Text size="sm" className="text-typography-500">
+                    Enter your email or phone number below to login to your account
                   </Text>
-                </Pressable>
-              </Link>
-            </View>
-          </Card>
-        </ScrollView>
-      </KeyboardAvoidingView>
+                </VStack>
+
+                {/* Email/Phone Field */}
+                <FormControl isInvalid={!!errors.credentials}>
+                  <FormControlLabel className="mb-2">
+                    <FormControlLabelText className="text-typography-700 font-medium">
+                      Email or Phone Number
+                    </FormControlLabelText>
+                  </FormControlLabel>
+                  <Controller
+                    control={control}
+                    name="credentials"
+                    render={({ field: { onChange, onBlur, value } }) => (
+                      <Input variant="outline" size="xl" className="bg-background-0 rounded-xl">
+                        <InputField
+                          placeholder="m@example.com or 08012345678"
+                          keyboardType="email-address"
+                          autoCapitalize="none"
+                          autoComplete="email"
+                          onBlur={onBlur}
+                          onChangeText={onChange}
+                          value={value}
+                          className="text-typography-900"
+                          placeholderTextColor="#9CA3AF"
+                        />
+                      </Input>
+                    )}
+                  />
+                  {errors.credentials && (
+                    <FormControlError className="mt-1">
+                      <FormControlErrorText>
+                        {errors.credentials.message}
+                      </FormControlErrorText>
+                    </FormControlError>
+                  )}
+                </FormControl>
+
+                {/* Password Field */}
+                <FormControl isInvalid={!!errors.password}>
+                  <HStack className="justify-between items-center mb-2">
+                    <FormControlLabelText className="text-typography-700 font-medium">
+                      Password
+                    </FormControlLabelText>
+                    <Pressable onPress={() => router.push("/(auth)/forgot-password")}>
+                      <Text className="text-primary-500 text-sm font-medium">
+                        Forgot your password?
+                      </Text>
+                    </Pressable>
+                  </HStack>
+                  <Controller
+                    control={control}
+                    name="password"
+                    render={({ field: { onChange, onBlur, value } }) => (
+                      <Input variant="outline" size="xl" className="bg-background-0 rounded-xl">
+                        <InputField
+                          placeholder="••••••••"
+                          secureTextEntry={!showPassword}
+                          autoComplete="password"
+                          onBlur={onBlur}
+                          onChangeText={onChange}
+                          value={value}
+                          className="text-typography-900"
+                          placeholderTextColor="#9CA3AF"
+                        />
+                        <InputSlot className="pr-4" onPress={() => setShowPassword(!showPassword)}>
+                          <Text className="text-primary-500 font-medium">
+                            {showPassword ? "Hide" : "Show"}
+                          </Text>
+                        </InputSlot>
+                      </Input>
+                    )}
+                  />
+                  {errors.password && (
+                    <FormControlError className="mt-1">
+                      <FormControlErrorText>
+                        {errors.password.message}
+                      </FormControlErrorText>
+                    </FormControlError>
+                  )}
+                </FormControl>
+
+                {/* 2FA Field (conditional) */}
+                {showTwoFactor && (
+                  <FormControl>
+                    <FormControlLabel className="mb-2">
+                      <FormControlLabelText className="text-typography-700 font-medium">
+                        2FA Code
+                      </FormControlLabelText>
+                    </FormControlLabel>
+                    <Controller
+                      control={control}
+                      name="totpCode"
+                      render={({ field: { onChange, onBlur, value } }) => (
+                        <Input variant="outline" size="xl" className="bg-background-0 rounded-xl">
+                          <InputField
+                            placeholder="Enter your 6-digit code"
+                            keyboardType="number-pad"
+                            maxLength={6}
+                            onBlur={onBlur}
+                            onChangeText={onChange}
+                            value={value}
+                            className="text-typography-900"
+                          />
+                        </Input>
+                      )}
+                    />
+                  </FormControl>
+                )}
+
+                {/* Login Button */}
+                <Button
+                  size="xl"
+                  onPress={handleSubmit(onSubmit)}
+                  isDisabled={!canSubmit}
+                  className={`mt-2 rounded-xl ${canSubmit ? 'bg-primary-500' : 'bg-primary-200'}`}
+                >
+                  {isPending ? (
+                    <ButtonSpinner color="white" />
+                  ) : (
+                    <ButtonText className={canSubmit ? 'text-white' : 'text-primary-400'}>
+                      Login
+                    </ButtonText>
+                  )}
+                </Button>
+
+                {/* Divider */}
+                <HStack className="items-center my-2">
+                  <Divider className="flex-1 bg-outline-200" />
+                  <Text className="text-typography-400 text-xs px-4 uppercase">
+                    or continue with
+                  </Text>
+                  <Divider className="flex-1 bg-outline-200" />
+                </HStack>
+
+                {/* Sign Up Link */}
+                <Center>
+                  <HStack space="xs">
+                    <Text className="text-typography-500">
+                      Don't have an account?
+                    </Text>
+                    <Link href="/(auth)/register" asChild>
+                      <Pressable>
+                        <Text className="text-primary-500 font-semibold">
+                          Sign up
+                        </Text>
+                      </Pressable>
+                    </Link>
+                  </HStack>
+                </Center>
+              </VStack>
+            </Card>
+        </KeyboardAwareScrollView>
+      </TouchableWithoutFeedback>
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  keyboardView: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    justifyContent: "center",
-    padding: spacing.lg,
-  },
-  card: {
-    width: "100%",
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: "bold",
-    marginBottom: spacing.xs,
-  },
-  subtitle: {
-    fontSize: 14,
-    marginBottom: spacing.lg,
-    lineHeight: 20,
-  },
-  errorBox: {
-    padding: spacing.sm,
-    borderRadius: 8,
-    marginBottom: spacing.md,
-  },
-  errorText: {
-    fontSize: 14,
-    textAlign: "center",
-  },
-  passwordHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: spacing.xs,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: "500",
-  },
-  forgotLink: {
-    fontSize: 14,
-    textDecorationLine: "underline",
-  },
-  submitButton: {
-    marginTop: spacing.md,
-  },
-  dividerContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginVertical: spacing.lg,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-  },
-  dividerText: {
-    paddingHorizontal: spacing.sm,
-    fontSize: 12,
-    textTransform: "uppercase",
-  },
-  footer: {
-    flexDirection: "row",
-    justifyContent: "center",
-  },
-  linkText: {
-    fontWeight: "600",
-    textDecorationLine: "underline",
-  },
-});

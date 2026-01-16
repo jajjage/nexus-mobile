@@ -1,19 +1,14 @@
 // context/AuthContext.tsx
-import { tokenStorage } from "@/lib/secure-store";
-import { MobileLoginRequest, MobileLoginResponse, User } from "@/types/auth.types";
-import axios from "axios";
-import * as Device from "expo-device";
-import React, { ReactNode, createContext, useCallback, useContext, useEffect, useState } from "react";
+import { User } from "@/types/api.types";
+import React, { ReactNode, createContext, useContext, useState } from "react";
 
-const BASE_URL = "https://localhost:3000/api/v1";
-
+// Simple context that just holds user state
+// The actual auth logic (login, fetch profile) happens in hooks/useAuth.ts
 interface AuthContextType {
   user: User | null;
+  setUser: (user: User | null) => void;
   isLoading: boolean;
-  isAuthenticated: boolean;
-  login: (email: string, password: string, totpCode?: string, backupCode?: string) => Promise<void>;
-  logout: () => Promise<void>;
-  refreshAuth: () => Promise<void>;
+  setIsLoading: (loading: boolean) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -22,97 +17,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Initialize auth state on app start
-  useEffect(() => {
-    const initAuth = async () => {
-      try {
-        const accessToken = await tokenStorage.getAccessToken();
-        if (accessToken) {
-          // Try to refresh and get user info
-          await refreshAuth();
-        }
-      } catch (error) {
-        console.log("Auth initialization failed:", error);
-        await tokenStorage.clearTokens();
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    initAuth();
-  }, []);
-
-  const login = useCallback(async (
-    email: string,
-    password: string,
-    totpCode?: string,
-    backupCode?: string
-  ) => {
-    setIsLoading(true);
-    try {
-      const deviceId = Device.deviceName || "unknown-device";
-
-      const loginRequest: MobileLoginRequest = {
-        email,
-        password,
-        deviceId,
-        ...(totpCode && { totpCode }),
-        ...(backupCode && { backupCode }),
-      };
-
-      const { data } = await axios.post<MobileLoginResponse>(
-        `${BASE_URL}/mobile/auth/login`,
-        loginRequest
-      );
-
-      await tokenStorage.setAccessToken(data.accessToken);
-      await tokenStorage.setRefreshToken(data.refreshToken);
-
-      setUser({
-        id: data.id,
-        email: data.email,
-        role: data.role,
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  const logout = useCallback(async () => {
-    await tokenStorage.clearTokens();
-    setUser(null);
-  }, []);
-
-  const refreshAuth = useCallback(async () => {
-    const refreshToken = await tokenStorage.getRefreshToken();
-    if (!refreshToken) {
-      throw new Error("No refresh token available");
-    }
-
-    const { data } = await axios.post<MobileLoginResponse>(
-      `${BASE_URL}/mobile/auth/refresh`,
-      { refreshToken }
-    );
-
-    await tokenStorage.setAccessToken(data.accessToken);
-    await tokenStorage.setRefreshToken(data.refreshToken);
-
-    setUser({
-      id: data.id,
-      email: data.email,
-      role: data.role,
-    });
-  }, []);
-
   return (
     <AuthContext.Provider
       value={{
         user,
+        setUser,
         isLoading,
-        isAuthenticated: !!user,
-        login,
-        logout,
-        refreshAuth,
+        setIsLoading,
       }}
     >
       {children}
@@ -120,10 +31,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
-export function useAuth() {
+export function useAuthContext() {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider");
+    throw new Error("useAuthContext must be used within an AuthProvider");
   }
   return context;
 }
