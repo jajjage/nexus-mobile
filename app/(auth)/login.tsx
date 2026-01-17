@@ -4,10 +4,10 @@ import { Link, router } from "expo-router";
 import React, { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
-    Keyboard,
-    Platform,
-    Pressable,
-    TouchableWithoutFeedback,
+  Keyboard,
+  Platform,
+  Pressable,
+  TouchableWithoutFeedback,
 } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -19,11 +19,11 @@ import { Card } from "@/components/ui/card";
 import { Center } from "@/components/ui/center";
 import { Divider } from "@/components/ui/divider";
 import {
-    FormControl,
-    FormControlError,
-    FormControlErrorText,
-    FormControlLabel,
-    FormControlLabelText,
+  FormControl,
+  FormControlError,
+  FormControlErrorText,
+  FormControlLabel,
+  FormControlLabelText,
 } from "@/components/ui/form-control";
 import { Heading } from "@/components/ui/heading";
 import { HStack } from "@/components/ui/hstack";
@@ -32,8 +32,33 @@ import { Input, InputField, InputSlot } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 
+// Valid Nigerian phone prefixes
+const VALID_NIGERIAN_PREFIXES = [
+  "0703", "0706", "0803", "0806", "0810", "0813", "0814", "0816", "0903", "0906", "0913", "0916",
+  "0701", "0708", "0802", "0808", "0812", "0901", "0902", "0907", "0912",
+  "0705", "0805", "0807", "0811", "0815", "0905", "0915",
+  "0809", "0817", "0818", "0908", "0909",
+];
+
+const isValidEmail = (value: string): boolean => {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(value);
+};
+
+const isValidNigerianPhone = (value: string): boolean => {
+  if (value.length !== 11 || !/^\d+$/.test(value)) return false;
+  const prefix = value.substring(0, 4);
+  return VALID_NIGERIAN_PREFIXES.includes(prefix);
+};
+
 const loginSchema = z.object({
-  credentials: z.string().min(1, "Email or phone number is required"),
+  credentials: z
+    .string()
+    .min(1, "Email or phone number is required")
+    .refine(
+      (val) => isValidEmail(val) || isValidNigerianPhone(val),
+      "Enter a valid email or 11-digit Nigerian phone number"
+    ),
   password: z.string().min(1, "Password is required"),
   totpCode: z.string().optional(),
 });
@@ -226,12 +251,12 @@ export default function LoginScreen() {
                   size="xl"
                   onPress={handleSubmit(onSubmit)}
                   isDisabled={!canSubmit}
-                  className={`mt-2 rounded-xl ${canSubmit ? 'bg-primary-500' : 'bg-primary-200'}`}
+                  className={`mt-2 rounded-xl bg-primary-500 ${!canSubmit ? 'opacity-60' : ''}`}
                 >
                   {isPending ? (
                     <ButtonSpinner color="white" />
                   ) : (
-                    <ButtonText className={canSubmit ? 'text-white' : 'text-primary-400'}>
+                    <ButtonText className="text-white">
                       Login
                     </ButtonText>
                   )}

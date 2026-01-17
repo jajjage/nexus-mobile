@@ -4,89 +4,429 @@
 
 @layer base {
   :root {
-    /* Light Mode - Amber/Gold Theme */
-    --background: 0 0% 98%; /* #FAFAFA */
-    --foreground: 240 10% 20%; /* #2E3039 */
-    --card: 0 0% 98%; /* #FAFAFA */
-    --card-foreground: 240 10% 20%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 20%;
+    /* Light Mode - Nexus Color Scheme */
     
-    /* Primary - Amber/Gold */
-    --primary: 39 80% 50%; /* #e69e19 */
-    --primary-foreground: 45 100% 98%; /* #FFFDF7 */
+    /* Background & Foreground */
+    --background: 0 0% 98%; /* #FAFAFA */
+    --foreground: 240 10% 20%; /* #2E2E33 */
+    
+    /* Card */
+    --card: 0 0% 98%; /* #FAFAFA */
+    --card-foreground: 240 10% 20%; /* #2E2E33 */
+    
+    /* Popover */
+    --popover: 0 0% 98%; /* #FAFAFA */
+    --popover-foreground: 240 10% 20%; /* #2E2E33 */
+    
+    /* Primary - Nexus Gold */
+    --primary: 39 80% 50%; /* #E69E19 */
+    --primary-foreground: 39 100% 98%; /* #FFFCF5 */
     
     /* Secondary */
-    --secondary: 210 10% 85%; /* #D4D6D9 */
-    --secondary-foreground: 240 10% 20%;
+    --secondary: 192 10% 85%; /* #D4DADC */
+    --secondary-foreground: 192 20% 15%; /* #1F2A2D */
     
     /* Muted */
-    --muted: 210 5% 92%; /* #E8E9EA */
-    --muted-foreground: 217 8% 35%; /* #52575F */
+    --muted: 192 5% 92%; /* #EAEBEC */
+    --muted-foreground: 192 10% 35%; /* #525D60 */
     
-    /* Accent (same as primary for consistency) */
-    --accent: 43 80% 46%;
-    --accent-foreground: 45 100% 98%;
+    /* Accent */
+    --accent: 192 5% 92%; /* #EAEBEC */
+    --accent-foreground: 240 10% 20%; /* #2E2E33 */
     
     /* Destructive - Red */
-    --destructive: 1 76% 56%; /* #E53935 */
-    --destructive-foreground: 0 0% 100%;
+    --destructive: 0 80% 55%; /* #E63636 */
+    --destructive-foreground: 0 0% 98%; /* #FAFAFA */
+    
+    /* Success - Teal */
+    --success: 173 58% 39%; /* #2A9D8F */
+    --success-foreground: 0 0% 100%; /* #FFFFFF */
+    
+    /* Warning - Orange */
+    --warning: 27 87% 67%; /* #F4A261 */
+    --warning-foreground: 192 20% 15%; /* #1F2A2D */
+    
+    /* Info - Blue */
+    --info: 217 91% 60%; /* #3B82F6 */
+    --info-foreground: 0 0% 100%; /* #FFFFFF */
     
     /* Border & Input */
-    --border: 210 10% 85%; /* #D4D6D9 */
-    --input: 210 10% 85%;
-    --ring: 43 80% 46%; /* #D4A017 - matches primary */
+    --border: 192 10% 85%; /* #D4DADC */
+    --input: 192 10% 85%; /* #D4DADC */
+    --input-background: 0 0% 100%; /* #FFFFFF */
+    
+    /* Focus Ring */
+    --ring: 39 80% 50%; /* #E69E19 */
     
     /* Radius */
-    --radius: 0.75rem;
+    --radius: 0.5rem;
+    
+    /* Sidebar */
+    --sidebar-background: 0 0% 95%; /* #F2F2F2 */
+    --sidebar-foreground: 240 10% 38%; /* #585862 */
+    --sidebar-primary: 39 80% 47%; /* #D99316 */
+    --sidebar-primary-foreground: 39 100% 0%; /* #000000 */
+    --sidebar-accent: 192 5% 89%; /* #E1E3E4 */
+    --sidebar-accent-foreground: 240 10% 20%; /* #2E2E33 */
+    --sidebar-border: 192 10% 82%; /* #CBCFD1 */
+    --sidebar-ring: 39 80% 47%; /* #D99316 */
     
     /* Charts */
-    --chart-1: 43 80% 46%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
+    --chart-1: 39 80% 50%; /* #E69E19 - Primary Gold */
+    --chart-2: 12 70% 50%; /* #D95C33 - Orange-Red */
+    --chart-3: 173 58% 39%; /* #2A9D8F - Teal */
+    --chart-4: 43 74% 66%; /* #E9C46A - Light Gold */
+    --chart-5: 27 87% 67%; /* #F4A261 - Light Orange */
+    
+    /* NativeWind CSS Variables */
+    --color-primary-0: 255 255 255;
+    --color-primary-50: 255 252 245;
+    --color-primary-100: 254 243 224;
+    --color-primary-200: 252 227 180;
+    --color-primary-300: 249 203 130;
+    --color-primary-400: 244 184 77;
+    --color-primary-500: 230 158 25; /* #E69E19 */
+    --color-primary-600: 194 133 23;
+    --color-primary-700: 158 108 19;
+    --color-primary-800: 122 84 15;
+    --color-primary-900: 86 59 10;
+    --color-primary-950: 50 34 6;
+    
+    --color-secondary-0: 255 255 255;
+    --color-secondary-50: 250 251 251;
+    --color-secondary-100: 244 246 247;
+    --color-secondary-200: 224 230 232;
+    --color-secondary-300: 212 218 220; /* #D4DADC */
+    --color-secondary-400: 175 186 190;
+    --color-secondary-500: 142 157 162;
+    --color-secondary-600: 110 128 134;
+    --color-secondary-700: 82 100 107;
+    --color-secondary-800: 58 75 81;
+    --color-secondary-900: 31 42 45; /* #1F2A2D */
+    --color-secondary-950: 20 28 30;
+    
+    --color-error-0: 255 255 255;
+    --color-error-50: 254 242 242;
+    --color-error-100: 254 226 226;
+    --color-error-200: 254 202 202;
+    --color-error-300: 252 165 165;
+    --color-error-400: 248 113 113;
+    --color-error-500: 230 54 54; /* #E63636 */
+    --color-error-600: 220 38 38;
+    --color-error-700: 185 28 28;
+    --color-error-800: 153 27 27;
+    --color-error-900: 127 29 29;
+    --color-error-950: 69 10 10;
+    
+    --color-success-0: 255 255 255;
+    --color-success-50: 240 253 250;
+    --color-success-100: 204 251 241;
+    --color-success-200: 153 246 228;
+    --color-success-300: 94 234 212;
+    --color-success-400: 45 212 191;
+    --color-success-500: 42 157 143; /* #2A9D8F */
+    --color-success-600: 13 148 136;
+    --color-success-700: 15 118 110;
+    --color-success-800: 17 94 89;
+    --color-success-900: 20 78 74;
+    --color-success-950: 4 47 46;
+    
+    --color-warning-0: 255 255 255;
+    --color-warning-50: 255 251 235;
+    --color-warning-100: 254 243 199;
+    --color-warning-200: 253 230 138;
+    --color-warning-300: 252 211 77;
+    --color-warning-400: 251 191 36;
+    --color-warning-500: 244 162 97; /* #F4A261 */
+    --color-warning-600: 217 119 6;
+    --color-warning-700: 180 83 9;
+    --color-warning-800: 146 64 14;
+    --color-warning-900: 120 53 15;
+    --color-warning-950: 69 26 3;
+    
+    --color-info-0: 255 255 255;
+    --color-info-50: 239 246 255;
+    --color-info-100: 219 234 254;
+    --color-info-200: 191 219 254;
+    --color-info-300: 147 197 253;
+    --color-info-400: 96 165 250;
+    --color-info-500: 59 130 246; /* #3B82F6 */
+    --color-info-600: 37 99 235;
+    --color-info-700: 29 78 216;
+    --color-info-800: 30 64 175;
+    --color-info-900: 30 58 138;
+    --color-info-950: 23 37 84;
+    
+    --color-typography-0: 255 255 255;
+    --color-typography-50: 250 250 250;
+    --color-typography-100: 244 244 245;
+    --color-typography-200: 228 228 231;
+    --color-typography-300: 212 212 216;
+    --color-typography-400: 161 161 170;
+    --color-typography-500: 113 113 122;
+    --color-typography-600: 82 93 96; /* #525D60 */
+    --color-typography-700: 63 63 70;
+    --color-typography-800: 46 46 51; /* #2E2E33 */
+    --color-typography-900: 39 39 42;
+    --color-typography-950: 24 24 27;
+    
+    --color-outline-0: 255 255 255;
+    --color-outline-50: 250 250 250;
+    --color-outline-100: 244 244 245;
+    --color-outline-200: 228 228 231;
+    --color-outline-300: 212 218 220; /* #D4DADC */
+    --color-outline-400: 161 161 170;
+    --color-outline-500: 113 113 122;
+    --color-outline-600: 82 82 91;
+    --color-outline-700: 63 63 70;
+    --color-outline-800: 39 39 42;
+    --color-outline-900: 24 24 27;
+    --color-outline-950: 9 9 11;
+    
+    --color-background-0: 255 255 255;
+    --color-background-50: 250 250 250; /* #FAFAFA */
+    --color-background-100: 244 244 245;
+    --color-background-200: 234 235 236; /* #EAEBEC */
+    --color-background-300: 228 228 231;
+    --color-background-400: 161 161 170;
+    --color-background-500: 113 113 122;
+    --color-background-600: 82 82 91;
+    --color-background-700: 63 63 70;
+    --color-background-800: 39 39 42;
+    --color-background-900: 24 24 27;
+    --color-background-950: 9 9 11;
+    --color-background-error: 254 242 242;
+    --color-background-warning: 255 251 235;
+    --color-background-muted: 250 250 250;
+    --color-background-success: 240 253 250;
+    --color-background-info: 239 246 255;
+    
+    --color-indicator-primary: 230 158 25; /* #E69E19 */
+    --color-indicator-info: 59 130 246;
+    --color-indicator-error: 230 54 54;
+    
+    --color-tertiary-50: 255 252 245;
+    --color-tertiary-100: 254 243 224;
+    --color-tertiary-200: 252 227 180;
+    --color-tertiary-300: 249 203 130;
+    --color-tertiary-400: 244 184 77;
+    --color-tertiary-500: 194 133 23; /* #C28517 - Primary Dark */
+    --color-tertiary-600: 158 108 19;
+    --color-tertiary-700: 122 84 15;
+    --color-tertiary-800: 86 59 10;
+    --color-tertiary-900: 50 34 6;
+    --color-tertiary-950: 25 17 3;
   }
 
   .dark:root {
-    /* Dark Mode - Amber/Gold Theme */
-    --background: 200 20% 13%; /* #1A2329 */
-    --foreground: 39 62% 87%; /* #F5E6C8 */
-    --card: 200 20% 13%; /* #1A2329 */
-    --card-foreground: 39 62% 87%;
-    --popover: 200 20% 13%;
-    --popover-foreground: 39 62% 87%;
+    /* Dark Mode - Nexus Color Scheme */
     
-    /* Primary - Amber/Gold (same in dark) */
-    --primary: 39 80% 50%; /* #e69e19 */
-    --primary-foreground: 45 100% 98%; /* #FFFDF7 */
+    /* Background & Foreground */
+    --background: 192 20% 12%; /* #182125 */
+    --foreground: 39 90% 90%; /* #FCF3E1 */
+    
+    /* Card */
+    --card: 192 20% 12%; /* #182125 */
+    --card-foreground: 39 90% 90%; /* #FCF3E1 */
+    
+    /* Popover */
+    --popover: 192 20% 12%; /* #182125 */
+    --popover-foreground: 39 90% 90%; /* #FCF3E1 */
+    
+    /* Primary - Nexus Gold (Same as Light) */
+    --primary: 39 80% 50%; /* #E69E19 */
+    --primary-foreground: 39 100% 98%; /* #FFFCF5 */
     
     /* Secondary */
-    --secondary: 192 10% 20%; /* #2E3639 */
-    --secondary-foreground: 39 62% 87%;
+    --secondary: 192 10% 25%; /* #3A4346 */
+    --secondary-foreground: 192 30% 85%; /* #CDD8DC */
     
     /* Muted */
-    --muted: 195 12% 16%; /* #242C30 */
-    --muted-foreground: 42 48% 57%; /* #C9A85C */
+    --muted: 192 5% 18%; /* #2B2F30 */
+    --muted-foreground: 39 50% 60%; /* #CC9F59 */
     
     /* Accent */
-    --accent: 43 80% 46%;
-    --accent-foreground: 45 100% 98%;
+    --accent: 192 5% 18%; /* #2B2F30 */
+    --accent-foreground: 39 90% 90%; /* #FCF3E1 */
     
-    /* Destructive - Red (slightly darker for dark mode) */
-    --destructive: 0 65% 51%; /* #D32F2F */
-    --destructive-foreground: 0 0% 100%;
+    /* Destructive - Red */
+    --destructive: 0 80% 50%; /* #E62E2E */
+    --destructive-foreground: 39 90% 98%; /* #FFFEF5 */
+    
+    /* Success - Teal */
+    --success: 173 58% 39%; /* #2A9D8F */
+    --success-foreground: 0 0% 100%; /* #FFFFFF */
+    
+    /* Warning - Orange */
+    --warning: 27 87% 67%; /* #F4A261 */
+    --warning-foreground: 192 20% 15%; /* #1F2A2D */
+    
+    /* Info - Blue */
+    --info: 213 94% 68%; /* #60A5FA */
+    --info-foreground: 0 0% 100%; /* #FFFFFF */
     
     /* Border & Input */
-    --border: 192 10% 20%; /* #2E3639 */
-    --input: 192 10% 20%;
-    --ring: 43 80% 46%; /* #D4A017 */
+    --border: 192 10% 25%; /* #3A4346 */
+    --input: 192 10% 25%; /* #3A4346 */
+    --input-background: 195 12% 18%; /* #232A2D */
+    
+    /* Focus Ring */
+    --ring: 39 80% 50%; /* #E69E19 */
+    
+    /* Sidebar */
+    --sidebar-background: 192 20% 4%; /* #0A0D0E */
+    --sidebar-foreground: 39 90% 38%; /* #B87A13 */
+    --sidebar-primary: 39 80% 25%; /* #735010 */
+    --sidebar-primary-foreground: 39 100% 98%; /* #FFFCF5 */
+    --sidebar-accent: 192 5% 10%; /* #181A1A */
+    --sidebar-accent-foreground: 39 90% 90%; /* #FCF3E1 */
+    --sidebar-border: 192 10% 17%; /* #262C2E */
+    --sidebar-ring: 39 80% 42%; /* #C28517 */
     
     /* Charts */
-    --chart-1: 43 80% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 43 65% 60%;
-    --chart-5: 39 75% 55%;
+    --chart-1: 39 70% 40%; /* #AD7D14 - Darker Gold */
+    --chart-2: 27 87% 67%; /* #F4A261 - Light Orange */
+    --chart-3: 12 76% 61%; /* #E76F51 - Coral */
+    --chart-4: 43 74% 66%; /* #E9C46A - Light Gold */
+    --chart-5: 173 58% 39%; /* #2A9D8F - Teal */
+    
+    /* NativeWind CSS Variables - Dark Mode */
+    --color-primary-0: 50 34 6;
+    --color-primary-50: 86 59 10;
+    --color-primary-100: 122 84 15;
+    --color-primary-200: 158 108 19;
+    --color-primary-300: 194 133 23;
+    --color-primary-400: 230 158 25; /* #E69E19 */
+    --color-primary-500: 244 184 77;
+    --color-primary-600: 249 203 130;
+    --color-primary-700: 252 227 180;
+    --color-primary-800: 254 243 224;
+    --color-primary-900: 255 252 245;
+    --color-primary-950: 255 255 255;
+    
+    --color-secondary-0: 20 28 30;
+    --color-secondary-50: 31 42 45;
+    --color-secondary-100: 58 67 70; /* #3A4346 */
+    --color-secondary-200: 82 100 107;
+    --color-secondary-300: 110 128 134;
+    --color-secondary-400: 142 157 162;
+    --color-secondary-500: 175 186 190;
+    --color-secondary-600: 205 216 220; /* #CDD8DC */
+    --color-secondary-700: 224 230 232;
+    --color-secondary-800: 244 246 247;
+    --color-secondary-900: 250 251 251;
+    --color-secondary-950: 255 255 255;
+    
+    --color-error-0: 69 10 10;
+    --color-error-50: 127 29 29;
+    --color-error-100: 153 27 27;
+    --color-error-200: 185 28 28;
+    --color-error-300: 220 38 38;
+    --color-error-400: 230 46 46; /* #E62E2E */
+    --color-error-500: 248 113 113;
+    --color-error-600: 252 165 165;
+    --color-error-700: 254 202 202;
+    --color-error-800: 254 226 226;
+    --color-error-900: 254 242 242;
+    --color-error-950: 255 255 255;
+    
+    --color-success-0: 4 47 46;
+    --color-success-50: 20 78 74;
+    --color-success-100: 17 94 89;
+    --color-success-200: 15 118 110;
+    --color-success-300: 13 148 136;
+    --color-success-400: 42 157 143; /* #2A9D8F */
+    --color-success-500: 45 212 191;
+    --color-success-600: 94 234 212;
+    --color-success-700: 153 246 228;
+    --color-success-800: 204 251 241;
+    --color-success-900: 240 253 250;
+    --color-success-950: 255 255 255;
+    
+    --color-warning-0: 69 26 3;
+    --color-warning-50: 120 53 15;
+    --color-warning-100: 146 64 14;
+    --color-warning-200: 180 83 9;
+    --color-warning-300: 217 119 6;
+    --color-warning-400: 244 162 97; /* #F4A261 */
+    --color-warning-500: 251 191 36;
+    --color-warning-600: 252 211 77;
+    --color-warning-700: 253 230 138;
+    --color-warning-800: 254 243 199;
+    --color-warning-900: 255 251 235;
+    --color-warning-950: 255 255 255;
+    
+    --color-info-0: 23 37 84;
+    --color-info-50: 30 58 138;
+    --color-info-100: 30 64 175;
+    --color-info-200: 29 78 216;
+    --color-info-300: 37 99 235;
+    --color-info-400: 96 165 250; /* #60A5FA */
+    --color-info-500: 147 197 253;
+    --color-info-600: 191 219 254;
+    --color-info-700: 219 234 254;
+    --color-info-800: 239 246 255;
+    --color-info-900: 248 250 255;
+    --color-info-950: 255 255 255;
+    
+    --color-typography-0: 24 24 27;
+    --color-typography-50: 39 39 42;
+    --color-typography-100: 63 63 70;
+    --color-typography-200: 82 82 91;
+    --color-typography-300: 92 84 72; /* #5C5448 - textDisabled */
+    --color-typography-400: 139 122 90; /* #8B7A5A - textTertiary */
+    --color-typography-500: 204 159 89; /* #CC9F59 - textSecondary */
+    --color-typography-600: 212 212 216;
+    --color-typography-700: 228 228 231;
+    --color-typography-800: 252 243 225; /* #FCF3E1 - textPrimary */
+    --color-typography-900: 255 252 245;
+    --color-typography-950: 255 255 255;
+    
+    --color-outline-0: 9 9 11;
+    --color-outline-50: 24 24 27;
+    --color-outline-100: 39 39 42;
+    --color-outline-200: 58 67 70; /* #3A4346 */
+    --color-outline-300: 63 63 70;
+    --color-outline-400: 82 82 91;
+    --color-outline-500: 113 113 122;
+    --color-outline-600: 161 161 170;
+    --color-outline-700: 212 212 216;
+    --color-outline-800: 228 228 231;
+    --color-outline-900: 244 244 245;
+    --color-outline-950: 255 255 255;
+    
+    --color-background-0: 9 9 11;
+    --color-background-50: 24 33 37; /* #182125 */
+    --color-background-100: 35 42 45; /* #232A2D */
+    --color-background-200: 43 47 48; /* #2B2F30 */
+    --color-background-300: 58 67 70;
+    --color-background-400: 82 82 91;
+    --color-background-500: 113 113 122;
+    --color-background-600: 161 161 170;
+    --color-background-700: 212 212 216;
+    --color-background-800: 228 228 231;
+    --color-background-900: 244 244 245;
+    --color-background-950: 255 255 255;
+    --color-background-error: 69 10 10;
+    --color-background-warning: 69 26 3;
+    --color-background-muted: 43 47 48;
+    --color-background-success: 4 47 46;
+    --color-background-info: 23 37 84;
+    
+    --color-indicator-primary: 230 158 25; /* #E69E19 */
+    --color-indicator-info: 96 165 250;
+    --color-indicator-error: 230 46 46;
+    
+    --color-tertiary-50: 25 17 3;
+    --color-tertiary-100: 50 34 6;
+    --color-tertiary-200: 86 59 10;
+    --color-tertiary-300: 115 80 16; /* #735010 */
+    --color-tertiary-400: 158 108 19;
+    --color-tertiary-500: 194 133 23; /* #C28517 */
+    --color-tertiary-600: 230 158 25;
+    --color-tertiary-700: 244 184 77;
+    --color-tertiary-800: 249 203 130;
+    --color-tertiary-900: 252 227 180;
+    --color-tertiary-950: 255 252 245;
   }
 }

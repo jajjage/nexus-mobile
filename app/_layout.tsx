@@ -8,14 +8,49 @@ import { useEffect } from 'react';
 import 'react-native-reanimated';
 
 import { useColorScheme } from '@/components/useColorScheme';
+import { darkColors, lightColors } from '@/constants/palette';
 import { AuthProvider } from '@/context/AuthContext';
 
 import { GluestackUIProvider } from '@/components/ui/gluestack-ui-provider';
 import '../global.css';
 
+/**
+ * Nexus Light Theme for React Navigation
+ * Uses the golden Nexus brand colors
+ */
+const NexusLightTheme = {
+  ...DefaultTheme,
+  colors: {
+    ...DefaultTheme.colors,
+    primary: lightColors.primary,           // #E69E19 - Nexus Gold
+    background: lightColors.background,     // #FAFAFA
+    card: lightColors.card,                 // #FAFAFA
+    text: lightColors.foreground,           // #2E2E33
+    border: lightColors.border,             // #D4DADC
+    notification: lightColors.destructive,  // #E63636
+  },
+};
+
+/**
+ * Nexus Dark Theme for React Navigation
+ * Uses the golden Nexus brand colors with dark backgrounds
+ */
+const NexusDarkTheme = {
+  ...DarkTheme,
+  colors: {
+    ...DarkTheme.colors,
+    primary: darkColors.primary,            // #E69E19 - Nexus Gold
+    background: darkColors.background,      // #182125
+    card: darkColors.card,                  // #182125
+    text: darkColors.foreground,            // #FCF3E1
+    border: darkColors.border,              // #3A4346
+    notification: darkColors.destructive,   // #E62E2E
+  },
+};
+
 export {
-  // Catch any errors thrown by the Layout component.
-  ErrorBoundary
+    // Catch any errors thrown by the Layout component.
+    ErrorBoundary
 } from 'expo-router';
 
 export const unstable_settings = {
@@ -67,7 +102,7 @@ function RootLayoutNav() {
     <GluestackUIProvider mode={colorScheme === 'dark' ? 'dark' : 'light'}>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+          <ThemeProvider value={colorScheme === 'dark' ? NexusDarkTheme : NexusLightTheme}>
             <Stack>
               <Stack.Screen name="(auth)" options={{ headerShown: false }} />
               <Stack.Screen name="(tabs)" options={{ headerShown: false }} />

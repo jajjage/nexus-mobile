@@ -1,25 +1,28 @@
 import { useForgotPassword } from "@/hooks/useAuth";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Link } from "expo-router";
-import React, { useState } from "react";
+import React from "react";
+import { Controller, useForm } from "react-hook-form";
 import {
-  Keyboard,
-  Platform,
-  Pressable,
-  TouchableWithoutFeedback,
+    Keyboard,
+    Platform,
+    Pressable,
+    TouchableWithoutFeedback,
 } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { z } from "zod";
 
 // Gluestack UI components
 import { Button, ButtonSpinner, ButtonText } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Center } from "@/components/ui/center";
 import {
-  FormControl,
-  FormControlError,
-  FormControlErrorText,
-  FormControlLabel,
-  FormControlLabelText,
+    FormControl,
+    FormControlError,
+    FormControlErrorText,
+    FormControlLabel,
+    FormControlLabelText,
 } from "@/components/ui/form-control";
 import { Heading } from "@/components/ui/heading";
 import { HStack } from "@/components/ui/hstack";
@@ -28,24 +31,36 @@ import { Input, InputField } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 
+const forgotPasswordSchema = z.object({
+  email: z
+    .string()
+    .min(1, "Email is required")
+    .email("Please enter a valid email address"),
+});
+
+type ForgotPasswordFormData = z.infer<typeof forgotPasswordSchema>;
+
 export default function ForgotPasswordScreen() {
   const { mutate: forgotPassword, isPending, isSuccess } = useForgotPassword();
-  const [email, setEmail] = useState("");
-  const [error, setError] = useState("");
 
-  const canSubmit = email.length > 0 && email.includes("@") && !isPending;
+  const {
+    control,
+    handleSubmit,
+    formState: { errors, isValid },
+    watch,
+  } = useForm<ForgotPasswordFormData>({
+    resolver: zodResolver(forgotPasswordSchema),
+    defaultValues: {
+      email: "",
+    },
+    mode: "onChange",
+  });
 
-  const handleSubmit = () => {
-    if (!email) {
-      setError("Email is required");
-      return;
-    }
-    if (!email.includes("@")) {
-      setError("Please enter a valid email");
-      return;
-    }
-    setError("");
-    forgotPassword({ email });
+  const email = watch("email");
+  const canSubmit = isValid && email.length > 0 && !isPending;
+
+  const onSubmit = (data: ForgotPasswordFormData) => {
+    forgotPassword({ email: data.email });
   };
 
   return (
@@ -93,30 +108,34 @@ export default function ForgotPasswordScreen() {
                 ) : (
                   <>
                     {/* Email Field */}
-                    <FormControl isInvalid={!!error}>
+                    <FormControl isInvalid={!!errors.email}>
                       <FormControlLabel className="mb-2">
                         <FormControlLabelText className="text-typography-700 font-medium">
                           Email
                         </FormControlLabelText>
                       </FormControlLabel>
-                      <Input variant="outline" size="xl" className="bg-background-0 rounded-xl">
-                        <InputField
-                          placeholder="m@example.com"
-                          keyboardType="email-address"
-                          autoCapitalize="none"
-                          autoComplete="email"
-                          onChangeText={(text) => {
-                            setEmail(text);
-                            setError("");
-                          }}
-                          value={email}
-                          className="text-typography-900"
-                          placeholderTextColor="#9CA3AF"
-                        />
-                      </Input>
-                      {error && (
+                      <Controller
+                        control={control}
+                        name="email"
+                        render={({ field: { onChange, onBlur, value } }) => (
+                          <Input variant="outline" size="xl" className="bg-background-0 rounded-xl">
+                            <InputField
+                              placeholder="m@example.com"
+                              keyboardType="email-address"
+                              autoCapitalize="none"
+                              autoComplete="email"
+                              onBlur={onBlur}
+                              onChangeText={onChange}
+                              value={value}
+                              className="text-typography-900"
+                              placeholderTextColor="#9CA3AF"
+                            />
+                          </Input>
+                        )}
+                      />
+                      {errors.email && (
                         <FormControlError className="mt-1">
-                          <FormControlErrorText>{error}</FormControlErrorText>
+                          <FormControlErrorText>{errors.email.message}</FormControlErrorText>
                         </FormControlError>
                       )}
                     </FormControl>
@@ -124,14 +143,14 @@ export default function ForgotPasswordScreen() {
                     {/* Submit Button */}
                     <Button
                       size="xl"
-                      onPress={handleSubmit}
+                      onPress={handleSubmit(onSubmit)}
                       isDisabled={!canSubmit}
-                      className={`mt-2 rounded-xl ${canSubmit ? 'bg-primary-500' : 'bg-primary-200'}`}
+                      className={`mt-2 rounded-xl bg-primary-500 ${!canSubmit ? 'opacity-60' : ''}`}
                     >
                       {isPending ? (
                         <ButtonSpinner color="white" />
                       ) : (
-                        <ButtonText className={canSubmit ? 'text-white' : 'text-primary-400'}>
+                        <ButtonText className="text-white">
                           Send Reset Link
                         </ButtonText>
                       )}

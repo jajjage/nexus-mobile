@@ -2,7 +2,7 @@
 import axios, { AxiosInstance, InternalAxiosRequestConfig } from "axios";
 import { tokenStorage } from "./secure-store";
 
-const BASE_URL = process.env.EXPO_PUBLIC_AUTH_URL || "https://10.152.118.138:3000/api/v1";
+const BASE_URL = process.env.EXPO_PUBLIC_AUTH_URL || "http://10.152.118.138:3000/api/v1";
 
 const apiClient: AxiosInstance = axios.create({
   baseURL: BASE_URL,
