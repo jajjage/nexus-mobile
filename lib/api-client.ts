@@ -55,20 +55,27 @@ apiClient.interceptors.response.use(
           throw new Error("No refresh token available");
         }
 
-        const { data } = await axios.post(`${BASE_URL}/mobile/auth/refresh`, {
+        const response = await axios.post(`${BASE_URL}/mobile/auth/refresh`, {
           refreshToken,
         });
+        
+        // Handle nested data structure (response.data.data) or flat structure
+        const authData = response.data.data || response.data;
 
-        await tokenStorage.setAccessToken(data.accessToken);
-        if (data.refreshToken) {
-          await tokenStorage.setRefreshToken(data.refreshToken);
+        if (authData.accessToken && typeof authData.accessToken === 'string') {
+          await tokenStorage.setAccessToken(authData.accessToken);
+          // Update the header on the original request
+          originalRequest.headers.Authorization = `Bearer ${authData.accessToken}`;
+        }
+        if (authData.refreshToken && typeof authData.refreshToken === 'string') {
+          await tokenStorage.setRefreshToken(authData.refreshToken);
         }
 
         processQueue(null);
         isRefreshing = false;
 
         return apiClient(originalRequest);
-      } catch (refreshError) {
+      } catch (refreshError: any) {
         processQueue(refreshError);
         isRefreshing = false;
         await tokenStorage.clearTokens();

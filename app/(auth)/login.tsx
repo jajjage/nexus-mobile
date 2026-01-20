@@ -14,6 +14,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { z } from "zod";
 
 // Gluestack UI components
+import { Alert } from "@/components/ui/alert";
 import { Button, ButtonSpinner, ButtonText } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Center } from "@/components/ui/center";
@@ -66,7 +67,7 @@ const loginSchema = z.object({
 type LoginFormData = z.infer<typeof loginSchema>;
 
 export default function LoginScreen() {
-  const { mutate: login, isPending } = useLogin();
+  const { mutate: login, isPending, errorMessage, reset } = useLogin();
   const [showPassword, setShowPassword] = useState(false);
   const [showTwoFactor, setShowTwoFactor] = useState(false);
 
@@ -93,12 +94,22 @@ export default function LoginScreen() {
   const onSubmit = (data: LoginFormData) => {
     const isEmail = data.credentials.includes("@");
     
-    login({
-      email: isEmail ? data.credentials : undefined,
-      phone: !isEmail ? data.credentials : undefined,
+    // Only send the field that has a value (email OR phone, not both)
+    const loginPayload: { email?: string; phone?: string; password: string; totpCode?: string } = {
       password: data.password,
-      totpCode: data.totpCode || undefined,
-    });
+    };
+    
+    if (isEmail) {
+      loginPayload.email = data.credentials;
+    } else {
+      loginPayload.phone = data.credentials;
+    }
+    
+    if (data.totpCode) {
+      loginPayload.totpCode = data.totpCode;
+    }
+    
+    login(loginPayload);
   };
 
   return (
@@ -119,17 +130,16 @@ export default function LoginScreen() {
         >
             {/* Logo */}
             <Center className="mb-8">
-              <HStack space="sm" className="items-center">
-                <Image
-                  source={require("@/assets/images/icon.png")}
-                  className="w-12 h-12"
-                  alt="Nexus Logo"
-                />
-              </HStack>
+              <Image
+                source={require("@/assets/images/icon.png")}
+                className="w-16 h-16"
+                alt="Nexus Logo"
+                resizeMode="contain"
+              />
             </Center>
 
             {/* Login Card */}
-            <Card variant="outline" className="p-6 bg-background-0 rounded-2xl">
+            <Card variant="elevated" className="p-6 bg-background-0 rounded-2xl shadow-sm">
               <VStack space="xl">
                 {/* Header */}
                 <VStack space="sm">
@@ -138,6 +148,16 @@ export default function LoginScreen() {
                     Enter your email or phone number below to login to your account
                   </Text>
                 </VStack>
+
+                {/* API Error Alert */}
+                {errorMessage && (
+                  <Alert
+                    variant="error"
+                    message={errorMessage}
+                    closable
+                    onClose={() => reset()}
+                  />
+                )}
 
                 {/* Email/Phone Field */}
                 <FormControl isInvalid={!!errors.credentials}>

@@ -13,16 +13,25 @@ import {
 export const authService = {
   // Login user - returns tokens + basic user info
   login: async (data: LoginRequest): Promise<MobileAuthResponse> => {
-    const response = await apiClient.post<MobileAuthResponse>(
+    const response = await apiClient.post<{ success: boolean; message: string; data: MobileAuthResponse; statusCode: number }>(
       "/mobile/auth/login",
       data
     );
     
-    // Save tokens to secure store
-    await tokenStorage.setAccessToken(response.data.accessToken);
-    await tokenStorage.setRefreshToken(response.data.refreshToken);
+    // Tokens are in response.data.data (nested inside the API response wrapper)
+    const authData = response.data.data;
+    const { accessToken, refreshToken } = authData;
     
-    return response.data;
+    // Save tokens to secure store (only if valid strings)
+    if (accessToken && typeof accessToken === 'string') {
+      await tokenStorage.setAccessToken(accessToken);
+    }
+    
+    if (refreshToken && typeof refreshToken === 'string') {
+      await tokenStorage.setRefreshToken(refreshToken);
+    }
+    
+    return authData;
   },
 
   // Register new user

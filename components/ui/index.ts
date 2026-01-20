@@ -15,3 +15,7 @@ export { Input, InputField, InputIcon, InputSlot } from "./input";
 export { Text } from "./text";
 export { VStack } from "./vstack";
 
+// Custom components
+export { Alert } from "./alert";
+export { Loader } from "./loader";
+

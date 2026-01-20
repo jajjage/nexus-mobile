@@ -4,25 +4,26 @@ import { Link } from "expo-router";
 import React, { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
-  Keyboard,
-  Platform,
-  Pressable,
-  TouchableWithoutFeedback,
+    Keyboard,
+    Platform,
+    Pressable,
+    TouchableWithoutFeedback,
 } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { z } from "zod";
 
 // Gluestack UI components
+import { Alert } from "@/components/ui/alert";
 import { Button, ButtonSpinner, ButtonText } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Center } from "@/components/ui/center";
 import {
-  FormControl,
-  FormControlError,
-  FormControlErrorText,
-  FormControlLabel,
-  FormControlLabelText,
+    FormControl,
+    FormControlError,
+    FormControlErrorText,
+    FormControlLabel,
+    FormControlLabelText,
 } from "@/components/ui/form-control";
 import { Heading } from "@/components/ui/heading";
 import { HStack } from "@/components/ui/hstack";
@@ -71,7 +72,7 @@ const registerSchema = z
 type RegisterFormData = z.infer<typeof registerSchema>;
 
 export default function RegisterScreen() {
-  const { mutate: register, isPending } = useRegister();
+  const { mutate: register, isPending, errorMessage, reset } = useRegister();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -118,21 +119,17 @@ export default function RegisterScreen() {
           showsVerticalScrollIndicator={false}
         >
             {/* Logo */}
-            <VStack space="xs" className="mb-6 px-1">
-              <Center>
-                <HStack space="sm" className="items-center">
-                  <Image
-                    source={require("@/assets/images/icon.png")}
-                    className="w-12 h-12"
-                    alt="Nexus Logo"
-                  />
-                </HStack>
-              </Center>
-              {/* <Text className="text-typography-500 text-lg">Create your account</Text> */}
-            </VStack>
+            <Center className="mb-6">
+              <Image
+                source={require("@/assets/images/icon.png")}
+                className="w-16 h-16"
+                alt="Nexus Logo"
+                resizeMode="contain"
+              />
+            </Center>
 
             {/* Register Card */}
-            <Card variant="outline" className="p-6 bg-background-0 rounded-2xl">
+            <Card variant="elevated" className="p-6 bg-background-0 rounded-2xl shadow-sm">
               <VStack space="lg">
                 {/* Header */}
                 <VStack space="sm">
@@ -141,6 +138,16 @@ export default function RegisterScreen() {
                     Enter your information to create an account
                   </Text>
                 </VStack>
+
+                {/* API Error Alert */}
+                {errorMessage && (
+                  <Alert
+                    variant="error"
+                    message={errorMessage}
+                    closable
+                    onClose={() => reset()}
+                  />
+                )}
 
                 {/* Name Field */}
                 <FormControl isInvalid={!!errors.fullName}>

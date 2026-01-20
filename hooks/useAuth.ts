@@ -28,12 +28,19 @@ export function useAuth() {
   const [hasToken, setHasToken] = useState<boolean | null>(null);
 
   useEffect(() => {
-    tokenStorage.getAccessToken().then((token) => {
-      setHasToken(!!token);
-      if (!token) {
+    const checkToken = async () => {
+      const accessToken = await tokenStorage.getAccessToken();
+      const refreshToken = await tokenStorage.getRefreshToken();
+      
+      // If we have refresh token but no access token, we can still try to authenticate
+      const canAuthenticate = !!accessToken || !!refreshToken;
+      setHasToken(canAuthenticate);
+      
+      if (!canAuthenticate) {
         setIsLoading(false);
       }
-    });
+    };
+    checkToken();
   }, []);
 
   // Fetch user profile - this determines if user is authenticated
@@ -95,14 +102,30 @@ export function useLogin() {
   const { setUser } = useAuthContext();
   const queryClient = useQueryClient();
 
-  return useMutation({
+  const mutation = useMutation({
     mutationFn: async (credentials: { email?: string; phone?: string; password: string; totpCode?: string }) => {
       const deviceId = Device.deviceName || Device.modelName || "unknown-device";
       
+      // Build clean login data - only include defined values
       const loginData: LoginRequest = {
-        ...credentials,
+        password: credentials.password,
         deviceId,
       };
+      
+      // Only add email if defined
+      if (credentials.email) {
+        loginData.email = credentials.email;
+      }
+      
+      // Only add phone if defined
+      if (credentials.phone) {
+        loginData.phone = credentials.phone;
+      }
+      
+      // Only add totpCode if defined
+      if (credentials.totpCode) {
+        loginData.totpCode = credentials.totpCode;
+      }
       
       return authService.login(loginData);
     },
@@ -110,14 +133,19 @@ export function useLogin() {
       // Invalidate and refetch user profile
       await queryClient.invalidateQueries({ queryKey: authKeys.currentUser() });
       
-      Alert.alert("Success", "Login successful!");
       router.replace("/(tabs)");
     },
-    onError: (error: AxiosError<any>) => {
-      const message = error.response?.data?.message || "Login failed";
-      Alert.alert("Error", message);
-    },
   });
+
+  // Extract error message for inline display
+  const errorMessage = mutation.error 
+    ? (mutation.error as AxiosError<any>).response?.data?.message || "Login failed"
+    : null;
+
+  return {
+    ...mutation,
+    errorMessage,
+  };
 }
 
 // ============================================================================
@@ -149,17 +177,23 @@ export function useLogout() {
 // ============================================================================
 
 export function useRegister() {
-  return useMutation({
+  const mutation = useMutation({
     mutationFn: (data: RegisterRequest) => authService.register(data),
     onSuccess: () => {
-      Alert.alert("Success", "Registration successful! Please login.");
+      // Alert.alert("Success", "Registration successful! Please login.");
       router.replace("/(auth)/login");
     },
-    onError: (error: AxiosError<any>) => {
-      const message = error.response?.data?.message || "Registration failed";
-      Alert.alert("Error", message);
-    },
   });
+
+  // Extract error message for inline display
+  const errorMessage = mutation.error 
+    ? (mutation.error as AxiosError<any>).response?.data?.message || "Registration failed"
+    : null;
+
+  return {
+    ...mutation,
+    errorMessage,
+  };
 }
 
 // ============================================================================
