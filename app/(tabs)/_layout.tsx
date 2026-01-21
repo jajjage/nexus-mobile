@@ -1,7 +1,5 @@
-// app/(tabs)/_layout.tsx
-// Following HOME_PAGE_GUIDE.md specifications
 import { Redirect, Tabs } from 'expo-router';
-import { Home, Trophy, User, Users } from 'lucide-react-native';
+import { Briefcase, Home, Trophy, User, Users } from 'lucide-react-native';
 import React from 'react';
 import { ActivityIndicator, View } from 'react-native';
 
@@ -10,7 +8,8 @@ import { lightColors } from '@/constants/palette';
 import { useAuth } from '@/hooks/useAuth';
 
 export default function TabLayout() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
+  const isReseller = user?.role === 'reseller';
 
   // Show loading while checking auth
   if (isLoading) {
@@ -28,6 +27,7 @@ export default function TabLayout() {
 
   return (
     <Tabs
+      key={isReseller ? 'reseller' : 'user'}
       screenOptions={{
         tabBarActiveTintColor: lightColors.primary, // #E69E19
         tabBarInactiveTintColor: lightColors.textSecondary, // #525D60
@@ -35,12 +35,13 @@ export default function TabLayout() {
           backgroundColor: '#FAFAFA', // card color
           borderTopWidth: 1,
           borderTopColor: '#D4D9DA', // border color
+          // Height slightly taller for 5 item grid if needed, but 64 is fine
           height: 64, // h-16
           paddingTop: 8,
           paddingBottom: 8,
         },
         tabBarLabelStyle: {
-          fontSize: 12,
+          fontSize: 10, // Smaller font for 5 items
           fontWeight: '500',
         },
         headerShown: useClientOnlyValue(false, false),
@@ -59,6 +60,18 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <Users size={20} color={color} />,
         }}
       />
+      
+      {/* Reseller Tab - Only visible for resellers */}
+      <Tabs.Screen
+        name="reseller"
+        options={{
+          title: 'Reseller',
+          href: isReseller ? '/reseller' : null,
+          tabBarIcon: ({ color }) => <Briefcase size={20} color={color} />,
+          tabBarItemStyle: { display: isReseller ? 'flex' : 'none' }
+        }}
+      />
+
       <Tabs.Screen
         name="rewards"
         options={{

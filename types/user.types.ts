@@ -144,7 +144,7 @@ export interface TopupResponse {
 
 // ============= Virtual Account Types =============
 export interface CreateVirtualAccountRequest {
-  bvn: string;
+  bvn?: string;
 }
 
 export interface CreateVirtualAccountResponse {

@@ -3,16 +3,16 @@
  * React Query hooks for reseller-specific features
  */
 
-"use client";
-
 import { resellerService } from "@/services/reseller.service";
 import type {
   BulkTopupRequest,
   CreateApiKeyRequest,
 } from "@/types/reseller.types";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AxiosError } from "axios";
-import { toast } from "sonner";
+import { useEffect, useState } from "react";
+import { toast } from "sonner-native";
 
 // Query keys for cache management
 const resellerKeys = {
@@ -36,7 +36,6 @@ export function useApiKeys() {
 
 /**
  * Create a new API key
- * Shows success toast with warning about one-time display
  */
 export function useCreateApiKey() {
   const queryClient = useQueryClient();
@@ -78,7 +77,6 @@ export function useRevokeApiKey() {
 
 /**
  * Process a batch of topups
- * Shows detailed result toast with success/failure counts
  */
 export function useBulkTopup() {
   return useMutation({
@@ -90,7 +88,7 @@ export function useBulkTopup() {
       } else if (successCount === 0) {
         toast.error(`All ${failedCount} topups failed`);
       } else {
-        toast.warning(`${successCount} succeeded, ${failedCount} failed`, {
+        toast.info(`${successCount} succeeded, ${failedCount} failed`, {
           description: "Check the batch report for details",
         });
       }
@@ -102,9 +100,7 @@ export function useBulkTopup() {
       if (status === 401) {
         toast.error("Invalid PIN or API Key");
       } else if (status === 403) {
-        toast.error(
-          "You don't have permission. Contact support to upgrade to Reseller."
-        );
+        toast.error("Permission denied. Upgrade to Reseller required.");
       } else if (status === 429) {
         toast.error("Too many requests. Please slow down.");
       } else {
@@ -196,59 +192,81 @@ const UPGRADE_REQUEST_KEY = "reseller_upgrade_request";
  * Tracks if user has already submitted an upgrade request
  */
 export function useResellerUpgradeStatus() {
-  const getStatus = (): { pending: boolean; submittedAt: string | null } => {
-    if (typeof window === "undefined") {
-      return { pending: false, submittedAt: null };
-    }
+  const [isPending, setIsPending] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-    const data = localStorage.getItem(UPGRADE_REQUEST_KEY);
-    if (!data) {
-      return { pending: false, submittedAt: null };
-    }
-
+  const checkStatus = async () => {
     try {
-      const parsed = JSON.parse(data);
-      return { pending: true, submittedAt: parsed.submittedAt };
-    } catch {
-      return { pending: false, submittedAt: null };
+      setIsLoading(true);
+      const data = await AsyncStorage.getItem(UPGRADE_REQUEST_KEY);
+      if (data) {
+        const parsed = JSON.parse(data);
+        if (parsed.submittedAt) {
+          setIsPending(true);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to check reseller status", error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const markAsPending = () => {
-    localStorage.setItem(
-      UPGRADE_REQUEST_KEY,
-      JSON.stringify({ submittedAt: new Date().toISOString() })
-    );
+  const markAsPending = async () => {
+    try {
+      await AsyncStorage.setItem(
+        UPGRADE_REQUEST_KEY,
+        JSON.stringify({ submittedAt: new Date().toISOString() })
+      );
+      setIsPending(true);
+    } catch (error) {
+      console.error("Failed to mark reseller status", error);
+    }
   };
 
-  const clearPending = () => {
-    localStorage.removeItem(UPGRADE_REQUEST_KEY);
+  const clearPending = async () => {
+    try {
+      await AsyncStorage.removeItem(UPGRADE_REQUEST_KEY);
+      setIsPending(false);
+    } catch (error) {
+      console.error("Failed to clear reseller status", error);
+    }
   };
 
-  return { getStatus, markAsPending, clearPending };
+  useEffect(() => {
+    checkStatus();
+  }, []);
+
+  return { isPending, isLoading, markAsPending, clearPending, refetch: checkStatus };
 }
 
 /**
  * Request upgrade to reseller status
- * For regular users (role=user) to apply for reseller account
- * Automatically marks request as pending on success
  */
 export function useRequestResellerUpgrade() {
   const { markAsPending } = useResellerUpgradeStatus();
+  // Using useMutation state to expose loading/error to component
+  const [requestError, setRequestError] = useState<string | null>(null);
 
-  return useMutation({
+  const mutation = useMutation({
     mutationFn: (message: string) => resellerService.requestUpgrade(message),
-    onSuccess: () => {
+    onSuccess: async () => {
       // Mark as pending so user can't submit again
-      markAsPending();
+      await markAsPending();
       toast.success("Application submitted!", {
-        description: "We will review your request and contact you shortly.",
+        description: "We will review your request shortly.",
       });
     },
     onError: (error: AxiosError<any>) => {
-      const message =
-        error.response?.data?.message || "Failed to submit request";
+      const message = error.response?.data?.message || "Failed to submit request";
+      setRequestError(message);
       toast.error(message);
     },
   });
+
+  return {
+    requestUpgrade: mutation.mutateAsync,
+    isSubmitting: mutation.isPending, // react-query v5 uses isPending
+    error: requestError,
+  };
 }

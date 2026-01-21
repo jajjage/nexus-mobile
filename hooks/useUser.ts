@@ -1,15 +1,15 @@
 import { userService } from "@/services/user.service";
 import {
-  GetPurchasesParams,
-  GetSupplierMarkupParams,
-  SetPinRequest,
-  TopupRequest,
-  UpdatePasswordRequest,
-  UpdateProfileRequest,
+    GetPurchasesParams,
+    GetSupplierMarkupParams,
+    SetPinRequest,
+    TopupRequest,
+    UpdatePasswordRequest,
+    UpdateProfileRequest,
 } from "@/types/user.types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AxiosError } from "axios";
-import { useRouter } from "next/navigation";
+import { useRouter } from "expo-router";
 
 // ============= Query Keys =============
 export const userKeys = {

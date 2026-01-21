@@ -1,6 +1,7 @@
 // components/dashboard/QuickActions.tsx
 // Following HOME_PAGE_GUIDE.md specifications
 import { lightColors } from "@/constants/palette";
+import { useRouter } from "expo-router";
 import { Phone, Receipt, Send, Wifi } from "lucide-react-native";
 import React from "react";
 import {
@@ -45,9 +46,11 @@ const actions: QuickAction[] = [
 ];
 
 export function QuickActions() {
+  const router = useRouter();
+
   const handlePress = (route: string) => {
     console.log("Navigate to:", route);
-    // router.push(route as any);
+    router.push(route as any);
   };
 
   return (
@@ -119,5 +122,6 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     color: lightColors.textPrimary, // #2E2E33
     textAlign: "center",
+    marginTop: 4,
   },
 });

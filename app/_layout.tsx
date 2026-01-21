@@ -5,11 +5,14 @@ import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
+import { Toaster } from 'sonner-native';
 
 import { useColorScheme } from '@/components/useColorScheme';
 import { darkColors, lightColors } from '@/constants/palette';
 import { AuthProvider } from '@/context/AuthContext';
+import { useMobileFcm } from '@/hooks/useMobileFcm';
 
 import { GluestackUIProvider } from '@/components/ui/gluestack-ui-provider';
 import '../global.css';
@@ -71,6 +74,12 @@ const queryClient = new QueryClient({
   },
 });
 
+// Helper component to initialize app-wide logic that depends on providers
+function AppInitializer() {
+  useMobileFcm();
+  return null;
+}
+
 export default function RootLayout() {
   const [loaded, error] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
@@ -99,19 +108,27 @@ function RootLayoutNav() {
   const colorScheme = useColorScheme();
 
   return (
-    <GluestackUIProvider mode={colorScheme === 'dark' ? 'dark' : 'light'}>
-      <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <ThemeProvider value={colorScheme === 'dark' ? NexusDarkTheme : NexusLightTheme}>
-            <Stack>
-              <Stack.Screen name="(onboarding)" options={{ headerShown: false }} />
-              <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-              <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-            </Stack>
-          </ThemeProvider>
-        </AuthProvider>
-      </QueryClientProvider>
-    </GluestackUIProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <GluestackUIProvider mode={colorScheme === 'dark' ? 'dark' : 'light'}>
+        <QueryClientProvider client={queryClient}>
+          <AuthProvider>
+            <AppInitializer />
+            <ThemeProvider value={colorScheme === 'dark' ? NexusDarkTheme : NexusLightTheme}>
+              <Stack screenOptions={{ animation: 'slide_from_right' }}>
+                <Stack.Screen name="(onboarding)" options={{ headerShown: false }} />
+                <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+                <Stack.Screen name="(tabs)" options={{ headerShown: false, animation: 'none' }} />
+                <Stack.Screen name="transactions" options={{ headerShown: false }} />
+                <Stack.Screen name="notifications" options={{ headerShown: false }} />
+                <Stack.Screen name="airtime" options={{ headerShown: false }} />
+                <Stack.Screen name="data" options={{ headerShown: false }} />
+                <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+              </Stack>
+              <Toaster />
+            </ThemeProvider>
+          </AuthProvider>
+        </QueryClientProvider>
+      </GluestackUIProvider>
+    </GestureHandlerRootView>
   );
 }

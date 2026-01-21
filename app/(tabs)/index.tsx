@@ -1,50 +1,39 @@
 // app/(tabs)/index.tsx
 // Updated layout to properly connect BalanceCard and RecentTransactions
 import {
-  BalanceCard,
-  HeaderBar,
-  PromoBanner,
-  QuickActions,
-  RecentTransactions,
-  ResellerBanner,
-  UserProfileCard,
+    BalanceCard,
+    HeaderBar,
+    NotificationBanner,
+    PromoBanner,
+    QuickActions,
+    RecentTransactions,
+    ResellerBanner,
+    UserProfileCard
 } from "@/components/dashboard";
+import { AddMoneyModal } from "@/components/dashboard/AddMoneyModal";
 import { useAuth } from "@/hooks/useAuth";
 import { useBalanceVisibility } from "@/hooks/useBalanceVisibility";
-import React from "react";
-import { ScrollView, StyleSheet, View } from "react-native";
+import { useUnreadNotificationCount } from "@/hooks/useUnreadNotificationCount";
+import { useRecentTransactions } from "@/hooks/useWallet";
+import { useWalletBalance } from "@/hooks/useWalletBalance";
+import { useRouter } from "expo-router";
+import React, { useCallback, useState } from "react";
+import { RefreshControl, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-
-// Mock transactions for demo
-const mockTransactions = [
-  {
-    id: "1",
-    type: "debit" as const,
-    title: "1GB MTN Weekly Gifting",
-    subtitle: "to MTN (07065653439)",
-    amount: 500,
-    status: "success" as const,
-    iconType: "wifi" as const,
-    iconBgColor: "#F3E5F5", // Light purple
-    iconColor: "#9C27B0",   // Purple
-  },
-  {
-    id: "2",
-    type: "credit" as const,
-    title: "Incoming Payment",
-    subtitle: "Wallet top-up",
-    amount: 500,
-    status: "success" as const,
-    iconType: "arrow-down" as const,
-    iconBgColor: "#E8F5E9", // Light green
-    iconColor: "#2E7D32",   // Green
-  },
-];
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
-  const { user } = useAuth();
+  const router = useRouter();
+  const { user, refetch: refetchUser } = useAuth();
   const { isBalanceVisible, toggleBalanceVisibility } = useBalanceVisibility();
+  
+  // Custom hooks
+  const { balance, refetch: refetchBalance } = useWalletBalance();
+  const { data: transactions = [], refetch: refetchTransactions } = useRecentTransactions();
+  const { count: unreadNotificationCount, refetch: refetchNotifications } = useUnreadNotificationCount();
+
+  const [refreshing, setRefreshing] = useState(false);
+  const [showAddMoney, setShowAddMoney] = useState(false);
 
   // Generate initials from user name
   const getInitials = (name: string) => {
@@ -59,7 +48,22 @@ export default function HomeScreen() {
   const fullName = user?.fullName || "User";
   const userInitials = getInitials(fullName);
   const phoneNumber = user?.phoneNumber || "08000000000";
-  const balance = parseFloat(user?.balance?.toString() || "0");
+  // const balance is now from the hook
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      // Run all refetches in parallel
+      await Promise.all([
+        refetchBalance(),
+        refetchTransactions(),
+        refetchUser(),
+        refetchNotifications(),
+      ]);
+    } finally {
+      setRefreshing(false);
+    }
+  }, []);
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -67,14 +71,26 @@ export default function HomeScreen() {
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
+        refreshControl={
+            <RefreshControl 
+                refreshing={refreshing} 
+                onRefresh={onRefresh} 
+                colors={['#E69E19']} // Nexus Gold
+                tintColor="#E69E19"  // iOS
+            />
+        }
       >
         {/* Header Bar */}
         <HeaderBar
           userInitials={userInitials}
           onGiftPress={() => console.log("Gift pressed")}
           onThemeToggle={() => console.log("Theme toggle pressed")}
-          onNotificationsPress={() => console.log("Notifications pressed")}
+          onNotificationsPress={() => router.push('/notifications')}
+          notificationCount={unreadNotificationCount}
         />
+        
+        {/* Notification Banner (Updates/Important) */}
+        <NotificationBanner />
 
         {/* User Profile with Logo */}
         <UserProfileCard
@@ -87,13 +103,30 @@ export default function HomeScreen() {
         <View style={styles.balanceSection}>
           <BalanceCard
             balance={balance}
-            onAddMoney={() => console.log("Add money pressed")}
+            onAddMoney={() => setShowAddMoney(true)}
             isBalanceVisible={isBalanceVisible}
             onToggleBalance={toggleBalanceVisibility}
           />
           <RecentTransactions
-            transactions={mockTransactions}
-            onSeeMore={() => console.log("See more transactions")}
+            transactions={transactions.slice(0, 2).map(tx => {
+              const status = tx.related?.status || 'pending';
+              const productType = tx.related?.type || tx.productCode?.split('-')[0]?.toLowerCase() || '';
+              const isCredit = tx.direction === 'credit';
+              const isData = productType === 'data';
+              
+              return {
+                id: tx.id,
+                type: isCredit ? 'credit' : 'debit',
+                title: tx.related?.operatorCode || tx.relatedType?.replace('_', ' ') || 'Transaction',
+                subtitle: tx.related?.recipient_phone || tx.reference || '',
+                amount: tx.amount,
+                status: status.toLowerCase() as 'success' | 'pending' | 'failed',
+                iconType: isData ? 'wifi' : isCredit ? 'arrow-up' : 'card',
+                iconBgColor: isCredit ? '#E8F5E9' : '#F3E5F5',
+                iconColor: isCredit ? '#2E7D32' : '#9C27B0',
+              };
+            })} // Using real transactions now
+            onSeeMore={() => router.push('/transactions')}
             isBalanceVisible={isBalanceVisible}
           />
         </View>
@@ -112,14 +145,21 @@ export default function HomeScreen() {
           onPress={() => console.log("Cashback pressed")}
         />
 
-        {/* Spacer for bottom content */}
-        <View style={{ height: 100 }} />
+        {/* Padding handled by contentContainerStyle */}
       </ScrollView>
 
-      {/* Reseller Banner - Fixed at bottom above tab bar */}
-      <View style={styles.resellerContainer}>
-        <ResellerBanner onPress={() => console.log("Reseller pressed")} />
-      </View>
+      {/* Reseller Banner - Fixed at bottom above tab bar (Only for non-resellers) */}
+      {user?.role !== 'reseller' && (
+        <View style={styles.resellerContainer}>
+          <ResellerBanner onPress={() => console.log("Reseller pressed")} />
+        </View>
+      )}
+
+      {/* Add Money Modal */}
+      <AddMoneyModal 
+        isVisible={showAddMoney} 
+        onClose={() => setShowAddMoney(false)} 
+      />
     </View>
   );
 }
@@ -133,7 +173,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 60,
+    paddingBottom: 80, // Sufficient to clear the fixed banner without extra space
   },
   balanceSection: {
     // No gap between BalanceCard and RecentTransactions

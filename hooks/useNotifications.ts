@@ -2,7 +2,7 @@ import { notificationsService } from "@/services/notifications.service";
 import { NotificationsResponse } from "@/types/notification.types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AxiosError } from "axios";
-import { toast } from "sonner";
+import { toast } from "sonner-native";
 
 export const notificationsKeys = {
   all: ["notifications"] as const,

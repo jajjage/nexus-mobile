@@ -5,7 +5,7 @@ import { User } from "@/types/api.types";
 import { TopupRequest, TopupResponse } from "@/types/topup.types";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AxiosError } from "axios";
-import { toast } from "sonner";
+import { toast } from "sonner-native";
 
 // Query keys matching useAuth
 const authKeys = {
