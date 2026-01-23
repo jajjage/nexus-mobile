@@ -47,6 +47,7 @@ export interface User {
   permissions?: string[]; // Optional permissions array
   hasPin: boolean; // Whether the user has set a transaction PIN
   hasPasscode: boolean; // Whether the user has set an app passcode (for soft lock)
+  hasBiometric: boolean; // Whether the user has enrolled biometric authentication
   createdAt: string;
   updatedAt: string;
 }

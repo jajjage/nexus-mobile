@@ -1,4 +1,5 @@
 import { useAuthContext } from "@/context/AuthContext";
+import { clearSessionExpiredCallback, setSessionExpiredCallback } from "@/lib/api-client";
 import { tokenStorage } from "@/lib/secure-store";
 import { authService } from "@/services/auth.service";
 import { User } from "@/types/api.types";
@@ -9,6 +10,7 @@ import * as Device from "expo-device";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import { Alert } from "react-native";
+import { toast } from "sonner-native";
 
 // Query keys for React Query cache
 export const authKeys = {
@@ -21,27 +23,43 @@ export const authKeys = {
 // ============================================================================
 
 export function useAuth() {
-  const { user, setUser, isLoading, setIsLoading } = useAuthContext();
+  const { user, setUser, isLoading, setIsLoading, isSessionExpired, markSessionAsExpired } = useAuthContext();
   const queryClient = useQueryClient();
   
   // Check if we have a token stored (enables the query)
   const [hasToken, setHasToken] = useState<boolean | null>(null);
+
+  // Register session expiry callback on mount
+  useEffect(() => {
+    setSessionExpiredCallback(() => {
+      console.log("[useAuth] Session expired callback triggered");
+      markSessionAsExpired();
+      queryClient.clear();
+    });
+    
+    return () => {
+      clearSessionExpiredCallback();
+    };
+  }, [markSessionAsExpired, queryClient]);
 
   useEffect(() => {
     const checkToken = async () => {
       const accessToken = await tokenStorage.getAccessToken();
       const refreshToken = await tokenStorage.getRefreshToken();
       
-      // If we have refresh token but no access token, we can still try to authenticate
+      // CRITICAL: Both tokens missing = logged out state
       const canAuthenticate = !!accessToken || !!refreshToken;
       setHasToken(canAuthenticate);
       
       if (!canAuthenticate) {
+        // If no tokens, clear user immediately
+        console.log("[useAuth] No tokens found, clearing user");
+        setUser(null);
         setIsLoading(false);
       }
     };
     checkToken();
-  }, []);
+  }, [setUser, setIsLoading]);
 
   // Fetch user profile - this determines if user is authenticated
   const query = useQuery<User, AxiosError>({
@@ -50,19 +68,53 @@ export function useAuth() {
       const profile = await authService.getProfile();
       return profile;
     },
-    staleTime: 3 * 60 * 1000, // 3 minutes
+    staleTime: 3 * 60 * 1000, // 3 minutes (access token valid for 15 min, so safe to cache 3 min)
     gcTime: 10 * 60 * 1000, // 10 minutes
-    retry: false, // Don't retry on 401 - let api-client handle refresh
-    enabled: hasToken === true, // Only fetch if we have a token
+    retry: (failureCount, error) => {
+      // Don't retry on 401/403 - these are handled by api-client's refresh interceptor
+      // If we reach here with 401/403 after api-client's refresh attempt, user is logged out
+      if (error.response?.status === 401 || error.response?.status === 403) {
+        return false; // Stop retrying, user needs to log in
+      }
+      // Retry network errors up to 3 times
+      return failureCount < 3;
+    },
+    enabled: hasToken === true && !isSessionExpired, // Don't fetch if session is expired
   });
 
   // Sync query result to context
+  // IMPORTANT: Preserve device-local flags that shouldn't be overwritten by API
+  // Sync query result to context
+  // IMPORTANT: Preserve device-local flags that shouldn't be overwritten by API
   useEffect(() => {
     if (query.isSuccess && query.data) {
-      setUser(query.data);
+      // console.log('[useAuth] Query success, data from backend:', JSON.stringify({
+      //     hasPin: query.data.hasPin,
+      //     hasPasscode: query.data.hasPasscode,
+      //     hasBiometric: query.data.hasBiometric
+      // }, null, 2));
+
+      // hasBiometric is device-specific and managed locally
+      // hasPin and hasPasscode might be stale from backend due to eventual consistency
+      const localHasBiometric = user?.hasBiometric;
+      const localHasPin = user?.hasPin;
+      const localHasPasscode = user?.hasPasscode;
+      
+      const mergedUser = {
+        ...query.data,
+        // Preserve local state if it's true (optimistic update)
+        hasBiometric: localHasBiometric === true ? true : query.data.hasBiometric,
+        hasPin: localHasPin === true ? true : query.data.hasPin,
+        hasPasscode: localHasPasscode === true ? true : query.data.hasPasscode,
+      };
+      
+      // Deep comparison to prevent infinite loop / unnecessary updates
+      if (JSON.stringify(mergedUser) !== JSON.stringify(user)) {
+         setUser(mergedUser);
+      }
       setIsLoading(false);
     }
-  }, [query.isSuccess, query.data]);
+  }, [query.isSuccess, query.data, user]);
 
   // Handle auth errors
   useEffect(() => {
@@ -78,13 +130,19 @@ export function useAuth() {
     }
   }, [query.isError, query.error]);
 
-  const isAuthenticated = !!user;
+  // isAuthenticated check as per MOBILE_AUTH_STATE_GUIDE.md
+  const isAuthenticated = 
+    user !== null && 
+    !isSessionExpired && 
+    user.isSuspended === false;
+    
   const isAdmin = user?.role === "admin";
 
   return {
     user,
     isAuthenticated,
     isAdmin,
+    isSessionExpired,
     isLoading: hasToken === null || isLoading || query.isLoading,
     isError: query.isError,
     refetch: query.refetch,
@@ -133,7 +191,17 @@ export function useLogin() {
       // Invalidate and refetch user profile
       await queryClient.invalidateQueries({ queryKey: authKeys.currentUser() });
       
+      toast.success("Welcome back! 👋", {
+        description: "Login successful",
+      });
+      
       router.replace("/(tabs)");
+    },
+    onError: (error: AxiosError<any>) => {
+      const message = error.response?.data?.message || "Login failed. Please try again.";
+      toast.error("Login Failed", {
+        description: message,
+      });
     },
   });
 
@@ -180,8 +248,16 @@ export function useRegister() {
   const mutation = useMutation({
     mutationFn: (data: RegisterRequest) => authService.register(data),
     onSuccess: () => {
-      // Alert.alert("Success", "Registration successful! Please login.");
+      toast.success("Account Created! 🎉", {
+        description: "Please login with your credentials",
+      });
       router.replace("/(auth)/login");
+    },
+    onError: (error: AxiosError<any>) => {
+      const message = error.response?.data?.message || "Registration failed. Please try again.";
+      toast.error("Registration Failed", {
+        description: message,
+      });
     },
   });
 

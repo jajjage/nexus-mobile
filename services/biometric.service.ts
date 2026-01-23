@@ -1,13 +1,13 @@
 import apiClient from "@/lib/api-client";
 import { ApiResponse } from "@/types/api.types";
 import {
-  AuthenticationOptionsResponse,
-  BiometricAuditLog,
-  BiometricEnrollment,
-  RegistrationOptionsResponse,
-  VerificationResponse,
-  WebAuthnAuthenticationResponse,
-  WebAuthnRegistrationResponse,
+    AuthenticationOptionsResponse,
+    BiometricAuditLog,
+    BiometricEnrollment,
+    RegistrationOptionsResponse,
+    VerificationResponse,
+    WebAuthnAuthenticationResponse,
+    WebAuthnRegistrationResponse,
 } from "@/types/biometric.types";
 
 export const biometricService = {
@@ -36,24 +36,59 @@ export const biometricService = {
    * POST /biometric/register/verify
    */
   verifyRegistration: async (
-    attestationResponse: WebAuthnRegistrationResponse
+    attestationResponse: WebAuthnRegistrationResponse,
+    challenge?: string
   ): Promise<VerificationResponse> => {
-    const response = await apiClient.post<ApiResponse<VerificationResponse>>(
-      "/biometric/register/verify",
-      {
-        id: attestationResponse.id,
-        rawId: attestationResponse.rawId,
-        response: attestationResponse.response,
-        type: attestationResponse.type,
-        deviceName: attestationResponse.deviceName,
-        platform: attestationResponse.platform,
-        authenticatorAttachment: attestationResponse.authenticatorAttachment,
-      }
-    );
-    if (!response.data.data) {
-      throw new Error(response.data.message || "Failed to verify registration");
+    // Build payload exactly as backend expects (matching WebAuthn spec)
+    const payload: any = {
+      id: attestationResponse.id,
+      rawId: attestationResponse.rawId,
+      response: {
+        clientDataJSON: attestationResponse.response.clientDataJSON,
+        attestationObject: attestationResponse.response.attestationObject,
+      },
+      type: attestationResponse.type,
+      deviceName: attestationResponse.deviceName,
+      platform: attestationResponse.platform,
+      authenticatorAttachment: attestationResponse.authenticatorAttachment,
+    };
+
+    // Include challenge if provided
+    if (challenge) {
+      payload.challenge = challenge;
     }
-    return response.data.data;
+
+    console.log("[BiometricService] Sending registration verification payload:", {
+      id: payload.id,
+      type: payload.type,
+      deviceName: payload.deviceName,
+      platform: payload.platform,
+      hasChallenge: !!payload.challenge,
+      hasClientData: !!payload.response?.clientDataJSON,
+      hasAttestationObject: !!payload.response?.attestationObject,
+    });
+
+    console.log("[BiometricService] Full payload:", JSON.stringify(payload, null, 2));
+
+    try {
+      const response = await apiClient.post<ApiResponse<VerificationResponse>>(
+        "/biometric/register/verify",
+        payload
+      );
+      console.log("[BiometricService] Registration verification response:", response.data);
+      if (!response.data.data) {
+        throw new Error(response.data.message || "Failed to verify registration");
+      }
+      return response.data.data;
+    } catch (error: any) {
+      console.error("[BiometricService] Registration verification error:", {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        message: error.message,
+      });
+      throw error;
+    }
   },
 
   // ===================================================================

@@ -1,9 +1,10 @@
 "use client";
 
+import { useAuthContext } from "@/context/AuthContext";
 import { biometricService } from "@/services/biometric.service";
 import { userService } from "@/services/user.service";
 import { useMutation } from "@tanstack/react-query";
-import { toast } from "sonner";
+import { toast } from "sonner-native";
 
 import { useQueryClient } from "@tanstack/react-query";
 import { authKeys } from "./useAuth";
@@ -14,6 +15,7 @@ import { authKeys } from "./useAuth";
  */
 export function useSetPasscode() {
   const queryClient = useQueryClient();
+  const { updateUser } = useAuthContext();
 
   return useMutation({
     mutationFn: async (data: {
@@ -40,6 +42,7 @@ export function useSetPasscode() {
 
       // Invalidate both auth and user profile queries to update hasPasscode status
       await queryClient.invalidateQueries({ queryKey: authKeys.currentUser() });
+      updateUser({ hasPasscode: true });
     },
     onError: (error: any) => {
       console.error("[useSetPasscode] Error", error);

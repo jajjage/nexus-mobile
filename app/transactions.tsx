@@ -2,13 +2,22 @@
 // Full transactions history screen with filters
 import { lightColors } from "@/constants/palette";
 import { useTransactions } from "@/hooks/useWallet";
+import {
+    getDisplayStatus,
+    getStatusConfig,
+    getTransactionSubtitle,
+    getTransactionTitle,
+    isDataTransaction,
+} from "@/lib/transactionUtils";
+import { Transaction } from "@/types/wallet.types";
 import { useRouter } from "expo-router";
 import {
     ArrowDown,
     ArrowLeft,
     ArrowUp,
     CreditCard,
-    Wifi
+    Phone,
+    Wifi,
 } from "lucide-react-native";
 import React, { useCallback, useState } from "react";
 import {
@@ -22,13 +31,6 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type FilterType = "all" | "credit" | "debit";
-
-const iconMap = {
-  "wifi": Wifi,
-  "arrow-down": ArrowDown,
-  "arrow-up": ArrowUp,
-  "card": CreditCard,
-};
 
 export default function TransactionsScreen() {
   const insets = useSafeAreaInsets();
@@ -49,25 +51,23 @@ export default function TransactionsScreen() {
     return tx.direction === activeFilter;
   });
 
-  // Map transaction to display format
-  const mapTransaction = (tx: any) => {
-    const status = tx.related?.status || 'pending';
-    const productType = tx.related?.type || tx.productCode?.split('-')[0]?.toLowerCase() || '';
-    const isCredit = tx.direction === 'credit';
-    const isData = productType === 'data';
-    
-    return {
-      id: tx.id,
-      type: isCredit ? 'credit' : 'debit',
-      title: tx.related?.operatorCode || tx.relatedType?.replace('_', ' ') || 'Transaction',
-      subtitle: tx.related?.recipient_phone || tx.reference || '',
-      amount: tx.amount,
-      status: status.toLowerCase(),
-      iconType: isData ? 'wifi' : isCredit ? 'arrow-up' : 'arrow-down',
-      iconBgColor: isCredit ? '#E8F5E9' : '#FFEBEE',
-      iconColor: isCredit ? '#2E7D32' : '#C62828',
-      date: tx.createdAt,
-    };
+  // Get icon for transaction
+  const getTransactionIcon = (tx: Transaction) => {
+    const isCredit = tx.direction === "credit";
+    const isDebit = tx.direction === "debit";
+
+    if (isDebit && tx.relatedType === "topup_request") {
+      if (isDataTransaction(tx)) {
+        return { Icon: Wifi, bgColor: "#F3E8FF", color: "#9333EA" }; // purple for data
+      }
+      return { Icon: Phone, bgColor: "#DBEAFE", color: "#2563EB" }; // blue for airtime
+    }
+
+    if (isCredit) {
+      return { Icon: ArrowDown, bgColor: "#DCFCE7", color: "#16A34A" }; // green for credit
+    }
+
+    return { Icon: ArrowUp, bgColor: "#FEE2E2", color: "#DC2626" }; // red for debit
   };
 
   const formatCurrency = (amount: number) => {
@@ -86,49 +86,32 @@ export default function TransactionsScreen() {
     });
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "completed": 
-      case "success":
-      case "received": return "#2E7D32";
-      case "pending": return "#F4A261";
-      case "failed":
-      case "cancelled": return "#C62828";
-      default: return "#666";
-    }
-  };
-
-  const getStatusBg = (status: string) => {
-    switch (status) {
-      case "completed":
-      case "success":
-      case "received": return "#E8F5E9";
-      case "pending": return "#FFF3E0";
-      case "failed":
-      case "cancelled": return "#FFEBEE";
-      default: return "#F5F5F5";
-    }
-  };
-
-  const renderTransaction = ({ item }: { item: any }) => {
-    const tx = mapTransaction(item);
-    const IconComponent = iconMap[tx.iconType as keyof typeof iconMap] || CreditCard;
+  const renderTransaction = ({ item }: { item: Transaction }) => {
+    const isCredit = item.direction === "credit";
+    const title = getTransactionTitle(item);
+    const subtitle = getTransactionSubtitle(item);
+    const displayStatus = getDisplayStatus(item);
+    const statusConfig = getStatusConfig(item.related?.status || "pending");
+    const { Icon, bgColor, color } = getTransactionIcon(item);
+    const dateStr = typeof item.createdAt === 'string' 
+      ? item.createdAt 
+      : item.createdAt.toISOString();
     
     return (
       <Pressable 
         style={styles.transactionItem}
-        onPress={() => console.log("Transaction detail:", tx.id)}
+        onPress={() => router.push(`/transaction-detail?id=${item.id}&from=transactions`)}
       >
         {/* Icon */}
-        <View style={[styles.txIcon, { backgroundColor: tx.iconBgColor }]}>
-          <IconComponent size={18} color={tx.iconColor} />
+        <View style={[styles.txIcon, { backgroundColor: bgColor }]}>
+          <Icon size={18} color={color} />
         </View>
 
         {/* Details */}
         <View style={styles.txDetails}>
-          <Text style={styles.txTitle}>{tx.title}</Text>
-          <Text style={styles.txSubtitle}>{tx.subtitle}</Text>
-          <Text style={styles.txDate}>{formatDate(tx.date)}</Text>
+          <Text style={styles.txTitle}>{title}</Text>
+          <Text style={styles.txSubtitle}>{subtitle}</Text>
+          <Text style={styles.txDate}>{formatDate(dateStr)}</Text>
         </View>
 
         {/* Amount & Status */}
@@ -136,16 +119,18 @@ export default function TransactionsScreen() {
           <Text
             style={[
               styles.txAmount,
-              { color: tx.type === "credit" ? "#2E7D32" : "#C62828" },
+              { color: isCredit ? "#16A34A" : "#DC2626" },
             ]}
           >
-            {tx.type === "credit" ? "+" : "-"}₦{formatCurrency(tx.amount)}
+            {isCredit ? "+" : "-"}₦{formatCurrency(item.amount)}
           </Text>
-          <View style={[styles.statusBadge, { backgroundColor: getStatusBg(tx.status) }]}>
-            <Text style={[styles.statusText, { color: getStatusColor(tx.status) }]}>
-              {tx.status.charAt(0).toUpperCase() + tx.status.slice(1)}
-            </Text>
-          </View>
+          {item.relatedType === "topup_request" && (
+            <View style={[styles.statusBadge, { backgroundColor: statusConfig.bgColor }]}>
+              <Text style={[styles.statusText, { color: statusConfig.color }]}>
+                {displayStatus}
+              </Text>
+            </View>
+          )}
         </View>
       </Pressable>
     );

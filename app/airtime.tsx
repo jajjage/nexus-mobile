@@ -9,40 +9,42 @@ import { Stack, useRouter } from "expo-router";
 import { ArrowLeft } from "lucide-react-native";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Dimensions,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-  useColorScheme
+    Dimensions,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+    useColorScheme
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
-  CheckoutData,
-  CheckoutModal,
-  CheckoutMode,
-  NetworkDetectorInput,
-  NetworkSelector,
+    CheckoutData,
+    CheckoutModal,
+    CheckoutMode,
+    NetworkDetectorInput,
+    NetworkSelector,
 } from "@/components/purchase";
 import { PinPadModal } from "@/components/security/PinPadModal";
 import { darkColors, designTokens, lightColors } from "@/constants/palette";
 import { useAuth } from "@/hooks/useAuth";
 import { useBiometricAuth } from "@/hooks/useBiometric";
+import { useCompletePaymentFlow } from "@/hooks/useCompletePaymentFlow";
 import { useProducts } from "@/hooks/useProducts";
 import { useSupplierMarkupMap } from "@/hooks/useSupplierMarkup";
 import { useTopup } from "@/hooks/useTopup";
 import { useWalletBalance } from "@/hooks/useWalletBalance";
 import {
-  NETWORK_PROVIDERS,
-  NetworkInfo,
-  NetworkProvider,
-  isValidNigerianPhone,
-  normalizePhoneNumber,
+    NETWORK_PROVIDERS,
+    NetworkInfo,
+    NetworkProvider,
+    isValidNigerianPhone,
+    normalizePhoneNumber,
 } from "@/lib/detectNetwork";
+import { calculateFinalPrice } from "@/lib/price-calculator";
 import { Product } from "@/types/product.types";
 
 // Preset airtime amounts
@@ -84,6 +86,21 @@ export default function AirtimeScreen() {
   });
   const markupMap = useSupplierMarkupMap();
   const { mutateAsync: topup, isPending: isTopupPending } = useTopup();
+  const { processPayment, submitPIN, reset: resetPaymentFlow, isLoading: isPaymentProcessing, currentStep: paymentStep, error: paymentError } = useCompletePaymentFlow({
+    onSuccess: (transactionId) => {
+      console.log("[AirtimeScreen] Payment successful:", transactionId);
+      setLastTransactionId(transactionId);
+      setLastErrorMessage(null);
+      setCheckoutMode("success");
+      checkoutSheetRef.current?.expand();
+    },
+    onError: (error) => {
+      console.error("[AirtimeScreen] Payment failed:", error);
+      setLastErrorMessage(error);
+      setCheckoutMode("failed");
+      checkoutSheetRef.current?.expand();
+    },
+  });
   const { balance: walletBalance } = useWalletBalance();
   const { user } = useAuth();
   const { authenticate, checkBiometricSupport } = useBiometricAuth();
@@ -163,9 +180,8 @@ export default function AirtimeScreen() {
 
   // Get markup percent for the first product's supplier
   const getMarkupPercent = (product?: Product) => {
-    if (!product?.supplierOffers?.[0]) return 0;
-    const supplierId = product.supplierOffers[0].supplierId;
-    return markupMap.get(supplierId) || 0;
+    // No longer used - keeping for compatibility
+    return 0; // No markup anymore
   };
 
   // === HANDLERS ===
@@ -205,91 +221,96 @@ export default function AirtimeScreen() {
 
   // === PAYMENT WATERFALL (GUIDE SECTION 4) ===
   const handleConfirmPayment = useCallback(async () => {
-    // Store pending payment data
-    const paymentData = {
-      amount: selectedAmount!,
-      productCode: `${selectedNetwork?.toUpperCase()}_AIRTIME`,
-      recipientPhone: normalizedPhone,
-      useCashback,
-    };
-    setPendingPaymentData(paymentData);
+    if (!selectedAmount || !selectedNetwork || !normalizedPhone) return;
 
-    // Close checkout modal
-    checkoutSheetRef.current?.close();
-
-    // Step A: Biometric Check
     try {
-      const biometricSupport = await checkBiometricSupport();
-
-      if (biometricSupport.hasHardware && biometricSupport.isEnrolled) {
-        const success = await authenticate();
-
-        if (success) {
-          // Biometric succeeded - call API
-          await executeTransaction({
-            ...paymentData,
-            verificationToken: "biometric-success",
-          });
-          return;
+      // Find the selected product
+      const selectedProduct = networkProducts.find(
+        (p: Product) => {
+          const supplierId = p.supplierOffers?.[0]?.supplierId || "";
+          const markup = markupMap.get(supplierId) || 0;
+          const pricecalc = calculateFinalPrice(p, false, 0, markup);
+          return pricecalc.payableAmount === selectedAmount;
         }
-      }
+      );
 
-      // Step B: Fallback to PIN
-      if (!user?.hasPin) {
-        // Flow 3: No PIN Set
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-        // Alert or redirect would go here. For now, we will show an alert
-        // In a real app, this would redirect to PinSetupModal
-        alert("Please set a transaction PIN in settings to continue.");
+      if (!selectedProduct) {
+        setLastErrorMessage("Product not found. Please try again.");
         return;
       }
-      setShowPinModal(true);
-    } catch (error) {
-      console.error("Biometric error:", error);
-      if (!user?.hasPin) {
-         alert("Please set a transaction PIN in settings to continue.");
-         return;
+
+      console.log("[AirtimeScreen] Starting payment process for product:", selectedProduct.productCode);
+
+      // Get markup for this product
+      const supplierId = selectedProduct.supplierOffers?.[0]?.supplierId || "";
+      const markup = markupMap.get(supplierId) || 0;
+
+      // Close checkout modal
+      checkoutSheetRef.current?.close();
+
+      // Initiate payment flow (handles biometric → PIN → transaction)
+      const result = await processPayment({
+        product: selectedProduct,
+        phoneNumber: normalizedPhone,
+        useCashback,
+        markupPercent: markup,
+        userCashbackBalance: cashbackBalance,
+      });
+
+      // If biometric failed or PIN required, show PIN modal
+      if (!result.success && result.error?.includes("PIN")) {
+        console.log("[AirtimeScreen] Showing PIN modal for verification");
+        setPendingPaymentData({
+          product: selectedProduct,
+          phoneNumber: normalizedPhone,
+          useCashback,
+          markupPercent: markup,
+          amount: selectedAmount,
+        });
+        setShowPinModal(true);
       }
-      setShowPinModal(true);
-    }
-  }, [
-    selectedAmount,
-    selectedNetwork,
-    normalizedPhone,
-    useCashback,
-    authenticate,
-    checkBiometricSupport,
-  ]);
-
-  const handlePinSubmit = useCallback(
-    async (pin: string) => {
-      if (!pendingPaymentData) return;
-      setShowPinModal(false);
-      await executeTransaction({ ...pendingPaymentData, pin });
-    },
-    [pendingPaymentData]
-  );
-
-  const executeTransaction = async (paymentData: any) => {
-    try {
-      const response = await topup(paymentData);
-
-      // Step D: Success
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      setLastTransactionId(response.data?.transactionId || "N/A");
-      setLastErrorMessage(null);
-      setCheckoutMode("success");
-      checkoutSheetRef.current?.expand();
-    } catch (error: any) {
-      // Step D: Error
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      const errorMsg =
-        error?.response?.data?.message || "Transaction failed. Please try again.";
+    } catch (error) {
+      console.error("[AirtimeScreen] Payment initiation error:", error);
+      const errorMsg = error instanceof Error ? error.message : "Payment processing failed";
       setLastErrorMessage(errorMsg);
       setCheckoutMode("failed");
       checkoutSheetRef.current?.expand();
     }
-  };
+  }, [selectedAmount, selectedNetwork, normalizedPhone, useCashback, cashbackBalance, networkProducts, processPayment]);
+
+  const handlePinSubmit = useCallback(
+    async (pin: string) => {
+      if (!pendingPaymentData) return;
+
+      try {
+        setShowPinModal(false);
+        console.log("[AirtimeScreen] Submitting PIN for verification");
+
+        // Submit PIN through the complete payment flow
+        const result = await submitPIN({
+          product: pendingPaymentData.product,
+          phoneNumber: pendingPaymentData.phoneNumber,
+          useCashback: pendingPaymentData.useCashback,
+          markupPercent: pendingPaymentData.markupPercent,
+          pin: pin,
+          userCashbackBalance: cashbackBalance,
+        });
+
+        if (!result.success) {
+          setLastErrorMessage(result.error || "PIN verification failed");
+          setCheckoutMode("failed");
+          checkoutSheetRef.current?.expand();
+        }
+      } catch (error) {
+        console.error("[AirtimeScreen] PIN submission error:", error);
+        const errorMsg = error instanceof Error ? error.message : "PIN submission failed";
+        setLastErrorMessage(errorMsg);
+        setCheckoutMode("failed");
+        checkoutSheetRef.current?.expand();
+      }
+    },
+    [pendingPaymentData, submitPIN, cashbackBalance]
+  );
 
   // Retry after failure
   const handleRetry = useCallback(() => {
@@ -305,22 +326,49 @@ export default function AirtimeScreen() {
       setSelectedNetwork(null);
       setDetectedNetwork(null);
       setSelectedAmount(null);
-      router.back();
+      // Don't use router.back() as there might be no previous screen
+      // Just navigate to home tab
+      setTimeout(() => {
+        router.push("/(tabs)");
+      }, 500); // Small delay to let modal close first
     }
   }, [checkoutMode, router]);
 
   // === CHECKOUT DATA ===
   const checkoutData: CheckoutData | null =
     selectedAmount && selectedNetwork
-      ? {
-          productName: `₦${selectedAmount.toLocaleString()} Airtime`,
-          recipientPhone: normalizedPhone,
-          amount: selectedAmount,
-          network: selectedNetwork,
-          transactionId: lastTransactionId || undefined,
-          errorMessage: lastErrorMessage || undefined,
-          bonusToEarn: 0, // Placeholder as airtime cashback logic is not fully defined in this snippet
-        }
+      ? (() => {
+          // Find the product to get price details
+          const product = networkProducts.find(
+            (p: Product) => {
+              const supplierId = p.supplierOffers?.[0]?.supplierId || "";
+              const markup = markupMap.get(supplierId) || 0;
+              const calc = calculateFinalPrice(p, false, 0, markup);
+              return calc.payableAmount === selectedAmount;
+            }
+          );
+
+          if (!product) return null;
+
+          const supplierId = product.supplierOffers?.[0]?.supplierId || "";
+          const markup = markupMap.get(supplierId) || 0;
+          const priceDetails = calculateFinalPrice(product, useCashback, cashbackBalance, markup);
+
+          return {
+            productName: `₦${selectedAmount.toLocaleString()} Airtime`,
+            recipientPhone: normalizedPhone,
+            amount: priceDetails.payableAmount,
+            originalAmount: priceDetails.baseSellingPrice,
+            network: selectedNetwork,
+            transactionId: lastTransactionId || undefined,
+            errorMessage: lastErrorMessage || undefined,
+            bonusToEarn: priceDetails.bonusToEarn,
+            supplierCost: priceDetails.supplierCost,
+            markup: priceDetails.offerDiscount,
+            markupPercent: markup,
+            faceValue: priceDetails.faceValue,
+          };
+        })()
       : null;
 
   const canProceed = isPhoneValid && selectedNetwork && selectedAmount && !networkMismatch;

@@ -5,7 +5,7 @@ import {
 } from "@/types/notification-preference.types";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { AxiosError } from "axios";
-import { toast } from "sonner";
+import { toast } from "sonner-native";
 
 export function useNotificationPreferences() {
   return useQuery({

@@ -1,4 +1,4 @@
-import { Redirect, Tabs } from 'expo-router';
+import { Redirect, Tabs, useSegments } from 'expo-router';
 import { Briefcase, Home, Trophy, User, Users } from 'lucide-react-native';
 import React from 'react';
 import { ActivityIndicator, View } from 'react-native';
@@ -10,6 +10,10 @@ import { useAuth } from '@/hooks/useAuth';
 export default function TabLayout() {
   const { isAuthenticated, isLoading, user } = useAuth();
   const isReseller = user?.role === 'reseller';
+  const segments = useSegments();
+  
+  // Hide tab bar when on profile sub-screens (not the index)
+  const isProfileSubScreen = segments.length > 2 && segments[1] === 'profile';
 
   // Show loading while checking auth
   if (isLoading) {
@@ -22,8 +26,21 @@ export default function TabLayout() {
 
   // Redirect to login if not authenticated
   if (!isAuthenticated) {
+    console.log('[TabLayout] Not authenticated, redirecting to login');
     return <Redirect href="/(auth)/login" />;
   }
+
+  // Redirect to setup if incomplete
+  if (user && (!user.hasPin || !user.hasPasscode)) {
+    console.log('[TabLayout] User incomplete setup, redirecting to setup:', JSON.stringify({
+      hasPin: user.hasPin,
+      hasPasscode: user.hasPasscode,
+      userId: user.userId
+    }, null, 2));
+    return <Redirect href="/(setup)" />;
+  }
+
+  console.log('[TabLayout] User setup complete, rendering tabs');
 
   return (
     <Tabs
@@ -31,7 +48,7 @@ export default function TabLayout() {
       screenOptions={{
         tabBarActiveTintColor: lightColors.primary, // #E69E19
         tabBarInactiveTintColor: lightColors.textSecondary, // #525D60
-        tabBarStyle: {
+        tabBarStyle: isProfileSubScreen ? { display: 'none' } : {
           backgroundColor: '#FAFAFA', // card color
           borderTopWidth: 1,
           borderTopColor: '#D4D9DA', // border color

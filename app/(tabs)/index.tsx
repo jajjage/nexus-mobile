@@ -16,6 +16,11 @@ import { useBalanceVisibility } from "@/hooks/useBalanceVisibility";
 import { useUnreadNotificationCount } from "@/hooks/useUnreadNotificationCount";
 import { useRecentTransactions } from "@/hooks/useWallet";
 import { useWalletBalance } from "@/hooks/useWalletBalance";
+import {
+    getTransactionSubtitle,
+    getTransactionTitle,
+    isDataTransaction,
+} from "@/lib/transactionUtils";
 import { useRouter } from "expo-router";
 import React, { useCallback, useState } from "react";
 import { RefreshControl, ScrollView, StyleSheet, View } from "react-native";
@@ -110,22 +115,21 @@ export default function HomeScreen() {
           <RecentTransactions
             transactions={transactions.slice(0, 2).map(tx => {
               const status = tx.related?.status || 'pending';
-              const productType = tx.related?.type || tx.productCode?.split('-')[0]?.toLowerCase() || '';
               const isCredit = tx.direction === 'credit';
-              const isData = productType === 'data';
+              const isData = isDataTransaction(tx);
               
               return {
                 id: tx.id,
                 type: isCredit ? 'credit' : 'debit',
-                title: tx.related?.operatorCode || tx.relatedType?.replace('_', ' ') || 'Transaction',
-                subtitle: tx.related?.recipient_phone || tx.reference || '',
+                title: getTransactionTitle(tx),
+                subtitle: getTransactionSubtitle(tx),
                 amount: tx.amount,
                 status: status.toLowerCase() as 'success' | 'pending' | 'failed',
                 iconType: isData ? 'wifi' : isCredit ? 'arrow-up' : 'card',
-                iconBgColor: isCredit ? '#E8F5E9' : '#F3E5F5',
-                iconColor: isCredit ? '#2E7D32' : '#9C27B0',
+                iconBgColor: isData ? '#F3E8FF' : isCredit ? '#DCFCE7' : '#FEE2E2',
+                iconColor: isData ? '#9333EA' : isCredit ? '#16A34A' : '#DC2626',
               };
-            })} // Using real transactions now
+            })}
             onSeeMore={() => router.push('/transactions')}
             isBalanceVisible={isBalanceVisible}
           />

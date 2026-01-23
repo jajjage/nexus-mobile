@@ -9,45 +9,47 @@ import { Stack, useRouter } from "expo-router";
 import { ArrowLeft, Wifi } from "lucide-react-native";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  ActivityIndicator,
-  Dimensions,
-  FlatList,
-  KeyboardAvoidingView,
-  Platform,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-  useColorScheme
+    ActivityIndicator,
+    Dimensions,
+    FlatList,
+    KeyboardAvoidingView,
+    Platform,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+    useColorScheme
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
-  CategoryTabs,
-  CheckoutData,
-  CheckoutModal,
-  CheckoutMode,
-  NetworkDetectorInput,
-  NetworkSelector,
-  ProductCard,
+    CategoryTabs,
+    CheckoutData,
+    CheckoutModal,
+    CheckoutMode,
+    NetworkDetectorInput,
+    NetworkSelector,
+    ProductCard,
 } from "@/components/purchase";
 import { PinPadModal } from "@/components/security/PinPadModal";
 import { darkColors, designTokens, lightColors } from "@/constants/palette";
 import { useAuth } from "@/hooks/useAuth";
 import { useBiometricAuth } from "@/hooks/useBiometric";
 import { useCategories } from "@/hooks/useCategories";
+import { useCompletePaymentFlow } from "@/hooks/useCompletePaymentFlow";
 import { useProducts } from "@/hooks/useProducts";
 import { useSupplierMarkupMap } from "@/hooks/useSupplierMarkup";
 import { useTopup } from "@/hooks/useTopup";
 import { useEligibleOffers } from "@/hooks/useUserOffers";
 import { useWalletBalance } from "@/hooks/useWalletBalance";
 import {
-  NETWORK_PROVIDERS,
-  NetworkInfo,
-  NetworkProvider,
-  isValidNigerianPhone,
-  normalizePhoneNumber,
+    NETWORK_PROVIDERS,
+    NetworkInfo,
+    NetworkProvider,
+    isValidNigerianPhone,
+    normalizePhoneNumber,
 } from "@/lib/detectNetwork";
+import { calculateFinalPrice } from "@/lib/price-calculator";
 import { Product } from "@/types/product.types";
 
 const { width } = Dimensions.get("window");
@@ -94,6 +96,21 @@ export default function DataScreen() {
   const { balance: walletBalance } = useWalletBalance();
   const { user } = useAuth();
   const { authenticate, checkBiometricSupport } = useBiometricAuth();
+  const { processPayment, submitPIN, reset: resetPaymentFlow, isLoading: isPaymentProcessing, currentStep: paymentStep, error: paymentError } = useCompletePaymentFlow({
+    onSuccess: (transactionId) => {
+      console.log("[DataScreen] Payment successful:", transactionId);
+      setLastTransactionId(transactionId);
+      setLastErrorMessage(null);
+      setCheckoutMode("success");
+      checkoutSheetRef.current?.expand();
+    },
+    onError: (error) => {
+      console.error("[DataScreen] Payment failed:", error);
+      setLastErrorMessage(error);
+      setCheckoutMode("failed");
+      checkoutSheetRef.current?.expand();
+    },
+  });
 
   const cashbackBalance = user?.cashback?.availableBalance || 0;
   const normalizedPhone = normalizePhoneNumber(phoneNumber);
@@ -196,7 +213,7 @@ export default function DataScreen() {
   const getMarkupPercent = useCallback(
     (product: Product) => {
       if (!product?.supplierOffers?.[0]) return 0;
-      const supplierId = product.supplierOffers[0].supplierId;
+      const supplierId = product.supplierOffers[0].supplierId || "";
       return markupMap.get(supplierId) || 0;
     },
     [markupMap]
@@ -211,15 +228,17 @@ export default function DataScreen() {
     [eligibleIds]
   );
 
-  // Calculate display price for a product
+  // Calculate display price for a product - SIMPLIFIED (no markup)
+  // Price = max(faceValue, supplierPrice)
   const getDisplayPrice = useCallback(
     (product: Product) => {
+      const faceValue = parseFloat(product.denomAmount || "0");
       const supplierPrice = product.supplierOffers?.[0]?.supplierPrice
         ? parseFloat(product.supplierOffers[0].supplierPrice.toString())
-        : parseFloat(product.denomAmount);
+        : 0;
 
-      const markupPercent = getMarkupPercent(product);
-      let sellingPrice = supplierPrice + supplierPrice * (markupPercent / 100);
+      // Use the max of faceValue and supplierPrice, or just faceValue if supplier is 0
+      let sellingPrice = Math.max(faceValue, supplierPrice > 0 ? supplierPrice : faceValue);
 
       // Apply discount if eligible
       if (product.activeOffer && isEligibleForOffer(product)) {
@@ -236,7 +255,7 @@ export default function DataScreen() {
 
       return sellingPrice;
     },
-    [getMarkupPercent, isEligibleForOffer]
+    [isEligibleForOffer]
   );
 
   // === HANDLERS ===
@@ -284,92 +303,79 @@ export default function DataScreen() {
 
   // === PAYMENT WATERFALL (GUIDE SECTION 4) ===
   const handleConfirmPayment = useCallback(async () => {
-    if (!selectedProduct) return;
+    if (!selectedProduct || !normalizedPhone) return;
 
-    const displayPrice = getDisplayPrice(selectedProduct);
-
-    // Store pending payment data
-    const paymentData = {
-      amount: displayPrice,
-      productCode: selectedProduct.productCode,
-      recipientPhone: normalizedPhone,
-      useCashback,
-    };
-    setPendingPaymentData(paymentData);
-
-    // Close checkout modal
-    checkoutSheetRef.current?.close();
-
-    // Step A: Biometric Check
     try {
-      const biometricSupport = await checkBiometricSupport();
+      console.log("[DataScreen] Starting payment process for product:", selectedProduct.productCode);
 
-      if (biometricSupport.hasHardware && biometricSupport.isEnrolled) {
-        const success = await authenticate();
+      // Get markup for this product
+      const supplierId = selectedProduct.supplierOffers?.[0]?.supplierId || "";
+      const markup = markupMap.get(supplierId) || 0;
 
-        if (success) {
-          // Biometric succeeded - call API
-          await executeTransaction({
-            ...paymentData,
-            verificationToken: "biometric-success",
-          });
-          return;
-        }
+      // Close checkout modal
+      checkoutSheetRef.current?.close();
+
+      // Initiate payment flow (handles biometric → PIN → transaction)
+      const result = await processPayment({
+        product: selectedProduct,
+        phoneNumber: normalizedPhone,
+        useCashback,
+        markupPercent: markup,
+        userCashbackBalance: cashbackBalance,
+      });
+
+      // If biometric failed or PIN required, show PIN modal
+      if (!result.success && result.error?.includes("PIN")) {
+        console.log("[DataScreen] Showing PIN modal for verification");
+        setPendingPaymentData({
+          product: selectedProduct,
+          phoneNumber: normalizedPhone,
+          useCashback,
+          markupPercent: markup,
+        });
+        setShowPinModal(true);
       }
-
-      // Step B: Fallback to PIN
-      if (!user?.hasPin) {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-        alert("Please set a transaction PIN in settings to continue.");
-        return;
-      }
-      setShowPinModal(true);
     } catch (error) {
-      console.error("Biometric error:", error);
-      if (!user?.hasPin) {
-        alert("Please set a transaction PIN in settings to continue.");
-        return;
-      }
-      setShowPinModal(true);
-    }
-  }, [
-    selectedProduct,
-    getDisplayPrice,
-    normalizedPhone,
-    useCashback,
-    authenticate,
-    checkBiometricSupport,
-  ]);
-
-  const handlePinSubmit = useCallback(
-    async (pin: string) => {
-      if (!pendingPaymentData) return;
-      setShowPinModal(false);
-      await executeTransaction({ ...pendingPaymentData, pin });
-    },
-    [pendingPaymentData]
-  );
-
-  const executeTransaction = async (paymentData: any) => {
-    try {
-      const response = await topup(paymentData);
-
-      // Step D: Success
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      setLastTransactionId(response.data?.transactionId || "N/A");
-      setLastErrorMessage(null);
-      setCheckoutMode("success");
-      checkoutSheetRef.current?.expand();
-    } catch (error: any) {
-      // Step D: Error
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      const errorMsg =
-        error?.response?.data?.message || "Transaction failed. Please try again.";
+      console.error("[DataScreen] Payment initiation error:", error);
+      const errorMsg = error instanceof Error ? error.message : "Payment processing failed";
       setLastErrorMessage(errorMsg);
       setCheckoutMode("failed");
       checkoutSheetRef.current?.expand();
     }
-  };
+  }, [selectedProduct, normalizedPhone, useCashback, cashbackBalance, processPayment, markupMap]);
+
+  const handlePinSubmit = useCallback(
+    async (pin: string) => {
+      if (!pendingPaymentData) return;
+      try {
+        setShowPinModal(false);
+        console.log("[DataScreen] Submitting PIN for verification");
+
+        // Submit PIN through the complete payment flow
+        const result = await submitPIN({
+          product: pendingPaymentData.product,
+          phoneNumber: pendingPaymentData.phoneNumber,
+          useCashback: pendingPaymentData.useCashback,
+          markupPercent: pendingPaymentData.markupPercent,
+          pin: pin,
+          userCashbackBalance: cashbackBalance,
+        });
+
+        if (!result.success) {
+          setLastErrorMessage(result.error || "PIN verification failed");
+          setCheckoutMode("failed");
+          checkoutSheetRef.current?.expand();
+        }
+      } catch (error) {
+        console.error("[DataScreen] PIN submission error:", error);
+        const errorMsg = error instanceof Error ? error.message : "PIN submission failed";
+        setLastErrorMessage(errorMsg);
+        setCheckoutMode("failed");
+        checkoutSheetRef.current?.expand();
+      }
+    },
+    [pendingPaymentData, submitPIN, cashbackBalance]
+  );
 
   // Retry after failure
   const handleRetry = useCallback(() => {
@@ -385,26 +391,42 @@ export default function DataScreen() {
       setSelectedNetwork(null);
       setDetectedNetwork(null);
       setSelectedProduct(null);
-      router.back();
+      // Don't use router.back() as there might be no previous screen
+      // Just navigate to home tab
+      setTimeout(() => {
+        router.push("/(tabs)");
+      }, 500); // Small delay to let modal close first
     }
   }, [checkoutMode, router]);
 
   // === CHECKOUT DATA ===
   const checkoutData: CheckoutData | null =
     selectedProduct && selectedNetwork
-      ? {
-          productName: selectedProduct.name,
-          recipientPhone: normalizedPhone,
-          amount: getDisplayPrice(selectedProduct),
-          network: selectedNetwork,
-          transactionId: lastTransactionId || undefined,
-          errorMessage: lastErrorMessage || undefined,
-          bonusToEarn:
-            selectedProduct.has_cashback
-              ? getDisplayPrice(selectedProduct) *
-                ((selectedProduct.cashback_percentage || 0) / 100)
-              : 0,
-        }
+      ? (() => {
+          const supplierId = selectedProduct.supplierOffers?.[0]?.supplierId || "";
+          const markup = markupMap.get(supplierId) || 0;
+          const priceDetails = calculateFinalPrice(
+            selectedProduct,
+            useCashback,
+            cashbackBalance,
+            markup
+          );
+
+          return {
+            productName: selectedProduct.name,
+            recipientPhone: normalizedPhone,
+            amount: priceDetails.payableAmount,
+            originalAmount: priceDetails.baseSellingPrice,
+            network: selectedNetwork,
+            transactionId: lastTransactionId || undefined,
+            errorMessage: lastErrorMessage || undefined,
+            bonusToEarn: priceDetails.bonusToEarn,
+            supplierCost: priceDetails.supplierCost,
+            markup: priceDetails.offerDiscount,
+            markupPercent: markup,
+            faceValue: priceDetails.faceValue,
+          };
+        })()
       : null;
 
   const canProceed = isPhoneValid && selectedNetwork && selectedProduct && !networkMismatch;

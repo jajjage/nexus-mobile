@@ -7,10 +7,16 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AxiosError } from "axios";
 import { toast } from "sonner-native";
 
-// Query keys matching useAuth
+// Query keys for auth and transactions
 const authKeys = {
   all: ["auth"] as const,
   currentUser: () => [...authKeys.all, "current-user"] as const,
+};
+
+const transactionKeys = {
+  all: ["transactions"] as const,
+  lists: () => [...transactionKeys.all, "list"] as const,
+  detail: (id: string) => [...transactionKeys.all, "detail", id] as const,
 };
 
 // Context type for optimistic updates
@@ -105,10 +111,11 @@ export function useTopup() {
       });
     },
 
-    // Always refetch user data after mutation to sync with server
+    // Always refetch user data and transactions after mutation to sync with server
     onSettled: () => {
-      console.log("[useTopup] Settled - invalidating user query");
+      console.log("[useTopup] Settled - invalidating user and transaction queries");
       queryClient.invalidateQueries({ queryKey: authKeys.currentUser() });
+      queryClient.invalidateQueries({ queryKey: transactionKeys.lists() });
     },
   });
 }

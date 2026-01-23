@@ -2,13 +2,14 @@
 // Updated to connect visually with BalanceCard above
 import { lightColors } from "@/constants/palette";
 import { BlurView } from "expo-blur";
+import { useRouter } from "expo-router";
 import { ArrowDown, ArrowUp, CreditCard, Wifi } from "lucide-react-native";
 import React from "react";
 import {
-    Pressable,
-    StyleSheet,
-    Text,
-    View
+  Pressable,
+  StyleSheet,
+  Text,
+  View
 } from "react-native";
 
 interface Transaction {
@@ -27,6 +28,7 @@ interface RecentTransactionsProps {
   transactions: Transaction[];
   onSeeMore?: () => void;
   isBalanceVisible: boolean;
+  onTransactionPress?: (transactionId: string) => void;
 }
 
 const iconMap = {
@@ -36,7 +38,17 @@ const iconMap = {
   "card": CreditCard,
 };
 
-export function RecentTransactions({ transactions, onSeeMore, isBalanceVisible }: RecentTransactionsProps) {
+export function RecentTransactions({ transactions, onSeeMore, isBalanceVisible, onTransactionPress }: RecentTransactionsProps) {
+  const router = useRouter();
+
+  const handleTransactionPress = (transactionId: string) => {
+    if (onTransactionPress) {
+      onTransactionPress(transactionId);
+    } else {
+      router.push(`/transaction-detail?id=${transactionId}&from=home`);
+    }
+  };
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-NG", {
       minimumFractionDigits: 2,
@@ -89,11 +101,13 @@ export function RecentTransactions({ transactions, onSeeMore, isBalanceVisible }
                 transactions.map((tx, index) => {
                 const IconComponent = iconMap[tx.iconType] || CreditCard;
                 return (
-                    <View 
-                    key={tx.id} 
-                    style={[
+                    <Pressable
+                    key={tx.id}
+                    onPress={() => handleTransactionPress(tx.id)}
+                    style={({ pressed }) => [
                         styles.transactionItem,
-                        index < transactions.length - 1 && styles.transactionBorder
+                        index < transactions.length - 1 && styles.transactionBorder,
+                        pressed && styles.transactionItemPressed
                     ]}
                     >
                     {/* Icon */}
@@ -123,7 +137,7 @@ export function RecentTransactions({ transactions, onSeeMore, isBalanceVisible }
                         </Text>
                         </View>
                     </View>
-                    </View>
+                    </Pressable>
                 );
                 })
             )}
@@ -159,7 +173,7 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 16,
     borderBottomRightRadius: 16,
     paddingTop: 16,
-    paddingBottom: 8,
+    paddingBottom: 16,
     paddingHorizontal: 16,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
@@ -176,17 +190,17 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: 16,
   },
   sectionTitle: {
-    fontSize: 14,
-    fontWeight: "600",
+    fontSize: 15,
+    fontWeight: "700",
     color: lightColors.textPrimary, // #2E2E33
   },
   seeMoreText: {
     fontSize: 13,
     color: lightColors.primary, // #E69E19
-    fontWeight: "500",
+    fontWeight: "600",
   },
   transactionsListContainer: {
       position: 'relative',
@@ -199,49 +213,60 @@ const styles = StyleSheet.create({
   transactionItem: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
     paddingVertical: 12,
+    paddingHorizontal: 0,
+  },
+  transactionItemPressed: {
+    backgroundColor: "transparent",
   },
   transactionBorder: {
     borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
+    borderBottomColor: "#F5F5F5",
   },
   txIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 12,
+    marginRight: 16,
+    flexShrink: 0,
   },
   txDetails: {
     flex: 1,
+    justifyContent: "center",
   },
   txTitle: {
-    fontSize: 14,
-    fontWeight: "600",
+    fontSize: 15,
+    fontWeight: "700",
     color: lightColors.textPrimary, // #2E2E33
-    marginBottom: 2,
   },
   txSubtitle: {
-    fontSize: 12,
+    fontSize: 13,
     color: lightColors.textSecondary, // #525D60
+    fontWeight: "400",
+    marginTop: 2,
   },
   txAmountContainer: {
     alignItems: "flex-end",
+    justifyContent: "center",
+    marginLeft: 16,
+    flexShrink: 0,
   },
   txAmount: {
-    fontSize: 14,
-    fontWeight: "600",
-    marginBottom: 4,
+    fontSize: 15,
+    fontWeight: "700",
   },
   statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 14,
+    marginTop: 4,
   },
   statusText: {
-    fontSize: 10,
-    fontWeight: "600",
+    fontSize: 12,
+    fontWeight: "700",
   },
   emptyState: {
     alignItems: "center",

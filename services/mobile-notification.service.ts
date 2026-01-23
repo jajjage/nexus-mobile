@@ -7,16 +7,21 @@ import { Platform } from 'react-native';
 
 const LAST_FCM_TOKEN_KEY = 'last_fcm_token';
 
-// Configure notification handler (foreground behavior)
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
+// Check if we are in Expo Go
+const isExpoGo = Constants.appOwnership === 'expo' || Constants.executionEnvironment === 'storeClient';
+
+// Configure notification handler (foreground behavior) - ONLY if NOT in Expo Go
+if (!isExpoGo) {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    }),
+  });
+}
 
 export const notificationService = {
   /**
@@ -30,8 +35,7 @@ export const notificationService = {
 
     // Expo Go (SDK 53+) does not support Android Push Notifications (remote)
     // We must return null to prevent a crash.
-    // Check both appOwnership and executionEnvironment to be safe
-    if (Constants.appOwnership === 'expo' || Constants.executionEnvironment === 'storeClient') {
+    if (isExpoGo) {
        console.log('FCM / Push Notifications are not supported in Expo Go. Please use a Development Build.');
        return null;
     }

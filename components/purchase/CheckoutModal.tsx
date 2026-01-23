@@ -8,22 +8,22 @@ import { NETWORK_PROVIDERS, NetworkProvider } from "@/lib/detectNetwork";
 import BottomSheet, { BottomSheetView } from "@gorhom/bottom-sheet";
 import * as Haptics from "expo-haptics";
 import {
-  CheckCircle,
-  RefreshCw,
-  Share2,
-  XCircle
+    CheckCircle,
+    RefreshCw,
+    Share2,
+    XCircle
 } from "lucide-react-native";
 import React, { forwardRef, useCallback, useMemo } from "react";
 import {
-  ActivityIndicator,
-  Image,
-  Share,
-  StyleSheet,
-  Switch,
-  Text,
-  TouchableOpacity,
-  View,
-  useColorScheme,
+    ActivityIndicator,
+    Image,
+    Share,
+    StyleSheet,
+    Switch,
+    Text,
+    TouchableOpacity,
+    View,
+    useColorScheme,
 } from "react-native";
 
 export type CheckoutMode = "checkout" | "success" | "failed";
@@ -37,6 +37,11 @@ export interface CheckoutData {
   transactionId?: string;
   errorMessage?: string;
   bonusToEarn?: number;
+  // Price breakdown details
+  supplierCost?: number;
+  markup?: number;
+  markupPercent?: number;
+  faceValue?: number;
 }
 
 interface CheckoutModalProps {
@@ -327,6 +332,42 @@ export const CheckoutModal = forwardRef<BottomSheet, CheckoutModalProps>(
                        <Text style={{ color: colors.success, fontSize: 14, fontWeight: '600' }}>
                           +₦{data.bonusToEarn.toFixed(2)} Cashback
                        </Text>
+                    </View>
+                 )}
+
+                 {/* Price Breakdown */}
+                 {(data.supplierCost !== undefined || data.markup !== undefined) && (
+                    <View style={{ marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: colors.border }}>
+                       {data.faceValue !== undefined && data.faceValue > 0 && (
+                         <View style={styles.detailRow}>
+                           <Text style={[styles.detailLabel, { color: colors.textSecondary, fontSize: 12 }]}>
+                              Face Value
+                           </Text>
+                           <Text style={[styles.detailValue, { color: colors.textSecondary, fontSize: 12 }]}>
+                              ₦{data.faceValue.toLocaleString()}
+                           </Text>
+                         </View>
+                       )}
+                       {data.supplierCost !== undefined && data.supplierCost > 0 && (
+                         <View style={styles.detailRow}>
+                           <Text style={[styles.detailLabel, { color: colors.textSecondary, fontSize: 12 }]}>
+                              Supplier Cost
+                           </Text>
+                           <Text style={[styles.detailValue, { color: colors.textSecondary, fontSize: 12 }]}>
+                              ₦{data.supplierCost.toLocaleString()}
+                           </Text>
+                         </View>
+                       )}
+                       {data.markup !== undefined && data.markupPercent !== undefined && data.markup > 0 && (
+                         <View style={styles.detailRow}>
+                           <Text style={[styles.detailLabel, { color: colors.textSecondary, fontSize: 12 }]}>
+                              Service Fee ({data.markupPercent}%)
+                           </Text>
+                           <Text style={[styles.detailValue, { color: colors.primary, fontSize: 12, fontWeight: '600' }]}>
+                              +₦{data.markup.toLocaleString()}
+                           </Text>
+                         </View>
+                       )}
                     </View>
                  )}
               </View>

@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
@@ -12,7 +13,8 @@ import { Toaster } from 'sonner-native';
 import { useColorScheme } from '@/components/useColorScheme';
 import { darkColors, lightColors } from '@/constants/palette';
 import { AuthProvider } from '@/context/AuthContext';
-import { useMobileFcm } from '@/hooks/useMobileFcm';
+import { SoftLockProvider } from '@/context/SoftLockContext';
+import { usePushNotifications } from '@/hooks/usePushNotifications';
 
 import { GluestackUIProvider } from '@/components/ui/gluestack-ui-provider';
 import '../global.css';
@@ -76,7 +78,7 @@ const queryClient = new QueryClient({
 
 // Helper component to initialize app-wide logic that depends on providers
 function AppInitializer() {
-  useMobileFcm();
+  usePushNotifications();
   return null;
 }
 
@@ -112,9 +114,12 @@ function RootLayoutNav() {
       <GluestackUIProvider mode={colorScheme === 'dark' ? 'dark' : 'light'}>
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
+            <SoftLockProvider>
             <AppInitializer />
+            <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
             <ThemeProvider value={colorScheme === 'dark' ? NexusDarkTheme : NexusLightTheme}>
               <Stack screenOptions={{ animation: 'slide_from_right' }}>
+                <Stack.Screen name="(setup)" options={{ headerShown: false }} />
                 <Stack.Screen name="(onboarding)" options={{ headerShown: false }} />
                 <Stack.Screen name="(auth)" options={{ headerShown: false }} />
                 <Stack.Screen name="(tabs)" options={{ headerShown: false, animation: 'none' }} />
@@ -126,6 +131,7 @@ function RootLayoutNav() {
               </Stack>
               <Toaster />
             </ThemeProvider>
+            </SoftLockProvider>
           </AuthProvider>
         </QueryClientProvider>
       </GluestackUIProvider>

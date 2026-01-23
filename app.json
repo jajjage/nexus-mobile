@@ -1,16 +1,21 @@
 {
   "expo": {
-    "name": "nexus-mobile",
+    "name": "Nexus Data",
     "slug": "nexus-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "nexusmobile",
+    "scheme": "nexusdata",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
+      "bundleIdentifier": "com.nexus.nexusdatasub",
+      "googleServicesFile": "./GoogleService-Info.plist",
+      "jsEngine": "hermes",
       "supportsTablet": true,
-      "bundleIdentifier": "com.nexusmobile",
+      "infoPlist": {
+        "UIBackgroundModes": ["remote-notification"]
+      },
       "config": {
         "usesNonExemptEncryption": false
       },
@@ -26,9 +31,19 @@
         "monochromeImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
+
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "softwareKeyboardLayoutMode": "resize"
+      "softwareKeyboardLayoutMode": "resize",
+      "package": "com.nexus.nexusdatasub",
+      "googleServicesFile": "./google-services.json",
+      "jsEngine": "hermes",
+      "permissions": [
+        "CAMERA",
+        "NOTIFICATIONS",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -37,6 +52,19 @@
     },
     "plugins": [
       "expo-router",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "enableProguardInReleaseBuilds": true,
+            "enableShrinkResourcesInReleaseBuilds": true,
+            "extraProguardRules": "-keep public class * { public *; }"
+          },
+          "ios": {
+            "deploymentTarget": "15.1"
+          }
+        }
+      ],
       [
         "expo-notifications",
         {
@@ -57,10 +85,17 @@
           }
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      "./plugins/withAndroidSplits.js"
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "b688004e-166b-4127-9840-fcfb071b19e1"
+      }
     }
   }
 }
