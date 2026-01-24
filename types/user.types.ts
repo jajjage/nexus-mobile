@@ -16,7 +16,7 @@ export interface UpdateProfileRequest {
 }
 
 export interface UpdatePasswordRequest {
-  oldPassword?: string;
+  currentPassword?: string;
   newPassword?: string;
 }
 

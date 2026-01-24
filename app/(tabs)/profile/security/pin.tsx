@@ -71,7 +71,10 @@ export default function TransactionPinScreen() {
         }
       }, 1500);
     } catch (error: any) {
-      const message = error.response?.data?.message || "Failed to set PIN";
+      const message =
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to set PIN";
       toast.error(message);
     } finally {
       setIsLoading(false);

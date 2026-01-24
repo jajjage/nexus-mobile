@@ -20,7 +20,7 @@ export function useSetPasscode() {
   return useMutation({
     mutationFn: async (data: {
       passcode: string;
-      currentPasscode?: string;
+      currentPassword?: string;
     }) => {
       if (!data.passcode || data.passcode.length !== 6) {
         throw new Error("Passcode must be 6 digits");
@@ -32,7 +32,7 @@ export function useSetPasscode() {
 
       return userService.setPasscode({
         passcode: data.passcode,
-        currentPasscode: data.currentPasscode,
+        currentPassword: data.currentPassword,
       });
     },
     onSuccess: async (response, variables) => {
@@ -46,11 +46,6 @@ export function useSetPasscode() {
     },
     onError: (error: any) => {
       console.error("[useSetPasscode] Error", error);
-      const message =
-        error.response?.data?.message ||
-        error.message ||
-        "Failed to set passcode";
-      toast.error(message);
     },
   });
 }

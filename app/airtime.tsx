@@ -9,22 +9,22 @@ import { Stack, useRouter } from "expo-router";
 import { ArrowLeft } from "lucide-react-native";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Dimensions,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
+    Dimensions,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { LoadingOverlay } from "@/components/LoadingOverlay";
 import {
-  CheckoutData,
-  CheckoutModal,
-  CheckoutMode,
-  NetworkDetectorInput,
-  NetworkSelector,
+    CheckoutData,
+    CheckoutModal,
+    CheckoutMode,
+    NetworkDetectorInput,
+    NetworkSelector,
 } from "@/components/purchase";
 import { PinPadModal } from "@/components/security/PinPadModal";
 import { designTokens } from "@/constants/palette";
@@ -37,11 +37,11 @@ import { useSupplierMarkupMap } from "@/hooks/useSupplierMarkup";
 import { useTopup } from "@/hooks/useTopup";
 import { useWalletBalance } from "@/hooks/useWalletBalance";
 import {
-  NETWORK_PROVIDERS,
-  NetworkInfo,
-  NetworkProvider,
-  isValidNigerianPhone,
-  normalizePhoneNumber,
+    NETWORK_PROVIDERS,
+    NetworkInfo,
+    NetworkProvider,
+    isValidNigerianPhone,
+    normalizePhoneNumber,
 } from "@/lib/detectNetwork";
 import { calculateFinalPrice } from "@/lib/price-calculator";
 import { Product } from "@/types/product.types";
@@ -412,7 +412,7 @@ export default function AirtimeScreen() {
               </Text>
             </View>
             <TouchableOpacity 
-              onPress={() => router.push("/(tabs)/profile/wallet")} 
+              onPress={() => router.navigate("/(tabs)/profile/wallet")} 
               style={[styles.addMoneyButton, { backgroundColor: colors.muted }]}
             >
               <Text style={[styles.addMoneyText, { color: colors.primary }]}>+ Add Money</Text>

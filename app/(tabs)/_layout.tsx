@@ -78,14 +78,15 @@ export default function TabLayout() {
         }}
       />
       
-      {/* Reseller Tab - Only visible for resellers */}
+      {/* Reseller Hub Tab */}
       <Tabs.Screen
         name="reseller"
         options={{
           title: 'Reseller',
           href: isReseller ? '/reseller' : null,
           tabBarIcon: ({ color }) => <Briefcase size={20} color={color} />,
-          tabBarItemStyle: { display: isReseller ? 'flex' : 'none' }
+          tabBarItemStyle: { display: isReseller ? 'flex' : 'none' },
+          headerShown: false,
         }}
       />
 

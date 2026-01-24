@@ -449,19 +449,39 @@ export default function DataScreen() {
 
   const canProceed = isPhoneValid && selectedNetwork && selectedProduct && !networkMismatch;
 
-  // Render product item
-  const renderProductItem = useCallback(
-    ({ item }: { item: Product }) => (
+  // Optimize rendering with React.memo
+  const MemoizedProductItem = React.memo(
+    ({ item, isSelected, onSelect, markupPercent, isEligible, isGuest }: any) => (
       <View style={{ width: CARD_WIDTH }}>
         <ProductCard
           product={item}
-          isSelected={selectedProduct?.id === item.id}
-          onSelect={handleProductSelect}
-          markupPercent={getMarkupPercent(item)}
-          isEligibleForOffer={isEligibleForOffer(item)}
-          isGuest={!user}
+          isSelected={isSelected}
+          onSelect={onSelect}
+          markupPercent={markupPercent}
+          isEligibleForOffer={isEligible}
+          isGuest={isGuest}
         />
       </View>
+    ),
+    (prevProps, nextProps) => {
+      return (
+        prevProps.isSelected === nextProps.isSelected &&
+        prevProps.item.id === nextProps.item.id &&
+        prevProps.isEligible === nextProps.isEligible
+      );
+    }
+  );
+
+  const renderProductItem = useCallback(
+    ({ item }: { item: Product }) => (
+      <MemoizedProductItem
+        item={item}
+        isSelected={selectedProduct?.id === item.id}
+        onSelect={handleProductSelect}
+        markupPercent={getMarkupPercent(item)}
+        isEligible={isEligibleForOffer(item)}
+        isGuest={!user}
+      />
     ),
     [selectedProduct, handleProductSelect, getMarkupPercent, isEligibleForOffer, user]
   );
@@ -667,6 +687,7 @@ const styles = StyleSheet.create({
   },
   section: {
     paddingHorizontal: designTokens.spacing.md,
+    marginTop: designTokens.spacing.lg,
     marginBottom: designTokens.spacing.sm,
   },
   warningText: {

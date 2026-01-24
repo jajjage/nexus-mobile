@@ -1,19 +1,19 @@
 import apiClient from "@/lib/api-client";
 import { ApiResponse } from "@/types/api.types";
 import {
-  CreateVirtualAccountRequest,
-  CreateVirtualAccountResponse,
-  GetPurchasesParams,
-  GetSupplierMarkupParams,
-  PaginatedSupplierMarkupResponse,
-  ProfileResponse,
-  PurchaseResponse,
-  PurchasesListResponse,
-  SetPinRequest,
-  TopupRequest,
-  TopupResponse,
-  UpdatePasswordRequest,
-  UpdateProfileRequest,
+    CreateVirtualAccountRequest,
+    CreateVirtualAccountResponse,
+    GetPurchasesParams,
+    GetSupplierMarkupParams,
+    PaginatedSupplierMarkupResponse,
+    ProfileResponse,
+    PurchaseResponse,
+    PurchasesListResponse,
+    SetPinRequest,
+    TopupRequest,
+    TopupResponse,
+    UpdatePasswordRequest,
+    UpdateProfileRequest,
 } from "@/types/user.types";
 
 export const userService = {
@@ -68,14 +68,13 @@ export const userService = {
    */
   setPasscode: async (data: {
     passcode: string;
-    currentPasscode?: string; // Required if updating existing passcode
+    currentPassword?: string; // Account password for authorization
   }): Promise<ApiResponse> => {
-    // Map currentPasscode to currentPassword for backend
     const payload: any = {
       passcode: data.passcode,
     };
-    if (data.currentPasscode) {
-      payload.currentPassword = data.currentPasscode;
+    if (data.currentPassword) {
+      payload.currentPassword = data.currentPassword;
     }
     const response = await apiClient.post<ApiResponse>(
       "/user/profile/passcode",

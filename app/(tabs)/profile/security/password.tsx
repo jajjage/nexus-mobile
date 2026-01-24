@@ -57,7 +57,7 @@ export default function ChangePasswordScreen() {
     setIsLoading(true);
     try {
       await updatePasswordMutation.mutateAsync({
-        oldPassword: data.currentPassword,
+        currentPassword: data.currentPassword,
         newPassword: data.newPassword,
       });
       toast.success("Password changed successfully");

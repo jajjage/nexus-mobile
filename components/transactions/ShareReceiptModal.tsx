@@ -205,12 +205,14 @@ const styles = StyleSheet.create({
     flex: 1,
     borderRadius: 16,
     overflow: "hidden",
+    maxHeight: "70%",
   },
   scrollContent: {
     paddingVertical: 10,
   },
   footer: {
     marginTop: 20,
+    marginBottom: 12,
     gap: 12,
   },
   shareButton: {

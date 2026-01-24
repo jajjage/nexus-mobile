@@ -11,13 +11,13 @@ import { ScrollView, TouchableOpacity, useColorScheme } from "react-native";
 import { toast } from "sonner-native";
 import { z } from "zod";
 
-const passcodeSchema = z
+  const passcodeSchema = z
   .object({
     passcode: z
       .string()
       .regex(/^\d{6}$/, "Passcode must be exactly 6 digits"),
     confirmPasscode: z.string(),
-    currentPasscode: z.string().optional(),
+    currentPassword: z.string().optional(),
   })
   .refine((data) => data.passcode === data.confirmPasscode, {
     message: "Passcodes do not match",
@@ -44,7 +44,7 @@ export default function AppPasscodeScreen() {
     defaultValues: {
       passcode: "",
       confirmPasscode: "",
-      currentPasscode: "",
+      currentPassword: "",
     },
   });
 
@@ -53,14 +53,16 @@ export default function AppPasscodeScreen() {
     try {
       await setPasscodeMutation.mutateAsync({
         passcode: data.passcode,
-        currentPasscode: user?.hasPasscode ? data.currentPasscode : undefined,
+        currentPassword: user?.hasPasscode ? data.currentPassword : undefined,
       });
       toast.success("App passcode set successfully");
       reset();
       setTimeout(() => router.back(), 1500);
     } catch (error: any) {
       const message =
-        error.response?.data?.message || "Failed to set passcode";
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to set passcode";
       toast.error(message);
     } finally {
       setIsLoading(false);
@@ -104,23 +106,22 @@ export default function AppPasscodeScreen() {
       {/* Form */}
       <Box className="p-4">
         <VStack space="lg">
-          {/* Current Passcode (if updating) */}
+          {/* Current Password (if updating) */}
           {user?.hasPasscode && (
             <FormControl>
               <FormControlLabel>
-                <FormControlLabelText className="font-semibold">Current Passcode</FormControlLabelText>
+                <FormControlLabelText className="font-semibold">Current Password</FormControlLabelText>
               </FormControlLabel>
               <Controller
                 control={control}
-                name="currentPasscode"
+                name="currentPassword"
                 render={({ field: { value, onChange } }) => (
                   <Input className="rounded-lg" size="lg" isDisabled={isSubmitting}>
                     <InputField
                       value={value}
-                      onChangeText={(text) => onChange(text.replace(/[^0-9]/g, '').slice(0, 6))}
-                      placeholder="000000"
-                      keyboardType="number-pad"
-                      maxLength={6}
+                      onChangeText={onChange}
+                      placeholder="Enter account password"
+                      autoCapitalize="none"
                       secureTextEntry
                       editable={!isSubmitting}
                     />
