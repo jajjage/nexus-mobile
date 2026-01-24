@@ -9,30 +9,31 @@ import { Stack, useRouter } from "expo-router";
 import { ArrowLeft, Wifi } from "lucide-react-native";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-    ActivityIndicator,
-    Dimensions,
-    FlatList,
-    KeyboardAvoidingView,
-    Platform,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
-    useColorScheme
+  ActivityIndicator,
+  Dimensions,
+  FlatList,
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { LoadingOverlay } from "@/components/LoadingOverlay";
 import {
-    CategoryTabs,
-    CheckoutData,
-    CheckoutModal,
-    CheckoutMode,
-    NetworkDetectorInput,
-    NetworkSelector,
-    ProductCard,
+  CategoryTabs,
+  CheckoutData,
+  CheckoutModal,
+  CheckoutMode,
+  NetworkDetectorInput,
+  NetworkSelector,
+  ProductCard,
 } from "@/components/purchase";
 import { PinPadModal } from "@/components/security/PinPadModal";
-import { darkColors, designTokens, lightColors } from "@/constants/palette";
+import { designTokens } from "@/constants/palette";
+import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/hooks/useAuth";
 import { useBiometricAuth } from "@/hooks/useBiometric";
 import { useCategories } from "@/hooks/useCategories";
@@ -43,14 +44,15 @@ import { useTopup } from "@/hooks/useTopup";
 import { useEligibleOffers } from "@/hooks/useUserOffers";
 import { useWalletBalance } from "@/hooks/useWalletBalance";
 import {
-    NETWORK_PROVIDERS,
-    NetworkInfo,
-    NetworkProvider,
-    isValidNigerianPhone,
-    normalizePhoneNumber,
+  NETWORK_PROVIDERS,
+  NetworkInfo,
+  NetworkProvider,
+  isValidNigerianPhone,
+  normalizePhoneNumber,
 } from "@/lib/detectNetwork";
 import { calculateFinalPrice } from "@/lib/price-calculator";
 import { Product } from "@/types/product.types";
+import { getUserFriendlyError } from "@/utils/errors";
 
 const { width } = Dimensions.get("window");
 const NUM_COLUMNS = 2;
@@ -58,8 +60,8 @@ const CARD_GAP = 12;
 const CARD_WIDTH = (width - 32 - CARD_GAP) / NUM_COLUMNS;
 
 export default function DataScreen() {
-  const colorScheme = useColorScheme();
-  const colors = colorScheme === "dark" ? darkColors : lightColors;
+  const { colors, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
   const router = useRouter();
 
   // === STATE PER GUIDE SECTION 4 ===
@@ -77,6 +79,7 @@ export default function DataScreen() {
   const [pendingPaymentData, setPendingPaymentData] = useState<any | null>(null);
   const [lastTransactionId, setLastTransactionId] = useState<string | null>(null);
   const [lastErrorMessage, setLastErrorMessage] = useState<string | null>(null);
+  const [pinError, setPinError] = useState<string | undefined>(undefined);
 
   // Cashback
   const [useCashback, setUseCashback] = useState(false);
@@ -229,9 +232,15 @@ export default function DataScreen() {
   );
 
   // Calculate display price for a product - SIMPLIFIED (no markup)
-  // Price = max(faceValue, supplierPrice)
+  // Priority: discountedPrice from backend > offer calculation > base price
   const getDisplayPrice = useCallback(
     (product: Product) => {
+      // If backend provides discountedPrice, use it directly
+      // This ensures consistency with ProductCard display
+      if (product.discountedPrice !== undefined && product.discountedPrice !== null && product.discountedPrice > 0) {
+        return product.discountedPrice;
+      }
+
       const faceValue = parseFloat(product.denomAmount || "0");
       const supplierPrice = product.supplierOffers?.[0]?.supplierPrice
         ? parseFloat(product.supplierOffers[0].supplierPrice.toString())
@@ -240,11 +249,8 @@ export default function DataScreen() {
       // Use the max of faceValue and supplierPrice, or just faceValue if supplier is 0
       let sellingPrice = Math.max(faceValue, supplierPrice > 0 ? supplierPrice : faceValue);
 
-      // Apply discount if eligible
+      // Apply discount if eligible (fallback for products without discountedPrice)
       if (product.activeOffer && isEligibleForOffer(product)) {
-        if (product.discountedPrice) {
-          return product.discountedPrice;
-        }
         const { discountType, discountValue } = product.activeOffer;
         if (discountType === "percentage") {
           sellingPrice = sellingPrice * (1 - discountValue / 100);
@@ -338,7 +344,7 @@ export default function DataScreen() {
     } catch (error) {
       console.error("[DataScreen] Payment initiation error:", error);
       const errorMsg = error instanceof Error ? error.message : "Payment processing failed";
-      setLastErrorMessage(errorMsg);
+      setLastErrorMessage(getUserFriendlyError(errorMsg));
       setCheckoutMode("failed");
       checkoutSheetRef.current?.expand();
     }
@@ -348,7 +354,7 @@ export default function DataScreen() {
     async (pin: string) => {
       if (!pendingPaymentData) return;
       try {
-        setShowPinModal(false);
+        setPinError(undefined); // Clear previous error
         console.log("[DataScreen] Submitting PIN for verification");
 
         // Submit PIN through the complete payment flow
@@ -362,16 +368,21 @@ export default function DataScreen() {
         });
 
         if (!result.success) {
-          setLastErrorMessage(result.error || "PIN verification failed");
-          setCheckoutMode("failed");
-          checkoutSheetRef.current?.expand();
+          // Show error in PIN modal instead of closing it
+          const friendlyError = getUserFriendlyError(result.error || "PIN verification failed");
+          setPinError(friendlyError);
+          // Keep modal open so user can retry
+        } else {
+          // Success - close modal
+          setShowPinModal(false);
+          setPinError(undefined);
         }
       } catch (error) {
         console.error("[DataScreen] PIN submission error:", error);
         const errorMsg = error instanceof Error ? error.message : "PIN submission failed";
-        setLastErrorMessage(errorMsg);
-        setCheckoutMode("failed");
-        checkoutSheetRef.current?.expand();
+        const friendlyError = getUserFriendlyError(errorMsg);
+        setPinError(friendlyError);
+        // Keep modal open so user can retry
       }
     },
     [pendingPaymentData, submitPIN, cashbackBalance]
@@ -391,11 +402,14 @@ export default function DataScreen() {
       setSelectedNetwork(null);
       setDetectedNetwork(null);
       setSelectedProduct(null);
-      // Don't use router.back() as there might be no previous screen
-      // Just navigate to home tab
-      setTimeout(() => {
-        router.push("/(tabs)");
-      }, 500); // Small delay to let modal close first
+      
+      // Check if user wants auto-redirect
+      const prefs = require("@/hooks/useAppPreferences").getAppPreferences();
+      if (prefs.autoRedirectAfterPurchase) {
+        setTimeout(() => {
+          router.push("/(tabs)");
+        }, 500);
+      }
     }
   }, [checkoutMode, router]);
 
@@ -415,8 +429,12 @@ export default function DataScreen() {
           return {
             productName: selectedProduct.name,
             recipientPhone: normalizedPhone,
-            amount: priceDetails.payableAmount,
-            originalAmount: priceDetails.baseSellingPrice,
+            // Use finalSellingPrice (after offer discount) as the display amount
+            amount: priceDetails.finalSellingPrice,
+            // Only show originalAmount (strikethrough) if there's an offer discount
+            originalAmount: priceDetails.hasOfferDiscount 
+              ? priceDetails.baseSellingPrice 
+              : undefined,
             network: selectedNetwork,
             transactionId: lastTransactionId || undefined,
             errorMessage: lastErrorMessage || undefined,
@@ -449,10 +467,7 @@ export default function DataScreen() {
   );
 
   return (
-    <SafeAreaView
-      style={[styles.container, { backgroundColor: colors.background }]}
-      edges={["top"]}
-    >
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <Stack.Screen
         options={{
           headerShown: true,
@@ -483,7 +498,6 @@ export default function DataScreen() {
             value={phoneNumber}
             onChangeText={setPhoneNumber}
             onNetworkDetected={handleNetworkDetected}
-            selectedNetwork={selectedNetwork}
           />
 
           {/* Network Mismatch Warning */}
@@ -601,10 +615,20 @@ export default function DataScreen() {
       <PinPadModal
         visible={showPinModal}
         onSubmit={handlePinSubmit}
-        onClose={() => setShowPinModal(false)}
+        onClose={() => {
+          setShowPinModal(false);
+          setPinError(undefined);
+        }}
         isLoading={isTopupPending}
+        error={pinError}
+        returnRoute="/data"
       />
-    </SafeAreaView>
+
+      <LoadingOverlay
+        visible={isPaymentProcessing}
+        message="Processing your data purchase..."
+      />
+    </View>
   );
 }
 

@@ -3,9 +3,9 @@ import { darkColors, lightColors } from "@/constants/palette";
 import { useAuth } from "@/hooks/useAuth";
 import { useSetPin } from "@/hooks/usePin";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Stack, useRouter } from "expo-router";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { ArrowLeft } from "lucide-react-native";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { ScrollView, TouchableOpacity, useColorScheme } from "react-native";
 import { toast } from "sonner-native";
@@ -13,6 +13,9 @@ import { z } from "zod";
 
 const pinSchema = z
   .object({
+    currentPassword: z
+      .string()
+      .min(1, "Current password is required"),
     pin: z
       .string()
       .regex(/^\d{4}$/, "PIN must be exactly 4 digits"),
@@ -27,6 +30,8 @@ type PinFormData = z.infer<typeof pinSchema>;
 
 export default function TransactionPinScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams();
+  const returnRoute = params.returnRoute as string | undefined;
   const colorScheme = useColorScheme();
   const colors = colorScheme === "dark" ? darkColors : lightColors;
   const { user } = useAuth();
@@ -41,6 +46,7 @@ export default function TransactionPinScreen() {
   } = useForm<PinFormData>({
     resolver: zodResolver(pinSchema),
     defaultValues: {
+      currentPassword: "",
       pin: "",
       confirmPin: "",
     },
@@ -49,10 +55,21 @@ export default function TransactionPinScreen() {
   const onSubmit = async (data: PinFormData) => {
     setIsLoading(true);
     try {
-      await setPinMutation.mutateAsync({ pin: data.pin });
+      await setPinMutation.mutateAsync({ 
+        pin: data.pin,
+        currentPassword: data.currentPassword,
+      });
       toast.success("Transaction PIN set successfully");
       reset();
-      setTimeout(() => router.back(), 1500);
+      
+      // Navigate back to the return route if provided, otherwise go back
+      setTimeout(() => {
+        if (returnRoute) {
+          router.replace(returnRoute as any);
+        } else {
+          router.back();
+        }
+      }, 1500);
     } catch (error: any) {
       const message = error.response?.data?.message || "Failed to set PIN";
       toast.error(message);
@@ -62,6 +79,15 @@ export default function TransactionPinScreen() {
   };
 
   const isSubmitting = isLoading || setPinMutation.isPending;
+
+  const handleBack = useCallback(() => {
+    // If coming from a return route (e.g., purchase flow), go back to that route
+    if (returnRoute) {
+      router.replace(returnRoute as any);
+    } else {
+      router.back();
+    }
+  }, [returnRoute, router]);
 
   return (
     <>
@@ -73,7 +99,7 @@ export default function TransactionPinScreen() {
           headerTintColor: colors.foreground,
           headerLeft: () => (
             <TouchableOpacity
-              onPress={() => router.back()}
+              onPress={handleBack}
               style={{ marginLeft: 8 }}
             >
               <ArrowLeft size={24} color={colors.foreground} />
@@ -98,6 +124,34 @@ export default function TransactionPinScreen() {
       {/* Form */}
       <Box className="p-4">
         <VStack space="lg">
+          {/* Current Password */}
+          <FormControl isInvalid={!!errors.currentPassword}>
+            <FormControlLabel>
+              <FormControlLabelText className="font-semibold">Current Password</FormControlLabelText>
+            </FormControlLabel>
+            <Controller
+              control={control}
+              name="currentPassword"
+              render={({ field: { value, onChange } }) => (
+                <Input className="rounded-lg" size="lg" isDisabled={isSubmitting}>
+                  <InputField
+                    value={value}
+                    onChangeText={onChange}
+                    placeholder="Enter your account password"
+                    secureTextEntry
+                    autoCapitalize="none"
+                    editable={!isSubmitting}
+                  />
+                </Input>
+              )}
+            />
+            {errors.currentPassword && (
+              <FormControlError>
+                <FormControlErrorText>{errors.currentPassword.message}</FormControlErrorText>
+              </FormControlError>
+            )}
+          </FormControl>
+
           {/* PIN */}
           <FormControl isInvalid={!!errors.pin}>
             <FormControlLabel>
@@ -114,6 +168,7 @@ export default function TransactionPinScreen() {
                     placeholder="0000"
                     keyboardType="number-pad"
                     maxLength={4}
+                    secureTextEntry
                     editable={!isSubmitting}
                   />
                 </Input>
@@ -142,6 +197,7 @@ export default function TransactionPinScreen() {
                     placeholder="0000"
                     keyboardType="number-pad"
                     maxLength={4}
+                    secureTextEntry
                     editable={!isSubmitting}
                   />
                 </Input>

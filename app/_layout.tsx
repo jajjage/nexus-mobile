@@ -1,19 +1,20 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { DarkTheme, DefaultTheme, ThemeProvider as NavThemeProvider } from '@react-navigation/native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
+import * as SystemUI from 'expo-system-ui';
 import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 import { Toaster } from 'sonner-native';
 
-import { useColorScheme } from '@/components/useColorScheme';
 import { darkColors, lightColors } from '@/constants/palette';
 import { AuthProvider } from '@/context/AuthContext';
 import { SoftLockProvider } from '@/context/SoftLockContext';
+import { ThemeProvider, useTheme } from '@/context/ThemeContext';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 
 import { GluestackUIProvider } from '@/components/ui/gluestack-ui-provider';
@@ -54,8 +55,8 @@ const NexusDarkTheme = {
 };
 
 export {
-  // Catch any errors thrown by the Layout component.
-  ErrorBoundary
+    // Catch any errors thrown by the Layout component.
+    ErrorBoundary
 } from 'expo-router';
 
 export const unstable_settings = {
@@ -103,21 +104,34 @@ export default function RootLayout() {
     return null;
   }
 
-  return <RootLayoutNav />;
+  return (
+    <ThemeProvider>
+      <RootLayoutNav />
+    </ThemeProvider>
+  );
 }
 
 function RootLayoutNav() {
-  const colorScheme = useColorScheme();
+  const { theme, isDark, colors } = useTheme();
+
+  // Set the root view background color to match the theme
+  // This prevents white flashes during navigation transitions
+  useEffect(() => {
+    const setRootBackground = async () => {
+      await SystemUI.setBackgroundColorAsync(colors.background);
+    };
+    setRootBackground();
+  }, [colors.background]);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <GluestackUIProvider mode={colorScheme === 'dark' ? 'dark' : 'light'}>
+      <GluestackUIProvider mode={isDark ? 'dark' : 'light'}>
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
             <SoftLockProvider>
             <AppInitializer />
-            <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
-            <ThemeProvider value={colorScheme === 'dark' ? NexusDarkTheme : NexusLightTheme}>
+            <StatusBar style={isDark ? 'light' : 'dark'} />
+            <NavThemeProvider value={isDark ? NexusDarkTheme : NexusLightTheme}>
               <Stack screenOptions={{ animation: 'slide_from_right' }}>
                 <Stack.Screen name="(setup)" options={{ headerShown: false }} />
                 <Stack.Screen name="(onboarding)" options={{ headerShown: false }} />
@@ -130,7 +144,7 @@ function RootLayoutNav() {
                 <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
               </Stack>
               <Toaster />
-            </ThemeProvider>
+            </NavThemeProvider>
             </SoftLockProvider>
           </AuthProvider>
         </QueryClientProvider>
@@ -138,3 +152,4 @@ function RootLayoutNav() {
     </GestureHandlerRootView>
   );
 }
+

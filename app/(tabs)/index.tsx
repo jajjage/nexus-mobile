@@ -11,6 +11,7 @@ import {
     UserProfileCard
 } from "@/components/dashboard";
 import { AddMoneyModal } from "@/components/dashboard/AddMoneyModal";
+import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/hooks/useAuth";
 import { useBalanceVisibility } from "@/hooks/useBalanceVisibility";
 import { useUnreadNotificationCount } from "@/hooks/useUnreadNotificationCount";
@@ -30,6 +31,7 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user, refetch: refetchUser } = useAuth();
+  const { colors, isDark } = useTheme();
   const { isBalanceVisible, toggleBalanceVisibility } = useBalanceVisibility();
   
   // Custom hooks
@@ -71,7 +73,7 @@ export default function HomeScreen() {
   }, []);
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: isDark ? colors.background : "#EFF1F2" }]}>
       <ScrollView 
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
@@ -80,8 +82,8 @@ export default function HomeScreen() {
             <RefreshControl 
                 refreshing={refreshing} 
                 onRefresh={onRefresh} 
-                colors={['#E69E19']} // Nexus Gold
-                tintColor="#E69E19"  // iOS
+                colors={[colors.primary]}
+                tintColor={colors.primary}
             />
         }
       >
@@ -171,7 +173,6 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#EFF1F2", // Slightly darker than white for contrast
   },
   scrollView: {
     flex: 1,

@@ -1,6 +1,7 @@
 // components/dashboard/HeaderBar.tsx
 // Updated to use logo-3 image and match screenshot layout
-import { lightColors } from "@/constants/palette";
+import { useTheme } from "@/context/ThemeContext";
+import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { Bell, Gift, Signal, Sun } from "lucide-react-native";
 import React from "react";
 import {
@@ -25,6 +26,15 @@ export function HeaderBar({
   onNotificationsPress,
   notificationCount = 0,
 }: HeaderBarProps) {
+  const { colors, isDark } = useTheme();
+  const { isConnected, connectionType } = useNetworkStatus();
+
+  // Determine signal icon color based on network status
+  const getSignalColor = () => {
+    if (!isConnected) return '#DC2626'; // Red when disconnected
+    return '#16A34A'; // Green when connected
+  };
+
   return (
     <View style={styles.container}>
       {/* Logo */}
@@ -38,19 +48,19 @@ export function HeaderBar({
       {/* Action Icons - per guide: Gift, Signal, Sun, Bell */}
       <View style={styles.actionsContainer}>
         <Pressable style={styles.iconButton} onPress={onGiftPress}>
-          <Gift size={20} color={lightColors.textSecondary} />
+          <Gift size={20} color={colors.textSecondary} />
         </Pressable>
 
         <Pressable style={styles.iconButton}>
-          <Signal size={20} color={lightColors.textSecondary} />
+          <Signal size={20} color={getSignalColor()} />
         </Pressable>
 
         <Pressable style={styles.iconButton} onPress={onThemeToggle}>
-          <Sun size={16} color={lightColors.textSecondary} />
+          <Sun size={16} color={colors.textSecondary} />
         </Pressable>
 
         <Pressable style={styles.iconButton} onPress={onNotificationsPress}>
-          <Bell size={20} color={lightColors.textSecondary} />
+          <Bell size={20} color={colors.textSecondary} />
           {notificationCount > 0 && (
             <View style={styles.notificationBadge} />
           )}
@@ -80,7 +90,7 @@ const styles = StyleSheet.create({
   logoText: {
     fontSize: 14,
     fontWeight: "700",
-    color: lightColors.textPrimary,
+    color: "#2E2E33", // Will be dynamically set in component
   },
   spacer: {
     flex: 1,

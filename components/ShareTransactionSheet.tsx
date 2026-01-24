@@ -1,3 +1,4 @@
+import { useTheme } from '@/context/ThemeContext';
 import { Transaction } from '@/types/wallet.types';
 import * as Sharing from 'expo-sharing';
 import { Download, FileImage, X } from 'lucide-react-native';
@@ -29,6 +30,7 @@ export function ShareTransactionSheet({
   const receiptRef = useRef<View>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [shareType, setShareType] = useState<'image' | 'pdf' | null>(null);
+  const { colors, isDark } = useTheme();
 
   // Share receipt as image
   const handleShareAsImage = async () => {
@@ -119,22 +121,22 @@ export function ShareTransactionSheet({
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
         {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Share Receipt</Text>
+        <View style={[styles.header, { borderBottomColor: colors.border }]}>
+          <Text style={[styles.headerTitle, { color: colors.foreground }]}>Share Receipt</Text>
           <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-            <X size={24} color="#6B7280" />
+            <X size={24} color={colors.textSecondary} />
           </TouchableOpacity>
         </View>
         
-        <Text style={styles.headerSubtitle}>
+        <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
           Share your transaction receipt via WhatsApp, Instagram, Email, and more
         </Text>
 
         {/* Receipt Preview - Scrollable */}
         <ScrollView
-          style={styles.previewContainer}
+          style={[styles.previewContainer, { backgroundColor: isDark ? colors.card : '#F3F4F6' }]}
           contentContainerStyle={styles.previewContent}
           showsVerticalScrollIndicator={false}
         >
@@ -152,9 +154,9 @@ export function ShareTransactionSheet({
         </ScrollView>
 
         {/* Action Buttons */}
-        <View style={styles.actions}>
+        <View style={[styles.actions, { borderTopColor: colors.border }]}>
           <TouchableOpacity
-            style={styles.shareButton}
+            style={[styles.shareButton, { backgroundColor: colors.primary }]}
             onPress={handleShareAsImage}
             disabled={isGenerating}
           >
@@ -169,16 +171,16 @@ export function ShareTransactionSheet({
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.pdfButton}
+            style={[styles.pdfButton, { backgroundColor: isDark ? colors.card : '#1A1A1A', borderColor: isDark ? colors.border : undefined, borderWidth: isDark ? 1 : 0 }]}
             onPress={handleShareAsPDF}
             disabled={isGenerating}
           >
             {isGenerating && shareType === 'pdf' ? (
-              <ActivityIndicator color="#FFFFFF" />
+              <ActivityIndicator color={isDark ? colors.foreground : "#FFFFFF"} />
             ) : (
               <>
-                <Download size={20} color="#FFFFFF" />
-                <Text style={styles.pdfButtonText}>Share as PDF</Text>
+                <Download size={20} color={isDark ? colors.foreground : "#FFFFFF"} />
+                <Text style={[styles.pdfButtonText, { color: isDark ? colors.foreground : '#FFFFFF' }]}>Share as PDF</Text>
               </>
             )}
           </TouchableOpacity>

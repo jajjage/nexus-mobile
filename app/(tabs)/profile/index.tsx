@@ -49,6 +49,12 @@ export default function ProfileHubScreen() {
       route: "wallet",
     },
     {
+      icon: "sliders",
+      label: "App Preferences",
+      description: "Haptic feedback, auto-redirect",
+      route: "preferences",
+    },
+    {
       icon: "question-circle",
       label: "Help & Support",
       description: "FAQs and contact support",

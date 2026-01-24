@@ -1,6 +1,6 @@
 // components/dashboard/PromoBanner.tsx
 // Following HOME_PAGE_GUIDE.md specifications
-import { lightColors } from "@/constants/palette";
+import { useTheme } from "@/context/ThemeContext";
 import React from "react";
 import {
     Pressable,
@@ -15,20 +15,22 @@ interface PromoBannerProps {
 }
 
 export function PromoBanner({ variant, onPress }: PromoBannerProps) {
+  const { colors, isDark } = useTheme();
+  
   const config = {
     savings: {
       title: "Save & Secure",
       description: "Enjoy up to 15% interest on your savings.",
       buttonText: "Start Saving",
-      backgroundColor: "#E3F2FD", // Light blue
-      accentColor: "#1565C0",
+      backgroundColor: isDark ? "#0D3B66" : "#E3F2FD",
+      accentColor: isDark ? "#64B5F6" : "#1565C0",
     },
     cashback: {
       title: "Unlimited Cashback",
       description: "Get up to 5% cashback on all your transactions this month!",
       buttonText: "Learn More",
-      backgroundColor: "#E8F5E9", // Light green
-      accentColor: "#2E7D32",
+      backgroundColor: isDark ? "#1B4332" : "#E8F5E9",
+      accentColor: isDark ? "#81C784" : "#2E7D32",
     },
   };
 
@@ -37,7 +39,7 @@ export function PromoBanner({ variant, onPress }: PromoBannerProps) {
   return (
     <View style={[styles.container, { backgroundColor }]}>
       <Text style={[styles.title, { color: accentColor }]}>{title}</Text>
-      <Text style={styles.description}>{description}</Text>
+      <Text style={[styles.description, { color: colors.textSecondary }]}>{description}</Text>
       <Pressable
         style={[styles.button, { backgroundColor: accentColor }]}
         onPress={onPress}
@@ -62,7 +64,6 @@ const styles = StyleSheet.create({
   },
   description: {
     fontSize: 14,
-    color: lightColors.textSecondary, // #525D60
     marginBottom: 16,
     lineHeight: 20,
   },
@@ -78,3 +79,4 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 });
+

@@ -1,20 +1,24 @@
 /**
  * PinPadModal Component
- * 4-digit PIN input modal for transaction verification
+ * 4-digit PIN input modal using native keyboard
  */
 
 import { darkColors, designTokens, lightColors } from "@/constants/palette";
-import * as Haptics from "expo-haptics";
-import { Delete, X } from "lucide-react-native";
-import React, { useCallback, useState } from "react";
+import { triggerHaptic } from "@/utils/haptics";
+import { useRouter } from "expo-router";
+import { X } from "lucide-react-native";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-    Modal,
-    Pressable,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
-    useColorScheme,
+  ActivityIndicator,
+  Keyboard,
+  Modal,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+  useColorScheme
 } from "react-native";
 
 interface PinPadModalProps {
@@ -25,15 +29,10 @@ interface PinPadModalProps {
   subtitle?: string;
   isLoading?: boolean;
   error?: string;
+  returnRoute?: string; // Route to return to after PIN reset
 }
 
 const PIN_LENGTH = 4;
-const KEYPAD = [
-  ["1", "2", "3"],
-  ["4", "5", "6"],
-  ["7", "8", "9"],
-  ["", "0", "delete"],
-];
 
 export function PinPadModal({
   visible,
@@ -43,37 +42,87 @@ export function PinPadModal({
   subtitle = "Enter your 4-digit transaction PIN",
   isLoading = false,
   error,
+  returnRoute,
 }: PinPadModalProps) {
   const colorScheme = useColorScheme();
+  const router = useRouter();
   const colors = colorScheme === "dark" ? darkColors : lightColors;
   const [pin, setPin] = useState("");
+  const inputRef = useRef<TextInput>(null);
 
-  const handleKeyPress = useCallback(
-    (key: string) => {
+  // Clear PIN when modal opens or when there's an error (failed attempt)
+  useEffect(() => {
+    if (visible) {
+      setPin(""); // Clear PIN when modal opens
+      // Auto-focus the input when modal opens
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 300);
+    }
+  }, [visible]);
+
+  // Clear PIN when an error is received (wrong PIN attempt)
+  useEffect(() => {
+    if (error) {
+      setPin(""); // Clear PIN on error so user can re-enter
+      inputRef.current?.focus();
+    }
+  }, [error]);
+
+  const handlePinChange = useCallback(
+    (text: string) => {
       if (isLoading) return;
 
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      // Only allow numeric input
+      const numericText = text.replace(/[^0-9]/g, "");
+      
+      if (numericText.length <= PIN_LENGTH) {
+        setPin(numericText);
+        triggerHaptic.impact();
 
-      if (key === "delete") {
-        setPin((prev) => prev.slice(0, -1));
-      } else if (pin.length < PIN_LENGTH) {
-        const newPin = pin + key;
-        setPin(newPin);
-
-        // Auto-submit when PIN is complete
-        if (newPin.length === PIN_LENGTH) {
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-          onSubmit(newPin);
+        // Auto-submit when PIN is complete with small delay for visual feedback
+        if (numericText.length === PIN_LENGTH) {
+          triggerHaptic.notification();
+          Keyboard.dismiss();
+          // Small delay to allow dots to render before submission
+          setTimeout(() => {
+            onSubmit(numericText);
+          }, 100);
         }
       }
     },
-    [pin, isLoading, onSubmit]
+    [isLoading, onSubmit]
   );
 
   const handleClose = useCallback(() => {
     setPin("");
+    Keyboard.dismiss();
     onClose();
   }, [onClose]);
+
+  const handleForgotPin = useCallback(() => {
+    Keyboard.dismiss();
+    setPin(""); // Clear any entered PIN
+    onClose(); // Close the PIN modal first
+    
+    // Use setTimeout to ensure modal is closed before navigation
+    setTimeout(() => {
+      // Navigate to PIN reset screen
+      if (returnRoute) {
+        // Use replace to avoid stack issues
+        router.replace({
+          pathname: "/(tabs)/profile/security/pin",
+          params: { returnRoute },
+        } as any);
+      } else {
+        router.push("/(tabs)/profile/security/pin");
+      }
+    }, 300);
+  }, [onClose, router, returnRoute]);
+
+  const handleContainerPress = useCallback(() => {
+    inputRef.current?.focus();
+  }, []);
 
   const renderDots = () => (
     <View style={styles.dotsContainer}>
@@ -93,37 +142,6 @@ export function PinPadModal({
     </View>
   );
 
-  const renderKeypad = () => (
-    <View style={styles.keypad}>
-      {KEYPAD.map((row, rowIndex) => (
-        <View key={rowIndex} style={styles.keypadRow}>
-          {row.map((key, keyIndex) => (
-            <TouchableOpacity
-              key={keyIndex}
-              style={[
-                styles.key,
-                {
-                  backgroundColor: key ? colors.muted : "transparent",
-                },
-              ]}
-              onPress={() => key && handleKeyPress(key)}
-              disabled={!key || isLoading}
-              activeOpacity={0.7}
-            >
-              {key === "delete" ? (
-                <Delete size={24} color={colors.foreground} />
-              ) : (
-                <Text style={[styles.keyText, { color: colors.foreground }]}>
-                  {key}
-                </Text>
-              )}
-            </TouchableOpacity>
-          ))}
-        </View>
-      ))}
-    </View>
-  );
-
   return (
     <Modal
       visible={visible}
@@ -131,10 +149,16 @@ export function PinPadModal({
       transparent
       onRequestClose={handleClose}
     >
-      <Pressable style={styles.overlay} onPress={handleClose}>
-        <Pressable
+      <View style={styles.overlay}>
+        {/* Backdrop - tapping here closes modal */}
+        <Pressable style={styles.backdrop} onPress={handleClose} />
+        
+        {/* Modal content - tapping here focuses input */}
+        <Pressable 
           style={[styles.container, { backgroundColor: colors.background }]}
-          onPress={(e) => e.stopPropagation()}
+          onPress={() => {
+            inputRef.current?.focus();
+          }}
         >
           {/* Header */}
           <View style={styles.header}>
@@ -161,17 +185,50 @@ export function PinPadModal({
             </Text>
           )}
 
-          {/* Keypad */}
-          {renderKeypad()}
+          {/* Hidden TextInput for native keyboard */}
+          <TextInput
+            ref={inputRef}
+            value={pin}
+            onChangeText={handlePinChange}
+            keyboardType="number-pad"
+            maxLength={PIN_LENGTH}
+            secureTextEntry
+            autoFocus
+            editable={!isLoading}
+            style={styles.hiddenInput}
+            selectionColor={colors.primary}
+          />
+
+          {/* Loading indicator */}
+          {isLoading && (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={colors.primary} />
+              <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
+                Verifying PIN...
+              </Text>
+            </View>
+          )}
+
+          {/* Instruction Text */}
+          {!isLoading && (
+            <Pressable 
+              style={styles.instructionContainer}
+              onPress={() => inputRef.current?.focus()}
+            >
+              <Text style={[styles.instructionText, { color: colors.textSecondary }]}>
+                Tap anywhere to open keyboard
+              </Text>
+            </Pressable>
+          )}
 
           {/* Forgot PIN Link */}
-          <TouchableOpacity style={styles.forgotLink}>
+          <TouchableOpacity style={styles.forgotLink} onPress={handleForgotPin}>
             <Text style={[styles.forgotText, { color: colors.primary }]}>
               Forgot PIN?
             </Text>
           </TouchableOpacity>
         </Pressable>
-      </Pressable>
+      </View>
     </Modal>
   );
 }
@@ -182,12 +239,16 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0, 0, 0, 0.5)",
     justifyContent: "flex-end",
   },
+  backdrop: {
+    flex: 1,
+  },
   container: {
     borderTopLeftRadius: designTokens.radius.xl,
     borderTopRightRadius: designTokens.radius.xl,
     paddingHorizontal: designTokens.spacing.lg,
     paddingTop: designTokens.spacing.lg,
     paddingBottom: designTokens.spacing.xxl,
+    minHeight: 300,
   },
   header: {
     flexDirection: "row",
@@ -225,24 +286,28 @@ const styles = StyleSheet.create({
     fontSize: designTokens.fontSize.sm,
     marginBottom: designTokens.spacing.md,
   },
-  keypad: {
-    gap: designTokens.spacing.sm,
+  hiddenInput: {
+    position: "absolute",
+    opacity: 0,
+    height: 1,
+    width: 1,
   },
-  keypadRow: {
-    flexDirection: "row",
-    justifyContent: "center",
-    gap: designTokens.spacing.sm,
-  },
-  key: {
-    width: 80,
-    height: 60,
-    borderRadius: designTokens.radius.lg,
-    justifyContent: "center",
+  loadingContainer: {
     alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: designTokens.spacing.xl,
+    gap: designTokens.spacing.md,
   },
-  keyText: {
-    fontSize: designTokens.fontSize["2xl"],
-    fontWeight: "600",
+  loadingText: {
+    fontSize: designTokens.fontSize.sm,
+  },
+  instructionContainer: {
+    alignItems: "center",
+    paddingVertical: designTokens.spacing.lg,
+  },
+  instructionText: {
+    fontSize: designTokens.fontSize.sm,
+    fontStyle: "italic",
   },
   forgotLink: {
     alignItems: "center",

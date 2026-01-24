@@ -1,5 +1,5 @@
 import { ResellerApplicationModal } from "@/components/reseller/ResellerApplicationModal";
-import { lightColors } from "@/constants/palette";
+import { useTheme } from "@/context/ThemeContext";
 import { useResellerUpgradeStatus } from "@/hooks/useReseller";
 import { Clock, Sparkles } from "lucide-react-native";
 import React, { useState } from "react";
@@ -15,6 +15,7 @@ interface ResellerBannerProps {
 }
 
 export function ResellerBanner({ onPress }: ResellerBannerProps) {
+  const { colors, isDark } = useTheme();
   const [modalVisible, setModalVisible] = useState(false);
   const { isPending, refetch } = useResellerUpgradeStatus();
 
@@ -30,9 +31,9 @@ export function ResellerBanner({ onPress }: ResellerBannerProps) {
 
   if (isPending) {
     return (
-      <View style={[styles.container, styles.pendingContainer]}>
-        <Clock size={16} color={lightColors.textSecondary} />
-        <Text style={[styles.text, styles.pendingText]}>
+      <View style={[styles.container, { backgroundColor: isDark ? colors.card : "#F3F4F6" }]}>
+        <Clock size={16} color={colors.textSecondary} />
+        <Text style={[styles.text, { color: colors.textSecondary }]}>
           Upgrade request pending review
         </Text>
       </View>
@@ -41,10 +42,13 @@ export function ResellerBanner({ onPress }: ResellerBannerProps) {
 
   return (
     <>
-      <Pressable style={styles.container} onPress={handlePress}>
-        <Sparkles size={16} color={lightColors.primary} />
-        <Text style={styles.text}>
-          Become a Reseller — <Text style={styles.highlight}>Get 10% OFF</Text>
+      <Pressable 
+        style={[styles.container, { backgroundColor: isDark ? "#3D2800" : "#FFFDE7" }]}
+        onPress={handlePress}
+      >
+        <Sparkles size={16} color={colors.primary} />
+        <Text style={[styles.text, { color: colors.foreground }]}>
+          Become a Reseller — <Text style={[styles.highlight, { color: colors.primary }]}>Get 10% OFF</Text>
         </Text>
       </Pressable>
 
@@ -62,24 +66,16 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#FFFDE7", // Light amber
     paddingVertical: 12,
     paddingHorizontal: 16,
     gap: 8,
   },
-  pendingContainer: {
-    backgroundColor: "#F3F4F6", // Muted gray
-  },
   text: {
     fontSize: 14,
-    color: lightColors.textPrimary, // #2E2E33
-  },
-  pendingText: {
-    color: lightColors.textSecondary,
   },
   highlight: {
-    color: lightColors.primary, // #E69E19
     fontWeight: "600",
   },
 });
+
 

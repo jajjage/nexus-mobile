@@ -4,7 +4,7 @@
  * Aligned with frontend transaction-timeline.tsx
  */
 
-import { lightColors } from "@/constants/palette";
+import { useTheme } from "@/context/ThemeContext";
 import { isRefundTransaction } from "@/lib/transactionUtils";
 import { Transaction } from "@/types/wallet.types";
 import { CheckCircle2, Clock, Loader2, XCircle } from "lucide-react-native";
@@ -120,6 +120,7 @@ export function TransactionTimeline({
   transactionType,
   isRefund = false,
 }: TransactionTimelineProps) {
+  const { colors, isDark } = useTheme();
   const currentStatus = status.toLowerCase();
   const steps = getStepsForType(transactionType, createdAt, completedAt);
 
@@ -196,11 +197,11 @@ export function TransactionTimeline({
       case "completed":
         return <CheckCircle2 size={20} color="#FFFFFF" />;
       case "active":
-        return <Loader2 size={20} color="#2563EB" />;
+        return <Loader2 size={20} color={colors.primary} />;
       case "failed":
         return <XCircle size={20} color="#DC2626" />;
       default:
-        return <Clock size={16} color="#9CA3AF" />;
+        return <Clock size={16} color={colors.textTertiary} />;
     }
   };
 
@@ -210,6 +211,32 @@ export function TransactionTimeline({
         const stepState = getStepState(step.status, index);
         const isLast = index === steps.length - 1;
 
+        // Dynamic styles based on theme and state
+        const getDotStyle = () => {
+          switch(stepState) {
+            case "completed":
+              return { backgroundColor: "#16A34A", borderColor: "#16A34A" };
+            case "active":
+              return { 
+                backgroundColor: isDark ? `${colors.primary}20` : "#DBEAFE", 
+                borderColor: colors.primary 
+              };
+            case "failed":
+              return { backgroundColor: "#FEE2E2", borderColor: "#DC2626" };
+            default: // upcoming
+              return { 
+                backgroundColor: isDark ? colors.card : "#F3F4F6", 
+                borderColor: isDark ? colors.border : "#D1D5DB" 
+              };
+          }
+        };
+
+        const getConnectorStyle = () => {
+           if (stepState === "completed") return { backgroundColor: "#16A34A" };
+           if (stepState === "failed") return { backgroundColor: "#DC2626" };
+           return { backgroundColor: isDark ? colors.border : "#D1D5DB" };
+        };
+
         return (
           <View key={step.label} style={styles.stepRow}>
             {/* Dot and line column */}
@@ -218,10 +245,7 @@ export function TransactionTimeline({
               <View
                 style={[
                   styles.dot,
-                  stepState === "completed" && styles.dotCompleted,
-                  stepState === "active" && styles.dotActive,
-                  stepState === "failed" && styles.dotFailed,
-                  stepState === "upcoming" && styles.dotUpcoming,
+                  getDotStyle()
                 ]}
               >
                 {renderStepIcon(stepState)}
@@ -232,8 +256,7 @@ export function TransactionTimeline({
                 <View
                   style={[
                     styles.connector,
-                    stepState === "completed" && styles.connectorCompleted,
-                    stepState === "failed" && styles.connectorFailed,
+                    getConnectorStyle()
                   ]}
                 />
               )}
@@ -244,14 +267,15 @@ export function TransactionTimeline({
               <Text
                 style={[
                   styles.stepLabel,
+                  { color: colors.foreground },
                   stepState === "failed" && styles.stepLabelFailed,
                 ]}
               >
                 {step.label}
               </Text>
-              <Text style={styles.stepDescription}>{step.description}</Text>
+              <Text style={[styles.stepDescription, { color: colors.textSecondary }]}>{step.description}</Text>
               {step.timestamp && (
-                <Text style={styles.stepTimestamp}>
+                <Text style={[styles.stepTimestamp, { color: colors.textTertiary }]}>
                   {formatStepDate(step.timestamp)}
                 </Text>
               )}
@@ -285,33 +309,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  dotCompleted: {
-    backgroundColor: "#16A34A",
-    borderColor: "#16A34A",
-  },
-  dotActive: {
-    backgroundColor: "#DBEAFE",
-    borderColor: "#2563EB",
-  },
-  dotFailed: {
-    backgroundColor: "#FEE2E2",
-    borderColor: "#DC2626",
-  },
-  dotUpcoming: {
-    backgroundColor: "#F3F4F6",
-    borderColor: "#D1D5DB",
-  },
   connector: {
     width: 2,
     flex: 1,
     marginTop: 4,
-    backgroundColor: "#D1D5DB",
-  },
-  connectorCompleted: {
-    backgroundColor: "#16A34A",
-  },
-  connectorFailed: {
-    backgroundColor: "#DC2626",
   },
   contentColumn: {
     flex: 1,
@@ -321,7 +322,6 @@ const styles = StyleSheet.create({
   stepLabel: {
     fontSize: 14,
     fontWeight: "600",
-    color: lightColors.textPrimary,
     marginBottom: 4,
   },
   stepLabelFailed: {
@@ -329,12 +329,10 @@ const styles = StyleSheet.create({
   },
   stepDescription: {
     fontSize: 12,
-    color: lightColors.textSecondary,
     marginBottom: 4,
   },
   stepTimestamp: {
     fontSize: 11,
-    color: lightColors.textTertiary,
   },
 });
 

@@ -1,7 +1,7 @@
 import apiClient from "@/lib/api-client";
 import {
-  NotificationsResponse,
-  UnreadCountResponse,
+    NotificationsResponse,
+    UnreadCountResponse,
 } from "@/types/notification.types";
 
 export const notificationsService = {

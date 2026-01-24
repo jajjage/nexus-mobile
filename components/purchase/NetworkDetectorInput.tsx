@@ -6,44 +6,44 @@
 import { darkColors, designTokens, lightColors } from "@/constants/palette";
 import { useAuth } from "@/hooks/useAuth";
 import {
-  NETWORK_PROVIDERS,
-  NetworkProvider,
-  detectNetworkProvider,
-  isValidNigerianPhone
+    NETWORK_PROVIDERS,
+    NetworkProvider,
+    detectNetworkProvider,
+    isValidNigerianPhone
 } from "@/lib/detectNetwork";
 import { RecentNumber } from "@/types/api.types";
 import * as Haptics from "expo-haptics";
 import { ChevronDown, Phone, User, X } from "lucide-react-native";
 import React, { useCallback, useState } from "react";
 import {
-  FlatList,
-  Image,
-  Modal,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-  useColorScheme,
+    FlatList,
+    Image,
+    Modal,
+    Pressable,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
+    useColorScheme,
 } from "react-native";
 
 interface NetworkDetectorInputProps {
   value: string;
   onChangeText: (text: string) => void;
   onNetworkDetected: (network: NetworkProvider | null) => void;
-  selectedNetwork: NetworkProvider | null;
   placeholder?: string;
   recentNumbers?: RecentNumber[];
+  disabled?: boolean;
 }
 
 export function NetworkDetectorInput({
   value,
   onChangeText,
   onNetworkDetected,
-  selectedNetwork,
   placeholder = "Enter phone number",
   recentNumbers: propRecentNumbers,
+  disabled = false,
 }: NetworkDetectorInputProps) {
   const colorScheme = useColorScheme();
   const colors = colorScheme === "dark" ? darkColors : lightColors;
@@ -102,14 +102,14 @@ export function NetworkDetectorInput({
   const isValid = value.length === 0 || isValidNigerianPhone(value);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { opacity: disabled ? 0.6 : 1 }]}>
 
 
       <View
         style={[
           styles.inputContainer,
           {
-            backgroundColor: colors.muted,
+            backgroundColor: disabled ? colors.background : colors.muted,
             borderColor: isFocused
               ? colors.primary
               : !isValid
@@ -122,7 +122,8 @@ export function NetworkDetectorInput({
         {recentNumbers.length > 0 && (
           <TouchableOpacity
             style={styles.recentButton}
-            onPress={() => setShowRecentNumbers(true)}
+            onPress={() => !disabled && setShowRecentNumbers(true)}
+            disabled={disabled}
           >
             <User size={18} color={colors.textSecondary} />
             <ChevronDown size={14} color={colors.textSecondary} />
@@ -160,6 +161,8 @@ export function NetworkDetectorInput({
           maxLength={11}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
+          editable={!disabled}
+          selectTextOnFocus={!disabled}
         />
 
         {/* Right Side: Clear button */}

@@ -1,16 +1,16 @@
 // components/dashboard/UserProfileCard.tsx
 // Updated to match screenshot layout with logo-3 image
-import { lightColors } from "@/constants/palette";
+import { useTheme } from "@/context/ThemeContext";
 import * as Clipboard from "expo-clipboard";
 import { ChevronDown, Copy } from "lucide-react-native";
 import React from "react";
 import {
-  Alert,
-  Image,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
+    Alert,
+    Image,
+    Pressable,
+    StyleSheet,
+    Text,
+    View,
 } from "react-native";
 
 interface UserProfileCardProps {
@@ -20,15 +20,17 @@ interface UserProfileCardProps {
 }
 
 export function UserProfileCard({ initials, fullName, phoneNumber }: UserProfileCardProps) {
+  const { colors } = useTheme();
+  
   const handleCopyPhone = async () => {
     await Clipboard.setStringAsync(phoneNumber);
     Alert.alert("Copied", "Phone number copied to clipboard");
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.card }]}>
       {/* Logo Avatar */}
-      <View style={styles.avatarContainer}>
+      <View style={[styles.avatarContainer, { backgroundColor: colors.background }]}>
         <Image 
           source={require("@/assets/images/logo-3.png")}
           style={styles.logo}
@@ -38,17 +40,17 @@ export function UserProfileCard({ initials, fullName, phoneNumber }: UserProfile
 
       {/* User Info */}
       <View style={styles.userInfo}>
-        <Text style={styles.userName}>{fullName}</Text>
+        <Text style={[styles.userName, { color: colors.foreground }]}>{fullName}</Text>
       </View>
 
       {/* Phone Number with Copy */}
       <View style={styles.phoneSection}>
-        <Text style={styles.phoneNumber}>{phoneNumber}</Text>
+        <Text style={[styles.phoneNumber, { color: colors.textSecondary }]}>{phoneNumber}</Text>
         <Pressable style={styles.dropdownIcon}>
-          <ChevronDown size={16} color={lightColors.textSecondary} />
+          <ChevronDown size={16} color={colors.textSecondary} />
         </Pressable>
         <Pressable onPress={handleCopyPhone} hitSlop={8}>
-          <Copy size={16} color={lightColors.textSecondary} />
+          <Copy size={16} color={colors.textSecondary} />
         </Pressable>
       </View>
     </View>
@@ -64,14 +66,12 @@ const styles = StyleSheet.create({
     marginRight: 15,
     marginLeft: 15,
     marginBottom: 8,
-    borderRadius: 35, // Adjusted radius
-    backgroundColor: "#FFFFFF", // Whiter than background
+    borderRadius: 35,
   },
   avatarContainer: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: "#FFFFFF", // Slight contrast against white card
     justifyContent: "center",
     alignItems: "center",
     marginRight: 12,
@@ -87,7 +87,6 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: 15,
     fontWeight: "700",
-    color: lightColors.textPrimary, // #2E2E33
   },
   phoneSection: {
     flexDirection: "row",
@@ -96,9 +95,9 @@ const styles = StyleSheet.create({
   },
   phoneNumber: {
     fontSize: 13,
-    color: lightColors.textSecondary, // #525D60
   },
   dropdownIcon: {
     padding: 2,
   },
 });
+

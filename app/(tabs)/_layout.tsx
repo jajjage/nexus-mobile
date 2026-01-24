@@ -1,14 +1,15 @@
+import { useTheme } from '@/context/ThemeContext';
+import { useAuth } from '@/hooks/useAuth';
 import { Redirect, Tabs, useSegments } from 'expo-router';
 import { Briefcase, Home, Trophy, User, Users } from 'lucide-react-native';
 import React from 'react';
 import { ActivityIndicator, View } from 'react-native';
 
 import { useClientOnlyValue } from '@/components/useClientOnlyValue';
-import { lightColors } from '@/constants/palette';
-import { useAuth } from '@/hooks/useAuth';
 
 export default function TabLayout() {
   const { isAuthenticated, isLoading, user } = useAuth();
+  const { colors, isDark } = useTheme();
   const isReseller = user?.role === 'reseller';
   const segments = useSegments();
   
@@ -18,8 +19,8 @@ export default function TabLayout() {
   // Show loading while checking auth
   if (isLoading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FAFAFA' }}>
-        <ActivityIndicator size="large" color={lightColors.primary} />
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -46,19 +47,18 @@ export default function TabLayout() {
     <Tabs
       key={isReseller ? 'reseller' : 'user'}
       screenOptions={{
-        tabBarActiveTintColor: lightColors.primary, // #E69E19
-        tabBarInactiveTintColor: lightColors.textSecondary, // #525D60
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textSecondary,
         tabBarStyle: isProfileSubScreen ? { display: 'none' } : {
-          backgroundColor: '#FAFAFA', // card color
+          backgroundColor: colors.card,
           borderTopWidth: 1,
-          borderTopColor: '#D4D9DA', // border color
-          // Height slightly taller for 5 item grid if needed, but 64 is fine
-          height: 64, // h-16
+          borderTopColor: colors.border,
+          height: 64,
           paddingTop: 8,
           paddingBottom: 8,
         },
         tabBarLabelStyle: {
-          fontSize: 10, // Smaller font for 5 items
+          fontSize: 10,
           fontWeight: '500',
         },
         headerShown: useClientOnlyValue(false, false),
@@ -113,3 +113,4 @@ export default function TabLayout() {
     </Tabs>
   );
 }
+

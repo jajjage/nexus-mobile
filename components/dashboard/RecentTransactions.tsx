@@ -1,15 +1,15 @@
 // components/dashboard/RecentTransactions.tsx
 // Updated to connect visually with BalanceCard above
-import { lightColors } from "@/constants/palette";
+import { useTheme } from "@/context/ThemeContext";
 import { BlurView } from "expo-blur";
 import { useRouter } from "expo-router";
 import { ArrowDown, ArrowUp, CreditCard, Wifi } from "lucide-react-native";
 import React from "react";
 import {
-  Pressable,
-  StyleSheet,
-  Text,
-  View
+    Pressable,
+    StyleSheet,
+    Text,
+    View
 } from "react-native";
 
 interface Transaction {
@@ -40,6 +40,7 @@ const iconMap = {
 
 export function RecentTransactions({ transactions, onSeeMore, isBalanceVisible, onTransactionPress }: RecentTransactionsProps) {
   const router = useRouter();
+  const { colors, isDark } = useTheme();
 
   const handleTransactionPress = (transactionId: string) => {
     if (onTransactionPress) {
@@ -67,22 +68,22 @@ export function RecentTransactions({ transactions, onSeeMore, isBalanceVisible, 
 
   const getStatusBg = (status: string) => {
     switch (status) {
-      case "success": return "#E8F5E9";
-      case "pending": return "#FFF3E0";
-      case "failed": return "#FFEBEE";
-      default: return "#E8F5E9";
+      case "success": return isDark ? "#1B4332" : "#E8F5E9";
+      case "pending": return isDark ? "#3D2800" : "#FFF3E0";
+      case "failed": return isDark ? "#4A0E0E" : "#FFEBEE";
+      default: return isDark ? "#1B4332" : "#E8F5E9";
     }
   };
 
   return (
     <View style={styles.outerContainer}>
       {/* Connected Card Container - overlaps with BalanceCard */}
-      <View style={styles.connectedCard}>
+      <View style={[styles.connectedCard, { backgroundColor: colors.card }]}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.sectionTitle}>Recent Transactions</Text>
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Recent Transactions</Text>
           <Pressable onPress={onSeeMore}>
-            <Text style={styles.seeMoreText}>See More</Text>
+            <Text style={[styles.seeMoreText, { color: colors.primary }]}>See More</Text>
           </Pressable>
         </View>
 
@@ -94,8 +95,8 @@ export function RecentTransactions({ transactions, onSeeMore, isBalanceVisible, 
             >
             {transactions.length === 0 ? (
                 <View style={styles.emptyState}>
-                <CreditCard size={24} color={lightColors.textTertiary} />
-                <Text style={styles.emptyText}>No transactions yet</Text>
+                <CreditCard size={24} color={colors.textSecondary} />
+                <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No transactions yet</Text>
                 </View>
             ) : (
                 transactions.map((tx, index) => {
@@ -104,37 +105,43 @@ export function RecentTransactions({ transactions, onSeeMore, isBalanceVisible, 
                     <Pressable
                     key={tx.id}
                     onPress={() => handleTransactionPress(tx.id)}
-                    style={({ pressed }) => [
-                        styles.transactionItem,
-                        index < transactions.length - 1 && styles.transactionBorder,
-                        pressed && styles.transactionItemPressed
+                    style={[
+                        styles.transactionItemWrapper,
+                        index < transactions.length - 1 && [styles.transactionBorder, { borderBottomColor: colors.border }],
                     ]}
                     >
-                    {/* Icon */}
-                    <View style={[styles.txIcon, { backgroundColor: tx.iconBgColor }]}>
-                        <IconComponent size={16} color={tx.iconColor} />
-                    </View>
+                    {/* Inner Row Container */}
+                    <View style={styles.transactionItem}>
+                        {/* Left Side: Icon + Details */}
+                        <View style={styles.txLeftSide}>
+                            {/* Icon */}
+                            <View style={[styles.txIcon, { backgroundColor: tx.iconBgColor }]}>
+                                <IconComponent size={16} color={tx.iconColor} />
+                            </View>
 
-                    {/* Details */}
-                    <View style={styles.txDetails}>
-                        <Text style={styles.txTitle}>{tx.title}</Text>
-                        <Text style={styles.txSubtitle}>{tx.subtitle}</Text>
-                    </View>
+                            {/* Details */}
+                            <View style={styles.txDetails}>
+                                <Text style={[styles.txTitle, { color: colors.foreground }]} numberOfLines={1}>{tx.title}</Text>
+                                <Text style={[styles.txSubtitle, { color: colors.textSecondary }]} numberOfLines={1}>{tx.subtitle}</Text>
+                            </View>
+                        </View>
 
-                    {/* Amount & Status */}
-                    <View style={styles.txAmountContainer}>
-                        <Text
-                        style={[
-                            styles.txAmount,
-                            { color: tx.type === "credit" ? "#2E7D32" : "#E63946" },
-                        ]}
-                        >
-                        {tx.type === "credit" ? "+" : "-"}₦{formatCurrency(tx.amount)}
-                        </Text>
-                        <View style={[styles.statusBadge, { backgroundColor: getStatusBg(tx.status) }]}>
-                        <Text style={[styles.statusText, { color: getStatusColor(tx.status) }]}>
-                            {tx.status.charAt(0).toUpperCase() + tx.status.slice(1)}
-                        </Text>
+                        {/* Right Side: Amount & Status */}
+                        <View style={styles.txAmountContainer}>
+                            <Text
+                            style={[
+                                styles.txAmount,
+                                { color: tx.type === "credit" ? "#2E7D32" : "#E63946" },
+                            ]}
+                            numberOfLines={1}
+                            >
+                            {tx.type === "credit" ? "+" : "-"}₦{formatCurrency(tx.amount)}
+                            </Text>
+                            <View style={[styles.statusBadge, { backgroundColor: getStatusBg(tx.status) }]}>
+                            <Text style={[styles.statusText, { color: getStatusColor(tx.status) }]}>
+                                {tx.status.charAt(0).toUpperCase() + tx.status.slice(1)}
+                            </Text>
+                            </View>
                         </View>
                     </View>
                     </Pressable>
@@ -149,7 +156,7 @@ export function RecentTransactions({ transactions, onSeeMore, isBalanceVisible, 
             <BlurView 
                 intensity={20} 
                 style={styles.fullCardBlur} 
-                tint="light"
+                tint={isDark ? "dark" : "light"}
                 experimentalBlurMethod="dimezisBlurView" 
             />
         )}
@@ -161,13 +168,10 @@ export function RecentTransactions({ transactions, onSeeMore, isBalanceVisible, 
 const styles = StyleSheet.create({
   outerContainer: {
     marginHorizontal: 16,
-    // Negative top margin to overlap with BalanceCard
     marginTop: -4,
     zIndex: 5,
   },
   connectedCard: {
-    backgroundColor: "#FFFFFF",
-    // Rounded bottom corners only - connects to BalanceCard above
     borderTopLeftRadius: 0,
     borderTopRightRadius: 0,
     borderBottomLeftRadius: 16,
@@ -180,7 +184,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 3,
-    overflow: 'hidden', // Ensure blur stays inside rounded corners
+    overflow: 'hidden',
   },
   fullCardBlur: {
     ...StyleSheet.absoluteFillObject,
@@ -195,34 +199,32 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 15,
     fontWeight: "700",
-    color: lightColors.textPrimary, // #2E2E33
   },
   seeMoreText: {
     fontSize: 13,
-    color: lightColors.primary, // #E69E19
     fontWeight: "600",
   },
   transactionsListContainer: {
       position: 'relative',
-      overflow: 'hidden', // Ensure blur stays within bounds
+      overflow: 'hidden',
       borderRadius: 8,
   },
   transactionsList: {
     gap: 0,
   },
+  transactionItemWrapper: {
+    paddingVertical: 12,
+    paddingHorizontal: 0,
+  },
   transactionItem: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: 12,
-    paddingHorizontal: 0,
   },
   transactionItemPressed: {
     backgroundColor: "transparent",
   },
   transactionBorder: {
     borderBottomWidth: 1,
-    borderBottomColor: "#F5F5F5",
   },
   txIcon: {
     width: 48,
@@ -230,29 +232,33 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 16,
+    marginRight: 12,
     flexShrink: 0,
+  },
+  txLeftSide: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+    minWidth: 0,
   },
   txDetails: {
     flex: 1,
     justifyContent: "center",
+    minWidth: 0,
   },
   txTitle: {
     fontSize: 15,
     fontWeight: "700",
-    color: lightColors.textPrimary, // #2E2E33
   },
   txSubtitle: {
     fontSize: 13,
-    color: lightColors.textSecondary, // #525D60
     fontWeight: "400",
     marginTop: 2,
   },
   txAmountContainer: {
     alignItems: "flex-end",
     justifyContent: "center",
-    marginLeft: 16,
-    flexShrink: 0,
+    marginLeft: 8,
   },
   txAmount: {
     fontSize: 15,
@@ -275,6 +281,6 @@ const styles = StyleSheet.create({
   emptyText: {
     marginTop: 8,
     fontSize: 13,
-    color: lightColors.textTertiary,
   },
 });
+

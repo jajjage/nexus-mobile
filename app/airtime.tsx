@@ -9,27 +9,26 @@ import { Stack, useRouter } from "expo-router";
 import { ArrowLeft } from "lucide-react-native";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-    Dimensions,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
-    useColorScheme
+  Dimensions,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { LoadingOverlay } from "@/components/LoadingOverlay";
 import {
-    CheckoutData,
-    CheckoutModal,
-    CheckoutMode,
-    NetworkDetectorInput,
-    NetworkSelector,
+  CheckoutData,
+  CheckoutModal,
+  CheckoutMode,
+  NetworkDetectorInput,
+  NetworkSelector,
 } from "@/components/purchase";
 import { PinPadModal } from "@/components/security/PinPadModal";
-import { darkColors, designTokens, lightColors } from "@/constants/palette";
+import { designTokens } from "@/constants/palette";
+import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/hooks/useAuth";
 import { useBiometricAuth } from "@/hooks/useBiometric";
 import { useCompletePaymentFlow } from "@/hooks/useCompletePaymentFlow";
@@ -38,14 +37,15 @@ import { useSupplierMarkupMap } from "@/hooks/useSupplierMarkup";
 import { useTopup } from "@/hooks/useTopup";
 import { useWalletBalance } from "@/hooks/useWalletBalance";
 import {
-    NETWORK_PROVIDERS,
-    NetworkInfo,
-    NetworkProvider,
-    isValidNigerianPhone,
-    normalizePhoneNumber,
+  NETWORK_PROVIDERS,
+  NetworkInfo,
+  NetworkProvider,
+  isValidNigerianPhone,
+  normalizePhoneNumber,
 } from "@/lib/detectNetwork";
 import { calculateFinalPrice } from "@/lib/price-calculator";
 import { Product } from "@/types/product.types";
+import { getUserFriendlyError } from "@/utils/errors";
 
 // Preset airtime amounts
 const PRESET_AMOUNTS = [50, 100, 200, 500, 1000, 2000, 5000, 10000];
@@ -54,8 +54,8 @@ const { width } = Dimensions.get("window");
 const CARD_WIDTH = (width - 48 - 12) / 2; // 2 columns with gaps
 
 export default function AirtimeScreen() {
-  const colorScheme = useColorScheme();
-  const colors = colorScheme === "dark" ? darkColors : lightColors;
+  const { colors, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
   const router = useRouter();
 
   // === STATE PER GUIDE SECTION 4 ===
@@ -72,6 +72,7 @@ export default function AirtimeScreen() {
   const [pendingPaymentData, setPendingPaymentData] = useState<any | null>(null);
   const [lastTransactionId, setLastTransactionId] = useState<string | null>(null);
   const [lastErrorMessage, setLastErrorMessage] = useState<string | null>(null);
+  const [pinError, setPinError] = useState<string | undefined>(undefined);
 
   // Cashback
   const [useCashback, setUseCashback] = useState(false);
@@ -272,7 +273,7 @@ export default function AirtimeScreen() {
     } catch (error) {
       console.error("[AirtimeScreen] Payment initiation error:", error);
       const errorMsg = error instanceof Error ? error.message : "Payment processing failed";
-      setLastErrorMessage(errorMsg);
+      setLastErrorMessage(getUserFriendlyError(errorMsg));
       setCheckoutMode("failed");
       checkoutSheetRef.current?.expand();
     }
@@ -283,7 +284,7 @@ export default function AirtimeScreen() {
       if (!pendingPaymentData) return;
 
       try {
-        setShowPinModal(false);
+        setPinError(undefined); // Clear previous error
         console.log("[AirtimeScreen] Submitting PIN for verification");
 
         // Submit PIN through the complete payment flow
@@ -297,16 +298,21 @@ export default function AirtimeScreen() {
         });
 
         if (!result.success) {
-          setLastErrorMessage(result.error || "PIN verification failed");
-          setCheckoutMode("failed");
-          checkoutSheetRef.current?.expand();
+          // Show error in PIN modal instead of closing it
+          const friendlyError = getUserFriendlyError(result.error || "PIN verification failed");
+          setPinError(friendlyError);
+          // Keep modal open so user can retry
+        } else {
+          // Success - close modal
+          setShowPinModal(false);
+          setPinError(undefined);
         }
       } catch (error) {
         console.error("[AirtimeScreen] PIN submission error:", error);
         const errorMsg = error instanceof Error ? error.message : "PIN submission failed";
-        setLastErrorMessage(errorMsg);
-        setCheckoutMode("failed");
-        checkoutSheetRef.current?.expand();
+        const friendlyError = getUserFriendlyError(errorMsg);
+        setPinError(friendlyError);
+        // Keep modal open so user can retry
       }
     },
     [pendingPaymentData, submitPIN, cashbackBalance]
@@ -326,11 +332,14 @@ export default function AirtimeScreen() {
       setSelectedNetwork(null);
       setDetectedNetwork(null);
       setSelectedAmount(null);
-      // Don't use router.back() as there might be no previous screen
-      // Just navigate to home tab
-      setTimeout(() => {
-        router.push("/(tabs)");
-      }, 500); // Small delay to let modal close first
+      
+      // Check if user wants auto-redirect
+      const prefs = require("@/hooks/useAppPreferences").getAppPreferences();
+      if (prefs.autoRedirectAfterPurchase) {
+        setTimeout(() => {
+          router.push("/(tabs)");
+        }, 500);
+      }
     }
   }, [checkoutMode, router]);
 
@@ -357,8 +366,12 @@ export default function AirtimeScreen() {
           return {
             productName: `₦${selectedAmount.toLocaleString()} Airtime`,
             recipientPhone: normalizedPhone,
-            amount: priceDetails.payableAmount,
-            originalAmount: priceDetails.baseSellingPrice,
+            // Use finalSellingPrice (after offer discount) as the display amount
+            amount: priceDetails.finalSellingPrice,
+            // Only show originalAmount (strikethrough) if there's an offer discount
+            originalAmount: priceDetails.hasOfferDiscount 
+              ? priceDetails.baseSellingPrice 
+              : undefined,
             network: selectedNetwork,
             transactionId: lastTransactionId || undefined,
             errorMessage: lastErrorMessage || undefined,
@@ -374,177 +387,141 @@ export default function AirtimeScreen() {
   const canProceed = isPhoneValid && selectedNetwork && selectedAmount && !networkMismatch;
 
   return (
-    <SafeAreaView
-      style={[styles.container, { backgroundColor: colors.background }]}
-      edges={["top"]}
-    >
-      <Stack.Screen
-        options={{
-          headerShown: true,
-          title: "Airtime Top-up",
-          headerStyle: { backgroundColor: colors.background },
-          headerTintColor: colors.foreground,
-          headerLeft: () => (
-            <TouchableOpacity
-              onPress={() => router.back()}
-              style={styles.backButton}
-            >
-              <ArrowLeft size={24} color={colors.foreground} />
-            </TouchableOpacity>
-          ),
-        }}
-      />
+    <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
+      <Stack.Screen options={{ headerShown: false }} />
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <ArrowLeft size={24} color={colors.foreground} />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: colors.foreground }]}>Airtime Top-up</Text>
+          <View style={{ width: 24 }} />
+        </View>
 
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        keyboardVerticalOffset={100}
-      >
         <ScrollView
           style={styles.flex}
           contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
+          {/* Balance Card */}
+          <View style={[styles.balanceCard, { backgroundColor: colors.card }]}>
+            <View>
+              <Text style={[styles.balanceLabel, { color: colors.textSecondary }]}>Wallet Balance</Text>
+              <Text style={[styles.balanceAmount, { color: colors.primary }]}>
+                ₦{walletBalance?.toLocaleString() ?? "0.00"}
+              </Text>
+            </View>
+            <TouchableOpacity 
+              onPress={() => router.push("/(tabs)/profile/wallet")} 
+              style={[styles.addMoneyButton, { backgroundColor: colors.muted }]}
+            >
+              <Text style={[styles.addMoneyText, { color: colors.primary }]}>+ Add Money</Text>
+            </TouchableOpacity>
+          </View>
 
-
-          {/* Phone Number Input */}
+          {/* Phone Input */}
           <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Phone Number</Text>
             <NetworkDetectorInput
               value={phoneNumber}
               onChangeText={setPhoneNumber}
               onNetworkDetected={handleNetworkDetected}
-              selectedNetwork={selectedNetwork}
-              recentNumbers={user?.recentlyUsedNumbers}
+              disabled={false}
             />
-
-            {/* Network Mismatch Warning */}
             {networkMismatch && (
-              <Text style={[styles.warningText, { color: colors.warning }]}>
-                ⚠️ Phone number belongs to {detectedNetwork?.toUpperCase()}, but{" "}
-                {selectedNetwork?.toUpperCase()} is selected
+              <Text style={[styles.warningText, { color: colors.destructive }]}>
+                Selected network differs from detected network ({detectedNetwork})
               </Text>
             )}
           </View>
 
           {/* Network Selector */}
-          <NetworkSelector
-            networks={networks}
-            selectedNetwork={selectedNetwork}
-            onSelect={handleNetworkSelect}
-            detectedNetwork={detectedNetwork}
-          />
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Select Network</Text>
+            <NetworkSelector
+              selectedNetwork={selectedNetwork}
+              onSelect={handleNetworkSelect}
+              detectedNetwork={detectedNetwork} networks={[]}            />
+          </View>
 
           {/* Amount Grid */}
           <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-              Select Amount
-            </Text>
-
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Select Amount</Text>
             <View style={styles.amountGrid}>
-              {PRESET_AMOUNTS.map((amount) => {
-                const isSelected = selectedAmount === amount;
-                return (
-                  <TouchableOpacity
-                    key={amount}
+              {PRESET_AMOUNTS.map((amount) => (
+                <TouchableOpacity
+                  key={amount}
+                  style={[
+                    styles.amountCard,
+                    { 
+                      width: CARD_WIDTH,
+                      backgroundColor: selectedAmount === amount ? colors.primary : colors.card,
+                      borderColor: selectedAmount === amount ? colors.primary : colors.border
+                    }
+                  ]}
+                  onPress={() => handleAmountSelect(amount)}
+                >
+                  <Text
                     style={[
-                      styles.amountCard,
-                      {
-                        width: CARD_WIDTH,
-                        backgroundColor: isSelected
-                          ? colors.primary
-                          : colors.card,
-                        borderColor: isSelected
-                          ? colors.primary
-                          : colors.border,
-                      },
+                      styles.amountText,
+                      { color: selectedAmount === amount ? "#FFFFFF" : colors.foreground }
                     ]}
-                    onPress={() => handleAmountSelect(amount)}
-                    activeOpacity={0.7}
                   >
-                    <Text
-                      style={[
-                        styles.amountText,
-                        {
-                          color: isSelected
-                            ? colors.primaryForeground
-                            : colors.foreground,
-                        },
-                      ]}
-                    >
-                      ₦{amount.toLocaleString()}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
+                    ₦{amount}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
           </View>
 
-          {/* Balance Display */}
-          <View style={[styles.balanceCard, { backgroundColor: colors.muted }]}>
-            <Text style={[styles.balanceLabel, { color: colors.textSecondary }]}>
-              Wallet Balance
-            </Text>
-            <Text style={[styles.balanceAmount, { color: colors.foreground }]}>
-              ₦{walletBalance.toLocaleString()}
-            </Text>
+          {/* Proceed Button */}
+          <View style={styles.section}>
+            <TouchableOpacity
+              style={[
+                styles.proceedButton,
+                { opacity: (!isPhoneValid || !selectedNetwork || !selectedAmount) ? 0.5 : 1, backgroundColor: colors.primary }
+              ]}
+              onPress={handleProceedToCheckout}
+              disabled={!isPhoneValid || !selectedNetwork || !selectedAmount}
+            >
+              <Text style={styles.proceedButton}>Proceed</Text>
+            </TouchableOpacity>
           </View>
         </ScrollView>
 
-        {/* Proceed Button */}
-        <View style={[styles.footer, { borderTopColor: colors.border }]}>
-          <TouchableOpacity
-            style={[
-              styles.proceedButton,
-              {
-                backgroundColor: canProceed ? colors.primary : colors.muted,
-              },
-            ]}
-            onPress={handleProceedToCheckout}
-            disabled={!canProceed}
-            activeOpacity={0.8}
-          >
-            <Text
-              style={[
-                styles.proceedText,
-                {
-                  color: canProceed
-                    ? colors.primaryForeground
-                    : colors.textDisabled,
-                },
-              ]}
-            >
-              {selectedAmount
-                ? `Proceed - ₦${selectedAmount.toLocaleString()}`
-                : "Select Amount"}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </KeyboardAvoidingView>
+        <CheckoutModal
+          ref={checkoutSheetRef}
+          data={checkoutData}
+          mode={checkoutMode}
+          walletBalance={walletBalance}
+          cashbackBalance={cashbackBalance}
+          useCashback={useCashback}
+          onUseCashbackChange={setUseCashback}
+          onConfirm={handleConfirmPayment}
+          onRetry={handleRetry}
+          onClose={handleClose}
+          isLoading={isTopupPending}
+        />
 
-      {/* Checkout Modal */}
-      <CheckoutModal
-        ref={checkoutSheetRef}
-        data={checkoutData}
-        mode={checkoutMode}
-        walletBalance={walletBalance}
-        cashbackBalance={cashbackBalance}
-        useCashback={useCashback}
-        onUseCashbackChange={setUseCashback}
-        onConfirm={handleConfirmPayment}
-        onRetry={handleRetry}
-        onClose={handleClose}
-        isLoading={isTopupPending}
-      />
+        {/* PIN Pad Modal */}
+        <PinPadModal
+          visible={showPinModal}
+          onSubmit={handlePinSubmit}
+          onClose={() => {
+            setShowPinModal(false);
+            setPinError(undefined);
+          }}
+          isLoading={isTopupPending}
+          error={pinError}
+          returnRoute="/airtime"
+        />
 
-      {/* PIN Pad Modal */}
-      <PinPadModal
-        visible={showPinModal}
-        onSubmit={handlePinSubmit}
-        onClose={() => setShowPinModal(false)}
-        isLoading={isTopupPending}
+      <LoadingOverlay
+        visible={isPaymentProcessing}
+        message="Processing your airtime purchase..."
       />
-    </SafeAreaView>
+    </View>
+    </View>
   );
 }
 
@@ -638,8 +615,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  proceedText: {
+  proceedButtonText: {
     fontSize: designTokens.fontSize.lg,
+    fontWeight: "600",
+    color: "#FFFFFF",
+  },
+  addMoneyButton: {
+    paddingHorizontal: designTokens.spacing.sm,
+    paddingVertical: designTokens.spacing.xs,
+    borderRadius: designTokens.radius.md,
+  },
+  addMoneyText: {
+    fontSize: designTokens.fontSize.sm,
     fontWeight: "600",
   },
 });

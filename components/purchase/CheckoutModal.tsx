@@ -3,27 +3,28 @@
  * Per mobile-airtime-data-guide.md Section 4 - Payment Waterfall
  */
 
+import { ShareTransactionSheet } from "@/components/ShareTransactionSheet";
 import { darkColors, designTokens, lightColors } from "@/constants/palette";
 import { NETWORK_PROVIDERS, NetworkProvider } from "@/lib/detectNetwork";
+import { Transaction } from "@/types/wallet.types";
 import BottomSheet, { BottomSheetView } from "@gorhom/bottom-sheet";
 import * as Haptics from "expo-haptics";
 import {
-    CheckCircle,
-    RefreshCw,
-    Share2,
-    XCircle
+  CheckCircle,
+  RefreshCw,
+  Share2,
+  XCircle
 } from "lucide-react-native";
 import React, { forwardRef, useCallback, useMemo } from "react";
 import {
-    ActivityIndicator,
-    Image,
-    Share,
-    StyleSheet,
-    Switch,
-    Text,
-    TouchableOpacity,
-    View,
-    useColorScheme,
+  ActivityIndicator,
+  Image,
+  StyleSheet,
+  Switch,
+  Text,
+  TouchableOpacity,
+  View,
+  useColorScheme
 } from "react-native";
 
 export type CheckoutMode = "checkout" | "success" | "failed";
@@ -81,6 +82,8 @@ export const CheckoutModal = forwardRef<BottomSheet, CheckoutModalProps>(
       return ["50%"];
     }, [mode]);
 
+    const [showShareSheet, setShowShareSheet] = React.useState(false);
+
     // Calculate payable amount
     const cashbackToUse = useCashback
       ? Math.min(cashbackBalance, data?.amount || 0)
@@ -88,17 +91,42 @@ export const CheckoutModal = forwardRef<BottomSheet, CheckoutModalProps>(
     const totalToPay = (data?.amount || 0) - cashbackToUse;
     const insufficientBalance = totalToPay > walletBalance;
 
+    // Helper to create a Transaction object from checkout data for the receipt
+    const createTransactionFromCheckoutData = useCallback((): Transaction | null => {
+      if (!data) return null;
+
+      // Determine product type based on product name
+      const isData = data.productName.toLowerCase().includes("data") || 
+                     data.productName.toLowerCase().includes("gb") || 
+                     data.productName.toLowerCase().includes("mb");
+
+      return {
+        id: data.transactionId || `REF-${Date.now()}`,
+        walletId: "current-wallet", // Placeholder
+        userId: "current-user", // Placeholder
+        direction: "debit",
+        amount: data.amount, // This is the amount paid
+        balanceAfter: walletBalance - totalToPay, // Approximate
+        method: "wallet",
+        relatedType: "topup_request",
+        cashbackUsed: cashbackToUse,
+        productCode: data.productName,
+        denomAmount: data.faceValue || data.amount,
+        createdAt: new Date(),
+        related: {
+          status: "completed",
+          recipient_phone: data.recipientPhone,
+          operatorCode: data.network,
+          type: isData ? "data" : "airtime",
+        }
+      } as Transaction;
+    }, [data, cashbackToUse, walletBalance, totalToPay]);
+
     // Share receipt
-    const handleShare = useCallback(async () => {
+    const handleShare = useCallback(() => {
       if (!data) return;
       Haptics.selectionAsync();
-
-      const message = `🎉 Nexus Transaction Receipt\n\n📱 ${data.productName}\n📞 ${data.recipientPhone}\n💰 ₦${data.amount.toLocaleString()}\n🔖 Ref: ${data.transactionId || "N/A"}\n\n✅ Transaction Successful!`;
-
-      await Share.share({
-        message,
-        title: "Transaction Receipt",
-      });
+      setShowShareSheet(true);
     }, [data]);
 
     if (!data) return null;
@@ -336,7 +364,7 @@ export const CheckoutModal = forwardRef<BottomSheet, CheckoutModalProps>(
                  )}
 
                  {/* Price Breakdown */}
-                 {(data.supplierCost !== undefined || data.markup !== undefined) && (
+                 {/* {(data.supplierCost !== undefined || data.markup !== undefined) && (
                     <View style={{ marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: colors.border }}>
                        {data.faceValue !== undefined && data.faceValue > 0 && (
                          <View style={styles.detailRow}>
@@ -369,7 +397,7 @@ export const CheckoutModal = forwardRef<BottomSheet, CheckoutModalProps>(
                          </View>
                        )}
                     </View>
-                 )}
+                 )} */}
               </View>
 
               {/* Payment Method Section */}
@@ -451,6 +479,15 @@ export const CheckoutModal = forwardRef<BottomSheet, CheckoutModalProps>(
       >
         <BottomSheetView style={styles.container}>
           {renderContent()}
+
+          {/* Share Receipt Sheet */}
+          {createTransactionFromCheckoutData() && (
+            <ShareTransactionSheet
+              visible={showShareSheet}
+              onClose={() => setShowShareSheet(false)}
+              transaction={createTransactionFromCheckoutData() as Transaction}
+            />
+          )}
         </BottomSheetView>
       </BottomSheet>
     );

@@ -5,12 +5,12 @@ import {
 } from "@/types/referral.types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AxiosError } from "axios";
-import { toast } from "sonner";
+import { toast } from "sonner-native";
 
 // ============= FEATURE FLAG =============
 // Referrals feature is temporarily disabled (Coming Soon)
 // Set to true to enable all referral API calls
-const REFERRALS_ENABLED = false;
+const REFERRALS_ENABLED = true;
 
 // ============= Query Keys =============
 export const referralKeys = {

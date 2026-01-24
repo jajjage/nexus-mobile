@@ -6,44 +6,44 @@
 
 import { ShareTransactionSheet } from "@/components/ShareTransactionSheet";
 import { TransactionTimelineFromTx } from "@/components/transactions/TransactionTimeline";
-import { lightColors } from "@/constants/palette";
+import { useTheme } from "@/context/ThemeContext";
 import { useTransaction } from "@/hooks/useWallet";
 import {
-  formatCurrency,
-  formatTransactionDate,
-  getCashbackUsed,
-  getDisplayStatus,
-  getFormattedAmount,
-  getServiceTypeLabel,
-  getStatusConfig,
-  getTransactionDescription,
-  getTransactionTypeLabel,
-  isRefundTransaction,
+    formatCurrency,
+    formatTransactionDate,
+    getCashbackUsed,
+    getDisplayStatus,
+    getFormattedAmount,
+    getServiceTypeLabel,
+    getStatusConfig,
+    getTransactionDescription,
+    getTransactionTypeLabel,
+    isRefundTransaction,
 } from "@/lib/transactionUtils";
 import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import {
-  ArrowDownLeft,
-  ArrowLeft,
-  ArrowUpRight,
-  CheckCircle2,
-  Clock,
-  Copy,
-  Loader2,
-  Phone,
-  Share2,
-  Wifi,
-  XCircle,
+    ArrowDownLeft,
+    ArrowLeft,
+    ArrowUpRight,
+    CheckCircle2,
+    Clock,
+    Copy,
+    Loader2,
+    Phone,
+    Share2,
+    Wifi,
+    XCircle,
 } from "lucide-react-native";
 import React, { useState } from "react";
 import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
+    ActivityIndicator,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { toast } from "sonner-native";
@@ -52,6 +52,7 @@ export default function TransactionDetailScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { id, from } = useLocalSearchParams<{ id: string; from?: string }>();
+  const { colors, isDark } = useTheme();
   
   const { data: txResponse, isLoading, error } = useTransaction(id || "");
   const transaction = txResponse?.data;
@@ -83,9 +84,10 @@ export default function TransactionDetailScreen() {
   // Loading state
   if (isLoading) {
     return (
-      <View style={[styles.container, styles.centerContent, { paddingTop: insets.top }]}>
-        <ActivityIndicator size="large" color={lightColors.primary} />
-        <Text style={styles.loadingText}>Loading transaction...</Text>
+      <View style={[styles.container, styles.centerContent, { paddingTop: insets.top, backgroundColor: colors.background }]}>
+        <Stack.Screen options={{ headerShown: false }} />
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading transaction...</Text>
       </View>
     );
   }
@@ -93,18 +95,19 @@ export default function TransactionDetailScreen() {
   // Error state
   if (error || !transaction) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
-        <View style={styles.header}>
+      <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
+        <Stack.Screen options={{ headerShown: false }} />
+        <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
           <Pressable onPress={handleBack} style={styles.backButton}>
-            <ArrowLeft size={24} color={lightColors.textPrimary} />
+            <ArrowLeft size={24} color={colors.foreground} />
           </Pressable>
-          <Text style={styles.headerTitle}>Transaction Details</Text>
+          <Text style={[styles.headerTitle, { color: colors.foreground }]}>Transaction Details</Text>
           <View style={styles.headerPlaceholder} />
         </View>
         <View style={styles.centerContent}>
-          <XCircle size={48} color={lightColors.destructive} />
-          <Text style={styles.errorText}>Transaction not found</Text>
-          <Pressable onPress={handleBack} style={styles.retryButton}>
+          <XCircle size={48} color={colors.destructive} />
+          <Text style={[styles.errorText, { color: colors.foreground }]}>Transaction not found</Text>
+          <Pressable onPress={handleBack} style={[styles.retryButton, { backgroundColor: colors.primary }]}>
             <Text style={styles.retryButtonText}>Go Back</Text>
           </Pressable>
         </View>
@@ -132,13 +135,13 @@ export default function TransactionDetailScreen() {
       
       if (isData) {
         return (
-          <View style={[styles.iconCircle, { backgroundColor: "#F3E8FF" }]}>
+          <View style={[styles.iconCircle, { backgroundColor: isDark ? "rgba(147, 51, 234, 0.2)" : "#F3E8FF" }]}>
             <Wifi size={iconSize} color="#9333EA" />
           </View>
         );
       }
       return (
-        <View style={[styles.iconCircle, { backgroundColor: "#DBEAFE" }]}>
+        <View style={[styles.iconCircle, { backgroundColor: isDark ? "rgba(37, 99, 235, 0.2)" : "#DBEAFE" }]}>
           <Phone size={iconSize} color="#2563EB" />
         </View>
       );
@@ -146,14 +149,14 @@ export default function TransactionDetailScreen() {
 
     if (isCredit) {
       return (
-        <View style={[styles.iconCircle, { backgroundColor: "#DCFCE7" }]}>
+        <View style={[styles.iconCircle, { backgroundColor: isDark ? "rgba(22, 163, 74, 0.2)" : "#DCFCE7" }]}>
           <ArrowDownLeft size={iconSize} color="#16A34A" />
         </View>
       );
     }
 
     return (
-      <View style={[styles.iconCircle, { backgroundColor: "#FEE2E2" }]}>
+      <View style={[styles.iconCircle, { backgroundColor: isDark ? "rgba(220, 38, 38, 0.2)" : "#FEE2E2" }]}>
         <ArrowUpRight size={iconSize} color="#DC2626" />
       </View>
     );
@@ -177,13 +180,14 @@ export default function TransactionDetailScreen() {
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
+      <Stack.Screen options={{ headerShown: false }} />
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
         <Pressable onPress={handleBack} style={styles.backButton}>
-          <ArrowLeft size={24} color={lightColors.textPrimary} />
+          <ArrowLeft size={24} color={colors.foreground} />
         </Pressable>
-        <Text style={styles.headerTitle}>Transaction Details</Text>
+        <Text style={[styles.headerTitle, { color: colors.foreground }]}>Transaction Details</Text>
         <View style={styles.headerPlaceholder} />
       </View>
 
@@ -193,19 +197,19 @@ export default function TransactionDetailScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Main Card */}
-        <View style={styles.card}>
+        <View style={[styles.card, { backgroundColor: colors.card, shadowColor: isDark ? "#000" : "#000" }]}>
           {/* Icon & Title Section */}
-          <View style={styles.topSection}>
+          <View style={[styles.topSection, { borderBottomColor: colors.border }]}>
             {renderTransactionIcon()}
             
-            <Text style={styles.typeLabel}>{typeLabel}</Text>
-            <Text style={styles.description}>{description}</Text>
+            <Text style={[styles.typeLabel, { color: colors.foreground }]}>{typeLabel}</Text>
+            <Text style={[styles.description, { color: colors.textSecondary }]}>{description}</Text>
             
             {/* Amount */}
-            <Text style={styles.amount}>{formattedAmount}</Text>
+            <Text style={[styles.amount, { color: colors.foreground }]}>{formattedAmount}</Text>
 
             {/* Status Badge */}
-            <View style={[styles.statusBadge, { backgroundColor: statusConfig.bgColor }]}>
+            <View style={[styles.statusBadge, { backgroundColor: isDark ? `${statusConfig.color}20` : statusConfig.bgColor }]}>
               {renderStatusIcon()}
               <Text style={[styles.statusText, { color: statusConfig.color }]}>
                 {statusConfig.label}
@@ -213,43 +217,43 @@ export default function TransactionDetailScreen() {
             </View>
 
             {/* Date */}
-            <Text style={styles.date}>
+            <Text style={[styles.date, { color: colors.textTertiary }]}>
               {formatTransactionDate(transaction.createdAt)}
             </Text>
           </View>
 
           {/* Timeline Section */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>TRANSACTION STATUS</Text>
+          <View style={[styles.section, { borderBottomColor: colors.border }]}>
+            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>TRANSACTION STATUS</Text>
             <TransactionTimelineFromTx transaction={transaction} />
           </View>
 
           {/* Details Section */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>TRANSACTION DETAILS</Text>
+            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>TRANSACTION DETAILS</Text>
             
             {/* Recipient Phone */}
             {transaction.related?.recipient_phone && (
-              <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Recipient Phone</Text>
-                <Text style={styles.detailValue}>
+              <View style={[styles.detailRow, { borderBottomColor: colors.border }]}>
+                <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Recipient Phone</Text>
+                <Text style={[styles.detailValue, { color: colors.foreground }]}>
                   {transaction.related.recipient_phone}
                 </Text>
               </View>
             )}
 
             {/* Amount Paid */}
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Amount Paid</Text>
-              <Text style={styles.detailValue}>
+            <View style={[styles.detailRow, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Amount Paid</Text>
+              <Text style={[styles.detailValue, { color: colors.foreground }]}>
                 {formatCurrency(transaction.amount)}
               </Text>
             </View>
 
             {/* Cashback Used */}
             {transaction.relatedType === "topup_request" && (
-              <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Cashback Used</Text>
+              <View style={[styles.detailRow, { borderBottomColor: colors.border }]}>
+                <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Cashback Used</Text>
                 <Text style={[styles.detailValue, { color: "#DC2626" }]}>
                   -{getCashbackUsed(transaction)}
                 </Text>
@@ -258,9 +262,9 @@ export default function TransactionDetailScreen() {
 
             {/* Service Type */}
             {transaction.relatedType === "topup_request" && (
-              <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Service Type</Text>
-                <Text style={styles.detailValue}>
+              <View style={[styles.detailRow, { borderBottomColor: colors.border }]}>
+                <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Service Type</Text>
+                <Text style={[styles.detailValue, { color: colors.foreground }]}>
                   {getServiceTypeLabel(transaction)}
                 </Text>
               </View>
@@ -269,15 +273,15 @@ export default function TransactionDetailScreen() {
             {/* Transaction ID - Copyable */}
             <View style={styles.transactionIdRow}>
               <View style={styles.transactionIdHeader}>
-                <Text style={styles.detailLabel}>Transaction ID</Text>
+                <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Transaction ID</Text>
                 <Pressable
                   onPress={() => copyToClipboard(transaction.id, "Transaction ID")}
                   style={styles.copyButton}
                 >
-                  <Copy size={14} color={lightColors.textSecondary} />
+                  <Copy size={14} color={colors.textSecondary} />
                 </Pressable>
               </View>
-              <Text style={styles.transactionIdValue} numberOfLines={2}>
+              <Text style={[styles.transactionIdValue, { color: colors.textTertiary }]} numberOfLines={2}>
                 {transaction.id}
               </Text>
             </View>
@@ -287,7 +291,7 @@ export default function TransactionDetailScreen() {
         {/* Share Button */}
         <Pressable
           onPress={handleShare}
-          style={styles.shareButton}
+          style={[styles.shareButton, { backgroundColor: colors.primary }]}
         >
           <Share2 size={20} color="#FFFFFF" />
           <Text style={styles.shareButtonText}>Share Receipt</Text>
@@ -311,7 +315,6 @@ export default function TransactionDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F5F5F5",
   },
   centerContent: {
     flex: 1,
@@ -322,18 +325,15 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 16,
     fontSize: 14,
-    color: lightColors.textSecondary,
   },
   errorText: {
     marginTop: 16,
     fontSize: 16,
-    color: lightColors.textPrimary,
     marginBottom: 24,
   },
   retryButton: {
     paddingHorizontal: 24,
     paddingVertical: 12,
-    backgroundColor: lightColors.primary,
     borderRadius: 8,
   },
   retryButtonText: {
@@ -346,9 +346,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: "#FFFFFF",
     borderBottomWidth: 1,
-    borderBottomColor: "#E5E7EB",
   },
   backButton: {
     padding: 8,
@@ -356,7 +354,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 16,
     fontWeight: "600",
-    color: lightColors.textPrimary,
   },
   headerPlaceholder: {
     width: 40,
@@ -369,10 +366,8 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
   },
   card: {
-    backgroundColor: "#FFFFFF",
     borderRadius: 16,
     overflow: "hidden",
-    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 8,
@@ -383,7 +378,6 @@ const styles = StyleSheet.create({
     padding: 24,
     paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#E5E7EB",
     borderStyle: "dashed",
   },
   iconCircle: {
@@ -397,19 +391,16 @@ const styles = StyleSheet.create({
   typeLabel: {
     fontSize: 18,
     fontWeight: "600",
-    color: lightColors.textPrimary,
     marginBottom: 4,
   },
   description: {
     fontSize: 14,
-    color: lightColors.textSecondary,
     textAlign: "center",
     marginBottom: 16,
   },
   amount: {
     fontSize: 28,
     fontWeight: "700",
-    color: lightColors.textPrimary,
     marginBottom: 12,
   },
   statusBadge: {
@@ -427,17 +418,14 @@ const styles = StyleSheet.create({
   },
   date: {
     fontSize: 12,
-    color: lightColors.textTertiary,
   },
   section: {
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: "#F3F4F6",
   },
   sectionTitle: {
     fontSize: 11,
     fontWeight: "600",
-    color: lightColors.textTertiary,
     letterSpacing: 0.5,
     marginBottom: 16,
   },
@@ -446,16 +434,13 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: "#F3F4F6",
   },
   detailLabel: {
     fontSize: 14,
-    color: lightColors.textSecondary,
   },
   detailValue: {
     fontSize: 14,
     fontWeight: "500",
-    color: lightColors.textPrimary,
     textAlign: "right",
     maxWidth: "60%",
   },
@@ -473,7 +458,6 @@ const styles = StyleSheet.create({
   },
   transactionIdValue: {
     fontSize: 12,
-    color: lightColors.textTertiary,
     fontFamily: "monospace",
   },
   shareButton: {
@@ -483,7 +467,6 @@ const styles = StyleSheet.create({
     gap: 8,
     marginTop: 24,
     paddingVertical: 16,
-    backgroundColor: lightColors.primary,
     borderRadius: 12,
   },
   shareButtonText: {

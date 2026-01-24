@@ -1,25 +1,71 @@
-"use client";
+/**
+ * Network Status Hook
+ * Monitors network connectivity using @react-native-community/netinfo
+ */
 
-import { useState, useEffect } from "react";
+import NetInfo, { NetInfoState } from "@react-native-community/netinfo";
+import { useEffect, useState } from "react";
 
-export function useNetworkStatus() {
-  const [isOnline, setIsOnline] = useState(true);
+interface NetworkStatus {
+  isConnected: boolean;
+  connectionType: 'wifi' | 'cellular' | 'none' | 'unknown';
+  isInternetReachable: boolean | null;
+}
+
+export function useNetworkStatus(): NetworkStatus {
+  const [status, setStatus] = useState<NetworkStatus>({
+    isConnected: true,
+    connectionType: 'unknown',
+    isInternetReachable: null,
+  });
 
   useEffect(() => {
-    // Set initial status on mount
-    setIsOnline(navigator.onLine);
+    // Subscribe to network state updates
+    const unsubscribe = NetInfo.addEventListener((state: NetInfoState) => {
+      const isConnected = state.isConnected ?? false;
+      const isInternetReachable = state.isInternetReachable;
+      
+      let connectionType: 'wifi' | 'cellular' | 'none' | 'unknown' = 'unknown';
+      
+      if (!isConnected) {
+        connectionType = 'none';
+      } else if (state.type === 'wifi') {
+        connectionType = 'wifi';
+      } else if (state.type === 'cellular') {
+        connectionType = 'cellular';
+      }
 
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
+      setStatus({
+        isConnected,
+        connectionType,
+        isInternetReachable,
+      });
+    });
 
-    window.addEventListener("online", handleOnline);
-    window.addEventListener("offline", handleOffline);
+    // Fetch initial state
+    NetInfo.fetch().then((state) => {
+      const isConnected = state.isConnected ?? false;
+      const isInternetReachable = state.isInternetReachable;
+      
+      let connectionType: 'wifi' | 'cellular' | 'none' | 'unknown' = 'unknown';
+      
+      if (!isConnected) {
+        connectionType = 'none';
+      } else if (state.type === 'wifi') {
+        connectionType = 'wifi';
+      } else if (state.type === 'cellular') {
+        connectionType = 'cellular';
+      }
 
-    return () => {
-      window.removeEventListener("online", handleOnline);
-      window.removeEventListener("offline", handleOffline);
-    };
+      setStatus({
+        isConnected,
+        connectionType,
+        isInternetReachable,
+      });
+    });
+
+    return () => unsubscribe();
   }, []);
 
-  return isOnline;
+  return status;
 }

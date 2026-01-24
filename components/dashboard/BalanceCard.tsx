@@ -1,13 +1,13 @@
 // components/dashboard/BalanceCard.tsx
 // Following detailed Balance Card specs from user
-import { lightColors } from "@/constants/palette";
+import { useTheme } from "@/context/ThemeContext";
 import { Eye, EyeOff, Plus } from "lucide-react-native";
 import React from "react";
 import {
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
+    Pressable,
+    StyleSheet,
+    Text,
+    View,
 } from "react-native";
 
 interface BalanceCardProps {
@@ -23,6 +23,7 @@ export function BalanceCard({
   isBalanceVisible,
   onToggleBalance 
 }: BalanceCardProps) {
+  const { colors } = useTheme();
   
   const formatCurrency = (amount: number) => {
     return amount.toLocaleString("en-NG", {
@@ -32,7 +33,7 @@ export function BalanceCard({
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.primary }]}>
       {/* Header Row */}
       <View style={styles.headerRow}>
         {/* Left: Balance Label + Eye Toggle */}
@@ -67,22 +68,19 @@ export function BalanceCard({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: lightColors.primary, // #E69E19
-    paddingHorizontal: 16, // 24 on tablet+
-    paddingVertical: 16,   // 24 on tablet+
+    paddingHorizontal: 16,
+    paddingVertical: 16,
     marginHorizontal: 16,
-    // Rounded top corners only - connects to transaction card below
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     borderBottomLeftRadius: 0,
     borderBottomRightRadius: 0,
-    // Shadow per specs
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.1,
     shadowRadius: 15,
     elevation: 10,
-    zIndex: 10, // stacks above transaction history
+    zIndex: 10,
   },
   headerRow: {
     flexDirection: "row",
@@ -93,26 +91,25 @@ const styles = StyleSheet.create({
   balanceLabel: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8, // gap-2
+    gap: 8,
   },
   labelText: {
-    color: "rgba(255,251,245,0.9)", // primary-foreground with 0.9 opacity
-    fontSize: 12, // text-xs, 14 on tablet+
+    color: "rgba(255,251,245,0.9)",
+    fontSize: 12,
     fontWeight: "500",
   },
   addMoneyButton: {
     flexDirection: "row",
     alignItems: "center",
-    // Glassmorphism style per specs
-    backgroundColor: "rgba(255, 255, 255, 0.2)", // bg-white/20
-    height: 36, // h-9, 40 on tablet+
-    paddingHorizontal: 12, // px-3, 16 on tablet+
-    borderRadius: 9999, // fully rounded / pill shape
-    gap: 6, // gap-1.5, 8 on tablet+
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    height: 36,
+    paddingHorizontal: 12,
+    borderRadius: 9999,
+    gap: 6,
   },
   addMoneyText: {
-    color: "#FFFBF5", // primary-foreground
-    fontSize: 12, // text-xs, 14 on tablet+
+    color: "#FFFBF5",
+    fontSize: 12,
     fontWeight: "600",
   },
   balanceContainer: {
@@ -124,7 +121,8 @@ const styles = StyleSheet.create({
   },
   balanceAmount: {
     color: "#FFFFFF",
-    fontSize: 24, // text-2xl, 30 on tablet+
+    fontSize: 24,
     fontWeight: "700",
   },
 });
+

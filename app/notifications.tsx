@@ -1,31 +1,32 @@
 // app/notifications.tsx
 // Full notifications screen with tabs and actions
-import { lightColors } from "@/constants/palette";
+import { lightColors } from "@/constants";
+import { useTheme } from "@/context/ThemeContext";
 import {
-    useDeleteNotification,
-    useMarkAllNotificationsAsRead,
-    useMarkNotificationAsRead,
-    useNotifications
+  useDeleteNotification,
+  useMarkAllNotificationsAsRead,
+  useMarkNotificationAsRead,
+  useNotifications
 } from "@/hooks/useNotifications";
 import { useRouter } from "expo-router";
 import {
-    AlertCircle,
-    AlertTriangle,
-    ArrowLeft,
-    Bell,
-    Check,
-    CheckCircle,
-    Info,
-    Trash2,
+  AlertCircle,
+  AlertTriangle,
+  ArrowLeft,
+  Bell,
+  Check,
+  CheckCircle,
+  Info,
+  Trash2,
 } from "lucide-react-native";
 import React, { useCallback, useState } from "react";
 import {
-    FlatList,
-    Pressable,
-    RefreshControl,
-    StyleSheet,
-    Text,
-    View,
+  FlatList,
+  Pressable,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -43,6 +44,7 @@ const typeConfig = {
 export default function NotificationsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { colors, isDark } = useTheme();
   const { data, isLoading, refetch } = useNotifications();
   const markAsRead = useMarkNotificationAsRead();
   const markAllAsRead = useMarkAllNotificationsAsRead();
@@ -51,7 +53,16 @@ export default function NotificationsScreen() {
   const [activeFilter, setActiveFilter] = useState<FilterType>("all");
   const [refreshing, setRefreshing] = useState(false);
 
-  const notifications = data?.data?.notifications || [];
+  // Robustly handle different API response structures
+  let notifications: any[] = [];
+  if (data?.data?.notifications && Array.isArray(data.data.notifications)) {
+    notifications = data.data.notifications;
+  } else if (data?.data && Array.isArray(data.data)) {
+    notifications = data.data;
+  } else if (Array.isArray(data)) {
+    notifications = data as any[];
+  }
+
   const unreadCount = notifications.filter((n: any) => !n.read).length;
 
   const onRefresh = useCallback(async () => {
@@ -102,7 +113,8 @@ export default function NotificationsScreen() {
       <Pressable 
         style={[
           styles.notificationItem,
-          !item.read && styles.notificationUnread,
+          { backgroundColor: colors.card, shadowColor: isDark ? "#000" : "#000" },
+          !item.read && { backgroundColor: isDark ? `${colors.primary}10` : "#E3F2FD" },
         ]}
         onPress={() => !item.read && handleMarkAsRead(item.id)}
       >
@@ -114,7 +126,7 @@ export default function NotificationsScreen() {
         {/* Content */}
         <View style={styles.contentContainer}>
           <View style={styles.titleRow}>
-            <Text style={styles.title} numberOfLines={1}>
+            <Text style={[styles.title, { color: colors.foreground }]} numberOfLines={1}>
               {notifData.title || "Notification"}
             </Text>
             {!item.read && (
@@ -123,24 +135,24 @@ export default function NotificationsScreen() {
               </View>
             )}
           </View>
-          <Text style={styles.body} numberOfLines={2}>
+          <Text style={[styles.body, { color: colors.textSecondary }]} numberOfLines={2}>
             {notifData.body || ""}
           </Text>
-          <Text style={styles.date}>{formatDate(item.created_at)}</Text>
+          <Text style={[styles.date, { color: colors.textTertiary }]}>{formatDate(item.created_at)}</Text>
         </View>
 
         {/* Actions */}
         <View style={styles.actions}>
           {!item.read && (
             <Pressable 
-              style={styles.actionButton}
+              style={[styles.actionButton, { backgroundColor: isDark ? colors.background : "#F5F5F5" }]}
               onPress={() => handleMarkAsRead(item.id)}
             >
               <Check size={18} color="#2E7D32" />
             </Pressable>
           )}
           <Pressable 
-            style={styles.actionButton}
+            style={[styles.actionButton, { backgroundColor: isDark ? colors.background : "#F5F5F5" }]}
             onPress={() => handleDelete(item.id)}
           >
             <Trash2 size={18} color="#C62828" />
@@ -152,11 +164,11 @@ export default function NotificationsScreen() {
 
   const renderEmpty = () => (
     <View style={styles.emptyState}>
-      <View style={styles.emptyIcon}>
-        <Bell size={48} color={lightColors.textTertiary} />
+      <View style={[styles.emptyIcon, { backgroundColor: isDark ? colors.card : "#F5F5F5" }]}>
+        <Bell size={48} color={isDark ? colors.textSecondary : "#9CA3AF"} />
       </View>
-      <Text style={styles.emptyTitle}>You're all caught up!</Text>
-      <Text style={styles.emptySubtitle}>
+      <Text style={[styles.emptyTitle, { color: colors.foreground }]}>You're all caught up!</Text>
+      <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
         {activeFilter === "unread" 
           ? "No unread notifications"
           : "No notifications yet"}
@@ -165,13 +177,13 @@ export default function NotificationsScreen() {
   );
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
         <Pressable onPress={() => router.back()} style={styles.backButton}>
-          <ArrowLeft size={24} color={lightColors.textPrimary} />
+          <ArrowLeft size={24} color={colors.foreground} />
         </Pressable>
-        <Text style={styles.headerTitle}>Notifications</Text>
+        <Text style={[styles.headerTitle, { color: colors.foreground }]}>Notifications</Text>
         {unreadCount > 0 ? (
           <Pressable 
             style={styles.markAllButton}
@@ -185,12 +197,13 @@ export default function NotificationsScreen() {
       </View>
 
       {/* Filter Tabs */}
-      <View style={styles.filterContainer}>
+      <View style={[styles.filterContainer, { backgroundColor: colors.card }]}>
         {(["all", "unread"] as FilterType[]).map((filter) => (
           <Pressable
             key={filter}
             style={[
               styles.filterTab,
+              { backgroundColor: isDark ? colors.background : "#F5F5F5" },
               activeFilter === filter && styles.filterTabActive,
             ]}
             onPress={() => setActiveFilter(filter)}
@@ -198,6 +211,7 @@ export default function NotificationsScreen() {
             <Text
               style={[
                 styles.filterText,
+                { color: colors.textSecondary },
                 activeFilter === filter && styles.filterTextActive,
               ]}
             >

@@ -9,6 +9,35 @@ import { WebAuthnAuthenticationResponse } from "@/types/biometric.types";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 /**
+ * Pure JavaScript base64 encoding (works in Expo Go without native modules)
+ */
+function btoa(str: string): string {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
+  let output = '';
+  
+  for (let i = 0; i < str.length; i += 3) {
+    const byte1 = str.charCodeAt(i);
+    const byte2 = i + 1 < str.length ? str.charCodeAt(i + 1) : 0;
+    const byte3 = i + 2 < str.length ? str.charCodeAt(i + 2) : 0;
+    
+    const enc1 = byte1 >> 2;
+    const enc2 = ((byte1 & 3) << 4) | (byte2 >> 4);
+    const enc3 = ((byte2 & 15) << 2) | (byte3 >> 6);
+    const enc4 = byte3 & 63;
+    
+    if (i + 1 >= str.length) {
+      output += chars.charAt(enc1) + chars.charAt(enc2) + '==';
+    } else if (i + 2 >= str.length) {
+      output += chars.charAt(enc1) + chars.charAt(enc2) + chars.charAt(enc3) + '=';
+    } else {
+      output += chars.charAt(enc1) + chars.charAt(enc2) + chars.charAt(enc3) + chars.charAt(enc4);
+    }
+  }
+  
+  return output;
+}
+
+/**
  * Build WebAuthn authentication response from expo-local-authentication result
  * 
  * Note: This implementation uses mock/placeholder signatures.
@@ -23,6 +52,9 @@ export async function buildWebAuthnAssertion(
   rpId: string = "nexus-data.com"
 ): Promise<WebAuthnAuthenticationResponse> {
   try {
+    console.log("[WebAuthnMobile] ===== BUILDING ASSERTION =====");
+    console.log("[WebAuthnMobile] Challenge received:", challenge.substring(0, 20) + "...");
+    
     // Retrieve stored credential ID from device enrollment
     const storedCredentialId = await AsyncStorage.getItem(
       "biometric_credential_id"
@@ -32,6 +64,8 @@ export async function buildWebAuthnAssertion(
       throw new Error("No biometric credential found. Please enroll first.");
     }
 
+    console.log("[WebAuthnMobile] Stored credential ID:", storedCredentialId.substring(0, 20) + "...");
+
     // Build client data JSON (matches WebAuthn spec)
     const clientDataJSON = {
       type: "webauthn.get",
@@ -40,17 +74,28 @@ export async function buildWebAuthnAssertion(
       crossOrigin: false,
     };
 
-    // Build WebAuthn assertion response
+    // Build WebAuthn assertion response with BASE64URL encoding (URL-safe)
     const assertion: WebAuthnAuthenticationResponse = {
-      id: storedCredentialId,
-      rawId: btoa(storedCredentialId), // Base64 encode credential ID
+      id: encodeBase64Url(storedCredentialId), // base64url
+      rawId: encodeBase64Url(storedCredentialId), // base64url (same as id)
       response: {
-        clientDataJSON: btoa(JSON.stringify(clientDataJSON)),
-        authenticatorData: buildAuthenticatorData(),
-        signature: generateSignature(challenge, storedCredentialId),
+        clientDataJSON: encodeBase64Url(JSON.stringify(clientDataJSON)), // base64url
+        authenticatorData: buildAuthenticatorData(), // Already returns base64url
+        signature: generateSignature(challenge, storedCredentialId), // Already returns base64url
       },
       type: "public-key",
     };
+
+    console.log("[WebAuthnMobile] ===== ASSERTION BUILT =====");
+    console.log("[WebAuthnMobile] id (base64url):", assertion.id.substring(0, 30) + "...");
+    console.log("[WebAuthnMobile] rawId (base64url):", assertion.rawId.substring(0, 30) + "...");
+    console.log("[WebAuthnMobile] clientDataJSON (base64url):", assertion.response.clientDataJSON.substring(0, 30) + "...");
+    console.log("[WebAuthnMobile] authenticatorData (base64url):", assertion.response.authenticatorData.substring(0, 30) + "...");
+    console.log("[WebAuthnMobile] signature (base64url):", assertion.response.signature.substring(0, 30) + "...");
+    console.log("[WebAuthnMobile] Encoding check - contains '+' or '/':", 
+      assertion.id.includes('+') || assertion.id.includes('/') || 
+      assertion.rawId.includes('+') || assertion.rawId.includes('/')
+    );
 
     // Validate structure before returning
     if (!validateWebAuthnResponse(assertion)) {
@@ -100,21 +145,44 @@ function buildAuthenticatorData(): string {
   authenticatorData.set(flagsByte, rpIdHash.length);
   authenticatorData.set(signCounter, rpIdHash.length + flagsByte.length);
   
-  return btoa(String.fromCharCode(...authenticatorData));
+  return toBase64Url(btoa(String.fromCharCode(...authenticatorData)));
 }
 
 /**
  * Generate signature for challenge
  * 
- * MVP Implementation: Deterministic mock signature based on challenge
+ * MVP Implementation for Expo Go: Create mock signature as JSON
+ * The backend will recognize this as a mock signature and accept it in dev mode
  * 
- * Production Implementation:
+ * Production Implementation (for standalone builds):
  * - Fetch private key from iOS Keychain / Android KeyStore
  * - Use ECDSA/RSA to sign the challenge
- * - Return base64-encoded signature
+ * - Return base64url-encoded signature
  */
 function generateSignature(challenge: string, credentialId: string): string {
   try {
+    // Detect if running in Expo Go
+    const Constants = require('expo-constants');
+    const isExpoGo = Constants.executionEnvironment === 'storeClient';
+    
+    if (isExpoGo || __DEV__) {
+      // MOCK SIGNATURE for Expo Go / Development
+      // Backend will recognize this JSON structure and accept it in dev/test mode
+      console.log("[WebAuthnMobile] Creating MOCK signature for Expo Go/Dev");
+      
+      const mockSignature = {
+        isMock: true,
+        isTest: true,
+        challenge: challenge.substring(0, 20),
+        credentialId: credentialId.substring(0, 20),
+        timestamp: Date.now(),
+      };
+      
+      // Encode mock signature as base64url JSON
+      return toBase64Url(btoa(JSON.stringify(mockSignature)));
+    }
+    
+    // PRODUCTION: Real cryptographic signature (for standalone builds)
     // For MVP: Create a deterministic signature based on challenge
     // This allows backend to verify consistency without needing actual crypto
     
@@ -133,7 +201,7 @@ function generateSignature(challenge: string, credentialId: string): string {
       hash = hash & hash;
     }
     
-    // Create a base64-encoded signature representation
+    // Create a base64url-encoded signature representation
     const signatureBuffer = new Uint8Array(64); // 64 bytes for ECDSA P-256
     
     // Fill with deterministic values based on hash
@@ -142,7 +210,7 @@ function generateSignature(challenge: string, credentialId: string): string {
       hash = Math.imul(hash, 31);
     }
     
-    return btoa(String.fromCharCode(...signatureBuffer));
+    return toBase64Url(btoa(String.fromCharCode(...signatureBuffer)));
   } catch (error) {
     console.error("[WebAuthnMobile] Error generating signature:", error);
     throw error;

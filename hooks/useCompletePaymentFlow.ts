@@ -7,9 +7,8 @@
 import { useAuth } from "@/hooks/useAuth";
 import { useTopup } from "@/hooks/useTopup";
 import {
-    buildTopupRequest,
     determinePaymentMethod,
-    verifyBiometricAndGetToken,
+    verifyBiometricAndGetToken
 } from "@/lib/payment-flow";
 import { calculateFinalPrice, validatePurchase } from "@/lib/price-calculator";
 import { Product } from "@/types/product.types";
@@ -135,36 +134,49 @@ export function useCompletePaymentFlow(
         }
 
         // Step 4: Build and submit topup request
+        // Authentication: Use PIN or verificationToken (one of them)
         console.log("[CompletePayment] Step 5: Building topup request");
-        const baseRequest: Omit<TopupRequest, "pin" | "verificationToken"> = {
-          amount: priceDetails.payableAmount,
+        const topupRequest: TopupRequest = {
+          // KEY FIX: Backend expects the denomination amount (face value), not the discounted amount
+          amount: parseFloat(product.denomAmount), 
           productCode: product.productCode,
           recipientPhone: phoneNumber,
-          supplierSlug: product.supplierOffers?.[0]?.supplierSlug,
-          supplierMappingId: product.supplierOffers?.[0]?.mappingId,
+          supplierSlug: product.supplierOffers?.[0]?.supplierSlug || "",
+          supplierMappingId: product.supplierOffers?.[0]?.mappingId || "",
           useCashback: useCashback,
-          offerId: product.activeOffer?.id,
         };
 
-        const topupRequest = buildTopupRequest(baseRequest, {
-          pin: pinToUse,
-          verificationToken: verificationToken,
-        });
+        // Add authentication - PIN or biometric token (never both)
+        if (verificationToken) {
+          topupRequest.verificationToken = verificationToken;
+          console.log("[CompletePayment] Using biometric verificationToken");
+        } else if (pinToUse) {
+          topupRequest.pin = pinToUse;
+          console.log("[CompletePayment] Using PIN authentication");
+        }
+
+        // Add offer ID if applicable
+        if (product.activeOffer?.id) {
+          topupRequest.offerId = product.activeOffer.id;
+        }
 
         console.log("[CompletePayment] Step 6: Submitting topup request");
         setCurrentStep("transaction");
 
         // Submit mutation (handles optimistic updates)
-        await topupMutation.mutateAsync(topupRequest);
+        const response = await topupMutation.mutateAsync(topupRequest);
 
         console.log("[CompletePayment] Transaction successful");
         Haptics.notificationAsync(
           Haptics.NotificationFeedbackType.Success
         );
 
-        options.onSuccess?.(topupRequest.toString());
+        // Extract transaction ID from response
+        const txId = response?.data?.transactionId || product.productCode;
 
-        return { success: true, transactionId: topupRequest.toString() };
+        options.onSuccess?.(txId);
+
+        return { success: true, transactionId: txId };
       } catch (err) {
         const errorMessage =
           err instanceof Error ? err.message : "Payment processing failed";
