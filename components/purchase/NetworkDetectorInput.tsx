@@ -53,7 +53,8 @@ export function NetworkDetectorInput({
   const [showRecentNumbers, setShowRecentNumbers] = useState(false);
 
   // Use prop if provided, otherwise fallback to user profile
-  const recentNumbers = propRecentNumbers || user?.recentlyUsedNumbers || [];
+  // Limit to 5 most recent numbers
+  const recentNumbers = (propRecentNumbers || user?.recentlyUsedNumbers || []).slice(0, 5);
 
   // Handle text input with paste logic
   const handleChangeText = useCallback(
@@ -162,7 +163,7 @@ export function NetworkDetectorInput({
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
           editable={!disabled}
-          selectTextOnFocus={!disabled}
+          selectTextOnFocus={false}
         />
 
         {/* Right Side: Clear button */}

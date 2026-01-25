@@ -1,127 +1,112 @@
-import { darkColors, lightColors } from "@/constants/palette";
-import React, { useEffect, useRef } from "react";
-import {
-    Animated,
-    Image,
-    Modal,
-    StyleSheet,
-    View,
-    useColorScheme,
-} from "react-native";
+import React, { useEffect } from "react";
+import { Image, ImageRequireSource, Modal, StyleSheet, View } from "react-native";
+import Animated, {
+  Easing,
+  cancelAnimation,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+} from "react-native-reanimated";
 
-interface LoadingOverlayProps {
+interface LoadingLogoProps {
   visible: boolean;
-  message?: string;
+  /** diameter of the logo image itself */
+  diameter?: number;
+  /** logo image (require) - defaults to project logo */
+  logo?: ImageRequireSource;
+  /** optional message - IGNORED in this version */
+  message?: string | null;
+  /** dim background - IGNORED in this version */
+  dimBackground?: boolean;
 }
 
+/**
+ * Pulsing logo loader.
+ * - Shows the logo inside a white circular pulsing container.
+ * - The logo remains full size ("diameter") while the white background provides ample spacing.
+ */
 export function LoadingOverlay({
   visible,
-}: LoadingOverlayProps) {
-  const colorScheme = useColorScheme();
-  const colors = colorScheme === "dark" ? darkColors : lightColors;
-  
-  // Animation values
-  const scaleAnim = useRef(new Animated.Value(1)).current;
-  const opacityAnim = useRef(new Animated.Value(0.5)).current;
+  diameter = 80,
+  logo = require("@/assets/images/logo-3.png"),
+}: LoadingLogoProps) {
+  const scale = useSharedValue(1);
 
   useEffect(() => {
     if (visible) {
-      // Create pulsating animation
-      const pulseAnimation = Animated.loop(
-        Animated.parallel([
-          Animated.sequence([
-              Animated.timing(scaleAnim, {
-                toValue: 1.5,
-                duration: 1000,
-                useNativeDriver: true,
-              }),
-              Animated.timing(scaleAnim, {
-                toValue: 1,
-                duration: 1000,
-                useNativeDriver: true,
-              }),
-          ]),
-          Animated.sequence([
-              Animated.timing(opacityAnim, {
-                toValue: 0,
-                duration: 1000,
-                useNativeDriver: true,
-              }),
-              Animated.timing(opacityAnim, {
-                toValue: 0.5,
-                duration: 1000,
-                useNativeDriver: true,
-              }),
-          ])
-        ])
+      // Pulse animation: 1 -> 1.2 -> 1
+      scale.value = withRepeat(
+        withTiming(1.2, { duration: 800, easing: Easing.inOut(Easing.ease) }),
+        -1,
+        true
       );
-
-      pulseAnimation.start();
-
-      return () => {
-        pulseAnimation.stop();
-        scaleAnim.setValue(1);
-        opacityAnim.setValue(0.5);
-      };
+    } else {
+      cancelAnimation(scale);
+      scale.value = 1;
     }
-  }, [visible, scaleAnim, opacityAnim]);
+  }, [visible, scale]);
+
+  const animatedContainerStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ scale: scale.value }],
+    };
+  });
 
   if (!visible) return null;
 
+  // Background circle size includes extra padding so logo isn't cramped
+  const containerSize = diameter + 50; 
+
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      statusBarTranslucent
-    >
-      <View style={styles.container}>
-          {/* Pulse Effect */}
+    <Modal visible={visible} transparent animationType="fade" statusBarTranslucent>
+      <View style={styles.overlay}>
+        <View style={styles.center} pointerEvents="box-none">
+          {/* Animated Container (White Circle + Pulse) */}
           <Animated.View
             style={[
-              styles.circle,
+              styles.logoContainer,
+              animatedContainerStyle,
               {
-                backgroundColor: colors.primary,
-                opacity: opacityAnim,
-                transform: [{ scale: scaleAnim }],
+                width: containerSize,
+                height: containerSize,
+                borderRadius: containerSize / 2,
               },
             ]}
-          />
-          {/* Logo */}
-          <View style={styles.logoContainer}>
+          >
+            {/* Logo Image (Full Size) */}
             <Image
-              source={require("@/assets/images/logo-3.png")}
-              style={styles.logo}
+              source={logo}
               resizeMode="contain"
+              style={{ width: diameter, height: diameter }}
             />
-          </View>
+          </Animated.View>
+        </View>
       </View>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  overlay: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: 'rgba(0,0,0,0.2)', // Very subtle background
+    backgroundColor: "rgba(0,0,0,0.5)",
   },
-  circle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    position: 'absolute',
-  },
-  logoContainer: {
-    width: 40,
-    height: 40,
+  center: {
     justifyContent: "center",
     alignItems: "center",
-    zIndex: 1,
   },
-  logo: {
-    width: "100%",
-    height: "100%",
+  logoContainer: {
+    backgroundColor: "white",
+    justifyContent: "center",
+    alignItems: "center",
+    // Optional: Add shadow if desired for depth
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
 });

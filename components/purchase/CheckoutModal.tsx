@@ -434,6 +434,7 @@ export const CheckoutModal = forwardRef<BottomSheet, CheckoutModalProps>(
                       insufficientBalance || isLoading
                         ? colors.muted
                         : colors.primary,
+                    opacity: isLoading ? 0.8 : 1,
                   },
                 ]}
                 onPress={onConfirm}
@@ -441,7 +442,20 @@ export const CheckoutModal = forwardRef<BottomSheet, CheckoutModalProps>(
                 activeOpacity={0.8}
               >
                 {isLoading ? (
-                  <ActivityIndicator color={colors.primaryForeground} />
+                  <>
+                    <ActivityIndicator color={colors.primaryForeground} size="small" />
+                    <Text
+                      style={[
+                        styles.confirmText,
+                        {
+                          color: colors.primaryForeground,
+                          marginLeft: 8,
+                        },
+                      ]}
+                    >
+                      Processing...
+                    </Text>
+                  </>
                 ) : (
                   <Text
                     style={[
@@ -453,7 +467,7 @@ export const CheckoutModal = forwardRef<BottomSheet, CheckoutModalProps>(
                       },
                     ]}
                   >
-                    Pay
+                    Pay ₦{(totalToPay).toLocaleString()}
                   </Text>
                 )}
               </TouchableOpacity>

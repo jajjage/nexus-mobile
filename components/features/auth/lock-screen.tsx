@@ -5,7 +5,7 @@ import { useSecurityVerification } from '@/hooks/useSecurityVerification';
 import { Fingerprint, Lock, ScanFace } from 'lucide-react-native';
 
 import React, { useEffect, useState } from 'react';
-import { KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export const LockScreen = ({ onUnlock }: { onUnlock: () => void }) => {
@@ -13,6 +13,8 @@ export const LockScreen = ({ onUnlock }: { onUnlock: () => void }) => {
   const { colors } = useTheme();
   const verifyPasscode = useVerifyPasscode();
   const [passcodeInput, setPasscodeInput] = useState('');
+  const [isVerifyingPasscode, setIsVerifyingPasscode] = useState(false);
+  const [hasAttemptedBiometric, setHasAttemptedBiometric] = useState(false);
   
   const { startVerification, showPinPad, isVerifying, verificationError, setVerificationError, closePinPad } = useSecurityVerification({
     onBiometricSuccess: onUnlock,
@@ -27,9 +29,12 @@ export const LockScreen = ({ onUnlock }: { onUnlock: () => void }) => {
   });
 
   useEffect(() => {
-    // Attempt biometric unlock on mount
-    startVerification();
-  }, [startVerification]);
+    // Attempt biometric unlock on mount only once
+    if (!hasAttemptedBiometric) {
+      setHasAttemptedBiometric(true);
+      startVerification();
+    }
+  }, []);
 
   // Get biometric icon based on platform
   const BiometricIcon = Platform.OS === 'ios' ? () => <ScanFace size={40} color={colors.primary} /> : () => <Fingerprint size={40} color={colors.primary} />;
@@ -96,7 +101,7 @@ export const LockScreen = ({ onUnlock }: { onUnlock: () => void }) => {
               </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity onPress={() => setPasscodeInput('')}>
+            <TouchableOpacity onPress={() => setPasscodeInput('passcode-mode')}>
               <Text style={{ color: colors.primary, fontSize: 14, fontWeight: '600' }}>
                 Use Passcode Instead
               </Text>
@@ -130,39 +135,55 @@ export const LockScreen = ({ onUnlock }: { onUnlock: () => void }) => {
               secureTextEntry
               keyboardType="numeric"
               maxLength={6}
-              value={passcodeInput}
+              value={passcodeInput === 'passcode-mode' ? '' : passcodeInput}
               onChangeText={(text) => {
                 setPasscodeInput(text);
                 setVerificationError(null);
               }}
+              editable={!isVerifyingPasscode}
             />
             <TouchableOpacity 
-              onPress={() => {
-                if (passcodeInput.length === 6) {
-                  verifyPasscode.mutateAsync({ passcode: passcodeInput, intent: 'unlock' });
+              onPress={async () => {
+                const actualInput = passcodeInput === 'passcode-mode' ? '' : passcodeInput;
+                if (actualInput.length === 6) {
+                  setIsVerifyingPasscode(true);
+                  try {
+                    await verifyPasscode.mutateAsync({ passcode: actualInput, intent: 'unlock' });
+                    onUnlock();
+                  } catch (error) {
+                    setVerificationError('Invalid passcode');
+                    setIsVerifyingPasscode(false);
+                  }
                 } else {
                   setVerificationError('Please enter 6 digits');
                 }
               }}
-              disabled={passcodeInput.length !== 6 || isVerifying}
+              disabled={(passcodeInput === 'passcode-mode' ? '' : passcodeInput).length !== 6 || isVerifyingPasscode}
               style={{ 
-                backgroundColor: passcodeInput.length === 6 ? colors.primary : colors.muted, 
+                backgroundColor: (passcodeInput === 'passcode-mode' ? '' : passcodeInput).length === 6 ? colors.primary : colors.muted, 
                 paddingVertical: 14, 
                 paddingHorizontal: 32, 
                 borderRadius: 10,
                 width: '100%',
                 alignItems: 'center',
-                marginBottom: 12
+                justifyContent: 'center',
+                flexDirection: 'row',
+                gap: 8,
+                marginBottom: 12,
+                opacity: ((passcodeInput === 'passcode-mode' ? '' : passcodeInput).length === 6 && !isVerifyingPasscode) ? 1 : 0.6
               }}
             >
-              <Text style={{ color: passcodeInput.length === 6 ? '#fff' : colors.mutedForeground, fontWeight: '600', fontSize: 16 }}>
-                Unlock
+              {isVerifyingPasscode && <ActivityIndicator color="#fff" size="small" />}
+              <Text style={{ color: (passcodeInput === 'passcode-mode' ? '' : passcodeInput).length === 6 ? '#fff' : colors.mutedForeground, fontWeight: '600', fontSize: 16 }}>
+                {isVerifyingPasscode ? 'Unlocking...' : 'Unlock'}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity 
               onPress={() => {
                 setPasscodeInput('');
                 setVerificationError(null);
+                setIsVerifyingPasscode(false);
+                closePinPad();
               }}
             >
               <Text style={{ color: colors.primary, fontSize: 14, fontWeight: '600' }}>

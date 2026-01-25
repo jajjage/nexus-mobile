@@ -47,15 +47,18 @@ export function calculateFinalPrice(
       throw new Error("Invalid product denomination");
     }
 
-    // STEP 2: Get supplier cost
+    // STEP 2: Get supplier cost (with fallback to face value)
     const supplierOffer = product.supplierOffers?.[0];
-    if (!supplierOffer) {
-      throw new Error("No supplier offer available for this product");
+    let supplierCost = 0;
+    
+    if (supplierOffer && supplierOffer.supplierPrice) {
+      supplierCost = parseFloat(supplierOffer.supplierPrice);
     }
-
-    const supplierCost = parseFloat(supplierOffer.supplierPrice || "0");
+    
+    // CRITICAL: If supplier price is 0 or missing, fall back to face value
+    // This ensures we never sell a product for ₦0
     if (supplierCost <= 0) {
-      throw new Error("Invalid supplier price");
+      supplierCost = faceValue;
     }
 
     // STEP 3: Apply markup to supplier cost
