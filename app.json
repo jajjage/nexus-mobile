@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Nexus Data",
-    "slug": "nexus-data",
+    "slug": "nexus-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/ios-dark.png",
@@ -14,9 +14,7 @@
       "jsEngine": "hermes",
       "supportsTablet": true,
       "infoPlist": {
-        "UIBackgroundModes": [
-          "remote-notification"
-        ]
+        "UIBackgroundModes": ["remote-notification"]
       },
       "config": {
         "usesNonExemptEncryption": false
@@ -43,7 +41,7 @@
         "CAMERA",
         "NOTIFICATIONS"
       ],
-      "newArchEnabled": false
+      "newArchEnabled": true
     },
     "web": {
       "bundler": "metro",
@@ -62,8 +60,7 @@
           "android": {
             "enableProguardInReleaseBuilds": true,
             "enableShrinkResourcesInReleaseBuilds": true,
-            "extraProguardRules": "-keep class coil3.PlatformContext\n-keep class coil3.network.okhttp.OkHttpNetworkFetcher { *; }\n-keep class okhttp3.OkHttpClient { *; }\n-keep class okhttp3.Request { *; }\n-keep class okhttp3.Response { *; }\n-keep class com.google.firebase.** { *; }\n-keep class expo.modules.** { *; }\n-dontwarn coil3.**\n-dontwarn com.google.firebase.**",
-            "enableMinifyInReleaseBuilds": true
+            "extraProguardRules": "-keep class coil3.PlatformContext\n-keep class coil3.network.okhttp.OkHttpNetworkFetcher { *; }\n-keep class okhttp3.OkHttpClient { *; }\n-keep class okhttp3.Request { *; }\n-keep class okhttp3.Response { *; }\n-keep class com.google.firebase.** { *; }\n-keep class expo.modules.** { *; }\n-dontwarn coil3.**\n-dontwarn com.google.firebase.**"
           },
           "ios": {
             "deploymentTarget": "15.1"
@@ -99,9 +96,8 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "c20849e0-2e9b-44a5-b8ee-41b3a4c4d4cd"
+        "projectId": "b688004e-166b-4127-9840-fcfb071b19e1"
       }
-    },
-    "owner": "mullahkano"
+    }
   }
 }

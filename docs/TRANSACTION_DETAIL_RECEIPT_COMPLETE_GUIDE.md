@@ -955,7 +955,7 @@ export const ExportReceipt = React.forwardRef<
       {/* Footer */}
       <div style={{ marginTop: "32px", textAlign: "center", borderTop: "1px solid #E5E7EB" }}>
         <p style={{ fontSize: "12px", color: "#9CA3AF", fontWeight: "500" }}>
-          nexus-data.com
+          nexus-mobile.com
         </p>
       </div>
     </div>

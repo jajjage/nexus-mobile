@@ -9,11 +9,11 @@ import * as Clipboard from "expo-clipboard";
 import { Copy, CreditCard } from "lucide-react-native";
 import React from "react";
 import {
-  Image,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    Image,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 
 interface TransactionReceiptProps {
@@ -261,7 +261,7 @@ export const TransactionReceipt = React.forwardRef<View, TransactionReceiptProps
 
         {/* Footer */}
         <View style={styles.footer}>
-          <Text style={styles.footerText}>nexus-data.com</Text>
+          <Text style={styles.footerText}>nexus-mobile.com</Text>
         </View>
       </View>
     );

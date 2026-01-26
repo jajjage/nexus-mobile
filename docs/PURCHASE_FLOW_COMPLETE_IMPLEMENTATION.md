@@ -405,7 +405,7 @@ async function proceedWithBiometricVerification() {
         clientDataJSON: Base64.encode(JSON.stringify({
           type: "webauthn.get",
           challenge: challenge,
-          origin: "nexus-data.com",
+          origin: "nexus-mobile.com",
         })),
         authenticatorData: Base64.encode("authenticatorData"),
         signature: Base64.encode("signatureOfChallenge"),
