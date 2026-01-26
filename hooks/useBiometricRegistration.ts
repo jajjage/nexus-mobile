@@ -5,7 +5,6 @@
  * Flow: Get options → Local biometric → Verify with backend → Save enrollment
  */
 
-import { getOriginForAttestation } from "@/config/webauthn.config";
 import {
     buildWebAuthnAttestationResponse,
     storeCredentialId,
@@ -80,14 +79,15 @@ export function useBiometricRegistration() {
         console.log("[BiometricReg] Biometric verification successful");
 
         // Step 4: Build WebAuthn registration response
-        // Use mobile-specific origin, not the web origin
+        // Step 4: Build WebAuthn registration response
+        // Use RP ID from options (e.g. nexusdatasub.com), NOT the full origin URL
         console.log("[BiometricReg] Building attestation response");
-        const mobileOrigin = getOriginForAttestation(options.rp.id);
+        const rpId = options.rp?.id || "nexusdatasub.com";
         
         const attestationResponse = await buildWebAuthnAttestationResponse(
           options.challenge,
           '',  // Let the function generate a proper credential ID
-          mobileOrigin  // Use mobile origin (http://localhost:3001) not web origin
+          rpId  // Pass domain only, webauthn-mobile.ts will prepend https://
         );
 
         console.log("[BiometricReg] Attestation response structure:", {

@@ -5,8 +5,17 @@
     "source.sortMembers": "explicit"
   },
   "cSpell.words": [
+    "androidx",
+    "bouncycastle",
+    "conscrypt",
     "dimezis",
+    "dontwarn",
     "Gluestack",
+    "Gson",
+    "keepclassmembers",
+    "okhttp",
+    "openjsse",
+    "Parcelable",
     "Pressable",
     "Topup",
     "webauthn"

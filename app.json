@@ -55,8 +55,8 @@
         {
           "android": {
             "enableProguardInReleaseBuilds": true,
-            "enableShrinkResourcesInReleaseBuilds": true,
-            "extraProguardRules": "-keep public class * { public *; }"
+            "enableShrinkResourcesInReleaseBuilds": false,
+            "extraProguardRules": "-keep class coil3.PlatformContext\n-keep class coil3.network.okhttp.OkHttpNetworkFetcher { *; }\n-keep class okhttp3.OkHttpClient { *; }\n-keep class okhttp3.Request { *; }\n-keep class okhttp3.Response { *; }"
           },
           "ios": {
             "deploymentTarget": "15.1"
