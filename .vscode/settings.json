@@ -7,16 +7,19 @@
   "cSpell.words": [
     "androidx",
     "bouncycastle",
+    "CBOR",
     "conscrypt",
     "dimezis",
     "dontwarn",
     "Gluestack",
     "Gson",
     "keepclassmembers",
+    "nexusdatasub",
     "okhttp",
     "openjsse",
     "Parcelable",
     "Pressable",
+    "Proguard",
     "Topup",
     "webauthn"
   ]

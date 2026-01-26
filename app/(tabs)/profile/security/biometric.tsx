@@ -5,7 +5,7 @@ import { useBiometricRegistration } from "@/hooks/useBiometricRegistration";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View, useColorScheme } from "react-native";
+import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View, useColorScheme } from "react-native";
 
 export default function BiometricDevicesScreen() {
   const router = useRouter();
@@ -16,6 +16,13 @@ export default function BiometricDevicesScreen() {
   const { registerBiometric, isLoading: isEnrolling } = useBiometricRegistration();
   const { updateUser } = useAuthContext();
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [togglingBiometric, setTogglingBiometric] = useState(false);
+
+  // Get current device's biometric enrollment (if any)
+  const currentDeviceEnrollment = enrollments?.find(
+    (e) => e.is_active && e.platform === Platform.OS
+  );
+  const isCurrentDeviceBiometricEnabled = !!currentDeviceEnrollment;
 
   const handleRemoveDevice = async (enrollmentId: string, deviceName: string) => {
     setDeletingId(enrollmentId);
@@ -31,26 +38,45 @@ export default function BiometricDevicesScreen() {
     }
   };
 
-  const handleAddBiometric = async () => {
+  // Toggle biometric on/off for current device
+  const handleToggleBiometric = async () => {
+    setTogglingBiometric(true);
     try {
-      console.log("[BiometricDevicesScreen] Starting biometric enrollment");
-      const result = await registerBiometric();
-      
-      if (result.success && result.enrolled) {
-        // Update user state
-        updateUser({ hasBiometric: true });
-        // Refetch devices list
-        await refetch();
+      if (isCurrentDeviceBiometricEnabled && currentDeviceEnrollment) {
+        // Turn OFF: Revoke the current device's biometric
+        console.log("[BiometricDevicesScreen] Revoking biometric for current device");
+        await deleteEnrollmentMutation.mutateAsync({
+          enrollmentId: currentDeviceEnrollment.id,
+          reason: "User disabled biometric on this device",
+        });
         Alert.alert(
           "Success",
-          "Biometric device enrolled successfully!",
+          "Biometric has been disabled on this device",
           [{ text: "OK" }]
         );
       } else {
-        Alert.alert("Enrollment Failed", result.message || "Please try again");
+        // Turn ON: Register biometric for current device
+        console.log("[BiometricDevicesScreen] Starting biometric enrollment for current device");
+        const result = await registerBiometric();
+        
+        if (result.success && result.enrolled) {
+          // Update user state
+          updateUser({ hasBiometric: true });
+          // Refetch devices list
+          await refetch();
+          Alert.alert(
+            "Success",
+            "Biometric has been enabled on this device",
+            [{ text: "OK" }]
+          );
+        } else {
+          Alert.alert("Enrollment Failed", result.message || "Please try again");
+        }
       }
     } catch (err: any) {
-      Alert.alert("Error", err.message || "Biometric enrollment failed");
+      Alert.alert("Error", err.message || "Failed to update biometric setting");
+    } finally {
+      setTogglingBiometric(false);
     }
   };
 
@@ -91,17 +117,14 @@ export default function BiometricDevicesScreen() {
   const activeDevices = enrollments?.filter((e) => e.is_active) || [];
   const inactiveDevices = enrollments?.filter((e) => !e.is_active) || [];
 
-  // Show "add biometric" button when no active devices are enrolled
-  // This should show on initial load, during loading, and when list is empty
-  const shouldShowAddButton = activeDevices.length === 0;
-
   // Debug logging
   console.log("[BiometricDevicesScreen] Debug:", {
     enrollmentsData: enrollments,
-    activeDevicesLength: activeDevices.length,
+    currentDeviceEnrollment,
+    isCurrentDeviceBiometricEnabled,
+    allActiveDevices: activeDevices.length,
     isLoading,
     error,
-    shouldShowAddButton,
   });
 
   return (
@@ -124,43 +147,55 @@ export default function BiometricDevicesScreen() {
         </View>
       )}
 
-      {/* Add Biometric Button OR Empty State (if no active devices) */}
-      {shouldShowAddButton ? (
-        <>
-          {/* Add Biometric Button */}
-          <View style={styles.section}>
+      {/* Current Device Biometric Toggle Section */}
+      {!isLoading && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>This Device</Text>
+          <View style={styles.toggleContainer}>
+            <View style={styles.toggleInfo}>
+              <View style={styles.toggleIconBg}>
+                <FontAwesome
+                  name="mobile"
+                  size={20}
+                  color={isCurrentDeviceBiometricEnabled ? lightColors.primary : lightColors.mutedForeground}
+                />
+              </View>
+              <View style={styles.toggleDetails}>
+                <Text style={styles.toggleTitle}>Biometric {Platform.OS === "ios" ? "Face ID" : "Fingerprint"}</Text>
+                <Text style={styles.toggleStatus}>
+                  {isCurrentDeviceBiometricEnabled ? "Enabled on this device" : "Not enabled on this device"}
+                </Text>
+              </View>
+            </View>
             <Pressable
               style={({ pressed }) => [
-                styles.addBiometricButton,
-                pressed && styles.addBiometricButtonPressed,
-                isEnrolling && styles.addBiometricButtonDisabled,
+                styles.toggleButton,
+                isCurrentDeviceBiometricEnabled && styles.toggleButtonActive,
+                pressed && styles.toggleButtonPressed,
+                togglingBiometric && styles.toggleButtonDisabled,
               ]}
-              onPress={handleAddBiometric}
-              disabled={isEnrolling}
+              onPress={handleToggleBiometric}
+              disabled={togglingBiometric}
             >
-              {isEnrolling ? (
-                <ActivityIndicator size="small" color="#fff" />
+              {togglingBiometric ? (
+                <ActivityIndicator 
+                  size="small" 
+                  color={isCurrentDeviceBiometricEnabled ? "#22c55e" : "#999"}
+                />
               ) : (
-                <>
-                  <FontAwesome name="plus-circle" size={18} color="#182125" />
-                  <Text style={styles.addBiometricButtonText}>
-                    Add Biometric Device
-                  </Text>
-                </>
+                <View
+                  style={[
+                    styles.toggleSwitch,
+                    isCurrentDeviceBiometricEnabled && styles.toggleSwitchOn,
+                  ]}
+                >
+                  <View style={styles.toggleDot} />
+                </View>
               )}
             </Pressable>
           </View>
-
-          {/* Empty State Text */}
-          <View style={styles.emptyState}>
-            <FontAwesome name="mobile" size={40} color={lightColors.mutedForeground} />
-            <Text style={styles.emptyTitle}>No devices registered yet</Text>
-            <Text style={styles.emptyDescription}>
-              Register a device using face recognition or fingerprint for secure authentication.
-            </Text>
-          </View>
-        </>
-      ) : null}
+        </View>
+      )}
 
       {/* Active Devices */}
       {activeDevices.length > 0 && (
@@ -410,53 +445,10 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#e63636",
   },
-  addBiometricButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    borderRadius: 12,
-    backgroundColor: "#E69E19",
-    gap: 10,
-    marginVertical: 12,
-    marginHorizontal: 0,
-    minHeight: 50,
-  },
-  addBiometricButtonPressed: {
-    opacity: 0.8,
-  },
-  addBiometricButtonDisabled: {
-    opacity: 0.6,
-  },
-  addBiometricButtonText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#182125", // Dark text for visibility on golden background
-  },
   errorText: {
     fontSize: 16,
     color: "#e63636",
     marginTop: 12,
-  },
-  emptyState: {
-    justifyContent: "center",
-    alignItems: "center",
-    paddingVertical: 60,
-    paddingHorizontal: 32,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: lightColors.foreground,
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptyDescription: {
-    fontSize: 13,
-    color: lightColors.mutedForeground,
-    textAlign: "center",
-    lineHeight: 18,
   },
   infoSection: {
     marginHorizontal: 16,
@@ -484,5 +476,79 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: lightColors.mutedForeground,
     lineHeight: 16,
+  },
+  toggleContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: 16,
+    backgroundColor: lightColors.card,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: lightColors.input,
+    gap: 12,
+  },
+  toggleInfo: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  toggleIconBg: {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
+    backgroundColor: "#f0f7ff",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  toggleDetails: {
+    flex: 1,
+  },
+  toggleTitle: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: lightColors.foreground,
+    marginBottom: 4,
+  },
+  toggleStatus: {
+    fontSize: 12,
+    color: lightColors.mutedForeground,
+  },
+  toggleButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 24,
+    backgroundColor: "#f5f5f5",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  toggleButtonActive: {
+    backgroundColor: "#e8f5e9",
+  },
+  toggleButtonPressed: {
+    opacity: 0.7,
+  },
+  toggleButtonDisabled: {
+    opacity: 0.6,
+  },
+  toggleSwitch: {
+    width: 50,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "#ccc",
+    justifyContent: "center",
+    alignItems: "flex-start",
+    paddingHorizontal: 2,
+  },
+  toggleSwitchOn: {
+    backgroundColor: "#22c55e",
+    alignItems: "flex-end",
+  },
+  toggleDot: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "#fff",
   },
 });

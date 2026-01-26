@@ -3,8 +3,13 @@
  * 
  * Handles WebAuthn enrollment during setup wizard.
  * Flow: Get options → Local biometric → Verify with backend → Save enrollment
+ * 
+ * ENVIRONMENT-AWARE:
+ * - Dev: Sends mock JSON attestations
+ * - Prod: Sends real CBOR binary attestations
  */
 
+import { logWebAuthnEnvironment } from "@/lib/webauthn-env";
 import {
     buildWebAuthnAttestationResponse,
     storeCredentialId,
@@ -36,7 +41,8 @@ export function useBiometricRegistration() {
     mutationFn: async (): Promise<BiometricRegistrationResult> => {
       try {
         console.log("[BiometricReg] Starting enrollment");
-
+        logWebAuthnEnvironment(); // Log environment at start of enrollment
+        
         // Step 1: Check device support
         const { hasHardware, isEnrolled } = await checkBiometricSupport();
 
@@ -78,7 +84,6 @@ export function useBiometricRegistration() {
 
         console.log("[BiometricReg] Biometric verification successful");
 
-        // Step 4: Build WebAuthn registration response
         // Step 4: Build WebAuthn registration response
         // Use RP ID from options (e.g. nexusdatasub.com), NOT the full origin URL
         console.log("[BiometricReg] Building attestation response");

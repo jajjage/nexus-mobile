@@ -1,11 +1,11 @@
 {
   "expo": {
     "name": "Nexus Data",
-    "slug": "nexus-mobile",
+    "slug": "nexus-data",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/ios-dark.png",
-    "scheme": "nexusdata",
+    "scheme": "nexusdatasub",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
@@ -14,7 +14,9 @@
       "jsEngine": "hermes",
       "supportsTablet": true,
       "infoPlist": {
-        "UIBackgroundModes": ["remote-notification"]
+        "UIBackgroundModes": [
+          "remote-notification"
+        ]
       },
       "config": {
         "usesNonExemptEncryption": false
@@ -31,7 +33,6 @@
         "monochromeImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "softwareKeyboardLayoutMode": "resize",
@@ -41,13 +42,18 @@
       "permissions": [
         "CAMERA",
         "NOTIFICATIONS"
-      ]
+      ],
+      "newArchEnabled": false
     },
     "web": {
       "bundler": "metro",
       "output": "static",
       "favicon": "./assets/images/favicon.svg"
     },
+    "assetBundlePatterns": [
+      "assets/images/**/*",
+      "assets/fonts/**/*"
+    ],
     "plugins": [
       "expo-router",
       [
@@ -55,8 +61,9 @@
         {
           "android": {
             "enableProguardInReleaseBuilds": true,
-            "enableShrinkResourcesInReleaseBuilds": false,
-            "extraProguardRules": "-keep class coil3.PlatformContext\n-keep class coil3.network.okhttp.OkHttpNetworkFetcher { *; }\n-keep class okhttp3.OkHttpClient { *; }\n-keep class okhttp3.Request { *; }\n-keep class okhttp3.Response { *; }\n-dontwarn coil3.**"
+            "enableShrinkResourcesInReleaseBuilds": true,
+            "extraProguardRules": "-keep class coil3.PlatformContext\n-keep class coil3.network.okhttp.OkHttpNetworkFetcher { *; }\n-keep class okhttp3.OkHttpClient { *; }\n-keep class okhttp3.Request { *; }\n-keep class okhttp3.Response { *; }\n-keep class com.google.firebase.** { *; }\n-keep class expo.modules.** { *; }\n-dontwarn coil3.**\n-dontwarn com.google.firebase.**",
+            "enableMinifyInReleaseBuilds": true
           },
           "ios": {
             "deploymentTarget": "15.1"
@@ -92,8 +99,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "b688004e-166b-4127-9840-fcfb071b19e1"
+        "projectId": "c20849e0-2e9b-44a5-b8ee-41b3a4c4d4cd"
       }
-    }
+    },
+    "owner": "mullahkano"
   }
 }
