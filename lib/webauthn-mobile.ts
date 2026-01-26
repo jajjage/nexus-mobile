@@ -197,6 +197,7 @@ function generateSignature(challenge: string, credentialId: string): string {
       hash = Math.imul(hash, 31);
     }
     
+    // Create a base64url-encoded signature representation
     return toBase64Url(btoa(String.fromCharCode(...signatureBuffer)));
   } catch (error) {
     console.error("[WebAuthnMobile] Error generating signature:", error);
@@ -293,6 +294,9 @@ export async function buildWebAuthnAttestationResponse(
   credentialId: string = '',
   rpId: string = "nexusdatasub.com"
 ): Promise<any> {
+    // Determine RP ID either from arguments or extract from webauthnConfig if possible
+    // But since this function signature is fixed, we rely on passed arg
+    const effectiveRpId = rpId || "nexusdatasub.com";
   try {
     // Use provided credential ID or generate a new one
     const finalCredentialId = credentialId || generateCredentialId();
@@ -300,7 +304,7 @@ export async function buildWebAuthnAttestationResponse(
     const clientDataJSON = {
       type: "webauthn.create",
       challenge: challenge,
-      origin: `https://${rpId}`,
+      origin: `https://${effectiveRpId}`,
       crossOrigin: false,
     };
 
