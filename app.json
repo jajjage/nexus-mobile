@@ -14,7 +14,9 @@
       "jsEngine": "hermes",
       "supportsTablet": true,
       "infoPlist": {
-        "UIBackgroundModes": ["remote-notification"]
+        "UIBackgroundModes": [
+          "remote-notification"
+        ]
       },
       "config": {
         "usesNonExemptEncryption": false
@@ -60,7 +62,8 @@
           "android": {
             "enableProguardInReleaseBuilds": true,
             "enableShrinkResourcesInReleaseBuilds": true,
-            "extraProguardRules": "-keep class coil3.PlatformContext\n-keep class coil3.network.okhttp.OkHttpNetworkFetcher { *; }\n-keep class okhttp3.OkHttpClient { *; }\n-keep class okhttp3.Request { *; }\n-keep class okhttp3.Response { *; }\n-keep class com.google.firebase.** { *; }\n-keep class expo.modules.** { *; }\n-dontwarn coil3.**\n-dontwarn com.google.firebase.**"
+            "extraProguardRules": "-keep class coil3.PlatformContext\n-keep class coil3.network.okhttp.OkHttpNetworkFetcher { *; }\n-keep class okhttp3.OkHttpClient { *; }\n-keep class okhttp3.Request { *; }\n-keep class okhttp3.Response { *; }\n-keep class com.google.firebase.** { *; }\n-keep class expo.modules.** { *; }\n-dontwarn coil3.**\n-dontwarn com.google.firebase.**",
+            "enableMinifyInReleaseBuilds": true
           },
           "ios": {
             "deploymentTarget": "15.1"
@@ -98,6 +101,7 @@
       "eas": {
         "projectId": "b688004e-166b-4127-9840-fcfb071b19e1"
       }
-    }
+    },
+    "owner": "jajjage"
   }
 }
