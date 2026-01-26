@@ -58,35 +58,22 @@ export const biometricService = {
       payload.challenge = challenge;
     }
 
-    console.log("[BiometricService] Sending registration verification payload:", {
-      id: payload.id,
-      type: payload.type,
-      deviceName: payload.deviceName,
-      platform: payload.platform,
-      hasChallenge: !!payload.challenge,
-      hasClientData: !!payload.response?.clientDataJSON,
-      hasAttestationObject: !!payload.response?.attestationObject,
-    });
 
-    console.log("[BiometricService] Full payload:", JSON.stringify(payload, null, 2));
+
+
 
     try {
       const response = await apiClient.post<ApiResponse<VerificationResponse>>(
         "/biometric/register/verify",
         payload
       );
-      console.log("[BiometricService] Registration verification response:", response.data);
+
       if (!response.data.data) {
         throw new Error(response.data.message || "Failed to verify registration");
       }
       return response.data.data;
     } catch (error: any) {
-      console.error("[BiometricService] Registration verification error:", {
-        status: error.response?.status,
-        statusText: error.response?.statusText,
-        data: error.response?.data,
-        message: error.message,
-      });
+
       throw error;
     }
   },

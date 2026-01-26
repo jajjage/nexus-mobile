@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import { toast } from "sonner";
+import { useCallback, useState } from "react";
+import { toast } from "sonner-native";
 
 interface UseClipboardOptions {
   successMessage?: string;

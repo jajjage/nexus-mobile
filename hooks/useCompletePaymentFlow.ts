@@ -7,8 +7,8 @@
 import { useAuth } from "@/hooks/useAuth";
 import { useTopup } from "@/hooks/useTopup";
 import {
-    determinePaymentMethod,
-    verifyBiometricAndGetToken
+  determinePaymentMethod,
+  verifyBiometricAndGetToken
 } from "@/lib/payment-flow";
 import { calculateFinalPrice, validatePurchase } from "@/lib/price-calculator";
 import { Product } from "@/types/product.types";
@@ -67,8 +67,6 @@ export function useCompletePaymentFlow(
           userCashbackBalance = 0,
         } = args;
 
-        // Step 1: Validate purchase
-        console.log("[CompletePayment] Step 1: Validating purchase");
         const validation = validatePurchase(
           phoneNumber,
           product,
@@ -82,8 +80,6 @@ export function useCompletePaymentFlow(
           return { success: false, error: errorMsg };
         }
 
-        // Step 2: Calculate final price
-        console.log("[CompletePayment] Step 2: Calculating price");
         const priceDetails = calculateFinalPrice(
           product,
           useCashback,
@@ -96,18 +92,14 @@ export function useCompletePaymentFlow(
         let pinToUse: string | undefined;
 
         if (!pin) {
-          // No PIN provided, try biometric first
-          console.log("[CompletePayment] Step 3: Determining payment method (biometric-first)");
           const paymentMethod = await determinePaymentMethod(
             user?.hasBiometric || false
           );
 
           if (paymentMethod === "biometric") {
-            console.log("[CompletePayment] Step 4: Attempting biometric verification");
             setCurrentStep("biometric");
             try {
               verificationToken = await verifyBiometricAndGetToken();
-              console.log("[CompletePayment] Biometric verification successful");
             } catch (bioError) {
               console.warn(
                 "[CompletePayment] Biometric failed, fallback to PIN required"
@@ -120,9 +112,6 @@ export function useCompletePaymentFlow(
               };
             }
           } else {
-            // User doesn't have biometric or device doesn't support it
-            // Show PIN modal
-            console.log("[CompletePayment] User needs PIN authentication");
             setCurrentStep("pin");
             return {
               success: false,
@@ -133,11 +122,7 @@ export function useCompletePaymentFlow(
           pinToUse = pin;
         }
 
-        // Step 4: Build and submit topup request
-        // Authentication: Use PIN or verificationToken (one of them)
-        console.log("[CompletePayment] Step 5: Building topup request");
         const topupRequest: TopupRequest = {
-          // KEY FIX: Backend expects the denomination amount (face value), not the discounted amount
           amount: parseFloat(product.denomAmount), 
           productCode: product.productCode,
           recipientPhone: phoneNumber,
@@ -149,10 +134,8 @@ export function useCompletePaymentFlow(
         // Add authentication - PIN or biometric token (never both)
         if (verificationToken) {
           topupRequest.verificationToken = verificationToken;
-          console.log("[CompletePayment] Using biometric verificationToken");
         } else if (pinToUse) {
           topupRequest.pin = pinToUse;
-          console.log("[CompletePayment] Using PIN authentication");
         }
 
         // Add offer ID if applicable
@@ -160,13 +143,11 @@ export function useCompletePaymentFlow(
           topupRequest.offerId = product.activeOffer.id;
         }
 
-        console.log("[CompletePayment] Step 6: Submitting topup request");
         setCurrentStep("transaction");
 
         // Submit mutation (handles optimistic updates)
         const response = await topupMutation.mutateAsync(topupRequest);
 
-        console.log("[CompletePayment] Transaction successful");
         Haptics.notificationAsync(
           Haptics.NotificationFeedbackType.Success
         );
@@ -181,7 +162,6 @@ export function useCompletePaymentFlow(
         const errorMessage =
           err instanceof Error ? err.message : "Payment processing failed";
 
-        console.error("[CompletePayment] Error:", errorMessage);
         setError(errorMessage);
         Haptics.notificationAsync(
           Haptics.NotificationFeedbackType.Error

@@ -90,8 +90,8 @@ export default function HomeScreen() {
         {/* Header Bar */}
         <HeaderBar
           userInitials={userInitials}
-          onGiftPress={() => console.log("Gift pressed")}
-          onThemeToggle={() => console.log("Theme toggle pressed")}
+          onGiftPress={() => {}}
+          onThemeToggle={() => {}}
           onNotificationsPress={() => router.push('/notifications')}
           notificationCount={unreadNotificationCount}
         />
@@ -143,12 +143,12 @@ export default function HomeScreen() {
         {/* Promo Banners */}
         <PromoBanner
           variant="savings"
-          onPress={() => console.log("Savings pressed")}
+          onPress={() => {}}
         />
 
         <PromoBanner
           variant="cashback"
-          onPress={() => console.log("Cashback pressed")}
+          onPress={() => {}}
         />
 
         {/* Padding handled by contentContainerStyle */}
@@ -157,7 +157,7 @@ export default function HomeScreen() {
       {/* Reseller Banner - Fixed at bottom above tab bar (Only for non-resellers) */}
       {user?.role !== 'reseller' && (
         <View style={styles.resellerContainer}>
-          <ResellerBanner onPress={() => console.log("Reseller pressed")} />
+          <ResellerBanner onPress={() => {}} />
         </View>
       )}
 

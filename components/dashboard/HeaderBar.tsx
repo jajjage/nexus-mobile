@@ -2,7 +2,7 @@
 // Updated to use logo-3 image and match screenshot layout
 import { useTheme } from "@/context/ThemeContext";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
-import { Bell, Gift, Signal, Sun } from "lucide-react-native";
+import { Bell, Signal } from "lucide-react-native";
 import React from "react";
 import {
   Pressable,
@@ -47,17 +47,17 @@ export function HeaderBar({
 
       {/* Action Icons - per guide: Gift, Signal, Sun, Bell */}
       <View style={styles.actionsContainer}>
-        <Pressable style={styles.iconButton} onPress={onGiftPress}>
+        {/* <Pressable style={styles.iconButton} onPress={onGiftPress}>
           <Gift size={20} color={colors.textSecondary} />
-        </Pressable>
+        </Pressable> */}
 
         <Pressable style={styles.iconButton}>
           <Signal size={20} color={getSignalColor()} />
         </Pressable>
 
-        <Pressable style={styles.iconButton} onPress={onThemeToggle}>
+        {/* <Pressable style={styles.iconButton} onPress={onThemeToggle}>
           <Sun size={16} color={colors.textSecondary} />
-        </Pressable>
+        </Pressable> */}
 
         <Pressable style={styles.iconButton} onPress={onNotificationsPress}>
           <Bell size={20} color={colors.textSecondary} />

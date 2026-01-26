@@ -49,7 +49,7 @@ function btoa(str: string): string {
  */
 export async function buildWebAuthnAssertion(
   challenge: string,
-  rpId: string = "nexus-data.com"
+  rpId: string = "nexusdatasub.com"
 ): Promise<WebAuthnAuthenticationResponse> {
   try {
     console.log("[WebAuthnMobile] ===== BUILDING ASSERTION =====");
@@ -64,20 +64,18 @@ export async function buildWebAuthnAssertion(
       throw new Error("No biometric credential found. Please enroll first.");
     }
 
-    console.log("[WebAuthnMobile] Stored credential ID:", storedCredentialId.substring(0, 20) + "...");
-
     // Build client data JSON (matches WebAuthn spec)
     const clientDataJSON = {
       type: "webauthn.get",
       challenge: challenge,
-      origin: rpId,
+      origin: `https://${rpId}`,
       crossOrigin: false,
     };
 
     // Build WebAuthn assertion response with BASE64URL encoding (URL-safe)
     const assertion: WebAuthnAuthenticationResponse = {
-      id: encodeBase64Url(storedCredentialId), // base64url
-      rawId: encodeBase64Url(storedCredentialId), // base64url (same as id)
+      id: storedCredentialId, 
+      rawId: storedCredentialId,
       response: {
         clientDataJSON: encodeBase64Url(JSON.stringify(clientDataJSON)), // base64url
         authenticatorData: buildAuthenticatorData(), // Already returns base64url
@@ -85,17 +83,6 @@ export async function buildWebAuthnAssertion(
       },
       type: "public-key",
     };
-
-    console.log("[WebAuthnMobile] ===== ASSERTION BUILT =====");
-    console.log("[WebAuthnMobile] id (base64url):", assertion.id.substring(0, 30) + "...");
-    console.log("[WebAuthnMobile] rawId (base64url):", assertion.rawId.substring(0, 30) + "...");
-    console.log("[WebAuthnMobile] clientDataJSON (base64url):", assertion.response.clientDataJSON.substring(0, 30) + "...");
-    console.log("[WebAuthnMobile] authenticatorData (base64url):", assertion.response.authenticatorData.substring(0, 30) + "...");
-    console.log("[WebAuthnMobile] signature (base64url):", assertion.response.signature.substring(0, 30) + "...");
-    console.log("[WebAuthnMobile] Encoding check - contains '+' or '/':", 
-      assertion.id.includes('+') || assertion.id.includes('/') || 
-      assertion.rawId.includes('+') || assertion.rawId.includes('/')
-    );
 
     // Validate structure before returning
     if (!validateWebAuthnResponse(assertion)) {
@@ -304,7 +291,7 @@ function generateCredentialId(): string {
 export async function buildWebAuthnAttestationResponse(
   challenge: string,
   credentialId: string = '',
-  rpId: string = "nexus-data.com"
+  rpId: string = "nexusdatasub.com"
 ): Promise<any> {
   try {
     // Use provided credential ID or generate a new one
@@ -313,7 +300,7 @@ export async function buildWebAuthnAttestationResponse(
     const clientDataJSON = {
       type: "webauthn.create",
       challenge: challenge,
-      origin: rpId,
+      origin: `https://${rpId}`,
       crossOrigin: false,
     };
 
@@ -326,11 +313,9 @@ export async function buildWebAuthnAttestationResponse(
     const deviceName = require("react-native").Platform.OS === "ios" ? "iPhone/iPad" : "Android";
 
     // Encode to base64url (not standard base64)
-    const encodedCredentialId = encodeBase64Url(finalCredentialId);
-
     return {
-      id: encodedCredentialId,  // Base64url-encoded
-      rawId: encodedCredentialId,  // Same as id for WebAuthn compatibility
+      id: finalCredentialId,
+      rawId: finalCredentialId,
       response: {
         clientDataJSON: encodeBase64Url(JSON.stringify(clientDataJSON)),
         attestationObject: buildAttestationObject(finalCredentialId, challenge),

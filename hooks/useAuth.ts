@@ -32,7 +32,7 @@ export function useAuth() {
   // Register session expiry callback on mount
   useEffect(() => {
     setSessionExpiredCallback(() => {
-      console.log("[useAuth] Session expired callback triggered");
+
       markSessionAsExpired();
       queryClient.clear();
     });
@@ -53,7 +53,7 @@ export function useAuth() {
       
       if (!canAuthenticate) {
         // If no tokens, clear user immediately
-        console.log("[useAuth] No tokens found, clearing user");
+
         setUser(null);
         setIsLoading(false);
       }

@@ -1,5 +1,5 @@
 "use client";
-import { syncFcmToken } from "@/services/notification.service";
+import { NotificationService } from "@/services/notification.service";
 import { useEffect } from "react";
 import { useAuth } from "./useAuth";
 
@@ -23,7 +23,7 @@ export function useSyncFcmOnMount() {
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
       // 1. Sync on Mount
-      syncFcmToken("web").catch(console.warn);
+      NotificationService.syncToken().catch(console.warn);
 
       // 2. Sync on Tab Focus (Replaces onTokenRefresh)
       // If the user leaves the tab open for days, this updates the token
@@ -31,7 +31,7 @@ export function useSyncFcmOnMount() {
       const handleVisibilityChange = () => {
         if (document.visibilityState === "visible") {
           console.log("Tab active: verifying FCM token...");
-          syncFcmToken("web").catch(console.warn);
+          NotificationService.syncToken().catch(console.warn);
         }
       };
 

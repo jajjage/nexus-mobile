@@ -9,27 +9,27 @@ import { Stack, useRouter } from "expo-router";
 import { ArrowLeft, Wifi } from "lucide-react-native";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  ActivityIndicator,
-  Dimensions,
-  FlatList,
-  KeyboardAvoidingView,
-  Platform,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Dimensions,
+    FlatList,
+    KeyboardAvoidingView,
+    Platform,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { LoadingOverlay } from "@/components/LoadingOverlay";
 import {
-  CategoryTabs,
-  CheckoutData,
-  CheckoutModal,
-  CheckoutMode,
-  NetworkDetectorInput,
-  NetworkSelector,
-  ProductCard,
+    CategoryTabs,
+    CheckoutData,
+    CheckoutModal,
+    CheckoutMode,
+    NetworkDetectorInput,
+    NetworkSelector,
+    ProductCard,
 } from "@/components/purchase";
 import { PinPadModal } from "@/components/security/PinPadModal";
 import { designTokens } from "@/constants/palette";
@@ -44,11 +44,11 @@ import { useTopup } from "@/hooks/useTopup";
 import { useEligibleOffers } from "@/hooks/useUserOffers";
 import { useWalletBalance } from "@/hooks/useWalletBalance";
 import {
-  NETWORK_PROVIDERS,
-  NetworkInfo,
-  NetworkProvider,
-  isValidNigerianPhone,
-  normalizePhoneNumber,
+    NETWORK_PROVIDERS,
+    NetworkInfo,
+    NetworkProvider,
+    isValidNigerianPhone,
+    normalizePhoneNumber,
 } from "@/lib/detectNetwork";
 import { calculateFinalPrice } from "@/lib/price-calculator";
 import { Product } from "@/types/product.types";
@@ -101,14 +101,14 @@ export default function DataScreen() {
   const { authenticate, checkBiometricSupport } = useBiometricAuth();
   const { processPayment, submitPIN, reset: resetPaymentFlow, isLoading: isPaymentProcessing, currentStep: paymentStep, error: paymentError } = useCompletePaymentFlow({
     onSuccess: (transactionId) => {
-      console.log("[DataScreen] Payment successful:", transactionId);
+
       setLastTransactionId(transactionId);
       setLastErrorMessage(null);
       setCheckoutMode("success");
       checkoutSheetRef.current?.expand();
     },
     onError: (error) => {
-      console.error("[DataScreen] Payment failed:", error);
+
       setLastErrorMessage(error);
       setCheckoutMode("failed");
       checkoutSheetRef.current?.expand();
@@ -312,7 +312,7 @@ export default function DataScreen() {
     if (!selectedProduct || !normalizedPhone) return;
 
     try {
-      console.log("[DataScreen] Starting payment process for product:", selectedProduct.productCode);
+
 
       // Get markup for this product
       const supplierId = selectedProduct.supplierOffers?.[0]?.supplierId || "";
@@ -332,7 +332,7 @@ export default function DataScreen() {
 
       // If biometric failed or PIN required, show PIN modal
       if (!result.success && result.error?.includes("PIN")) {
-        console.log("[DataScreen] Showing PIN modal for verification");
+
         setPendingPaymentData({
           product: selectedProduct,
           phoneNumber: normalizedPhone,
@@ -342,7 +342,7 @@ export default function DataScreen() {
         setShowPinModal(true);
       }
     } catch (error) {
-      console.error("[DataScreen] Payment initiation error:", error);
+
       const errorMsg = error instanceof Error ? error.message : "Payment processing failed";
       setLastErrorMessage(getUserFriendlyError(errorMsg));
       setCheckoutMode("failed");
@@ -355,7 +355,7 @@ export default function DataScreen() {
       if (!pendingPaymentData) return;
       try {
         setPinError(undefined); // Clear previous error
-        console.log("[DataScreen] Submitting PIN for verification");
+
 
         // Submit PIN through the complete payment flow
         const result = await submitPIN({
@@ -378,7 +378,7 @@ export default function DataScreen() {
           setPinError(undefined);
         }
       } catch (error) {
-        console.error("[DataScreen] PIN submission error:", error);
+
         const errorMsg = error instanceof Error ? error.message : "PIN submission failed";
         const friendlyError = getUserFriendlyError(errorMsg);
         setPinError(friendlyError);
@@ -398,9 +398,10 @@ export default function DataScreen() {
     checkoutSheetRef.current?.close();
     if (checkoutMode === "success") {
       // Reset form after success
-      setPhoneNumber("");
-      setSelectedNetwork(null);
-      setDetectedNetwork(null);
+      // Reset form after success - Keep phone/network for easier repeat transactions
+      // setPhoneNumber("");
+      // setSelectedNetwork(null); 
+      // setDetectedNetwork(null);
       setSelectedProduct(null);
       
       // Check if user wants auto-redirect

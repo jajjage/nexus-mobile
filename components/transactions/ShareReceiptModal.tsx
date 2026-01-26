@@ -1,17 +1,17 @@
 import { lightColors } from "@/constants/palette";
 import { Transaction } from "@/types/wallet.types";
-import * as FileSystem from "expo-file-system";
+import { copyAsync, documentDirectory } from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 import { Download, Share2, X } from "lucide-react-native";
 import React, { useRef, useState } from "react";
 import {
-    ActivityIndicator,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import ViewShot from "react-native-view-shot";
@@ -67,11 +67,17 @@ export function ShareReceiptModal({ visible, onClose, transaction }: ShareReceip
       // Using data URI format - this creates a basic text PDF
       const transactionId = transaction.id;
       const fileName = `receipt-${transactionId.substring(0, 8)}.pdf`;
-      const filePath = `${FileSystem.cacheDirectory}${fileName}`;
+      const cacheDir = documentDirectory;
+      if (!cacheDir) throw new Error("Storage not available");
+      const filePath = `${cacheDir}${fileName}`;
 
       // For now, we'll share the image as PDF by saving it with .pdf extension
       // In production, you'd want to use a proper PDF library like react-native-pdf-lib
-      const imageUri = await viewShotRef.current?.capture();
+      // In production, you'd want to use a proper PDF library like react-native-pdf-lib
+      if (!viewShotRef.current?.capture) {
+          throw new Error("ViewShot not ready");
+      }
+      const imageUri = await viewShotRef.current.capture();
       
       if (!imageUri) {
         toast.error("Failed to capture receipt");
@@ -79,7 +85,7 @@ export function ShareReceiptModal({ visible, onClose, transaction }: ShareReceip
       }
 
       // Copy the image to a PDF-named file
-      await FileSystem.copyAsync({
+      await copyAsync({
         from: imageUri,
         to: filePath,
       });

@@ -182,7 +182,7 @@ export const useCreateTopup = () => {
       queryClient.invalidateQueries({ queryKey: ["wallet", "transactions"] });
 
       // Navigate to purchase details or success page
-      router.push(`/dashboard/purchases/${data.data.purchase.id}`);
+      router.push(`/dashboard/purchases/${data.data.purchase.id}` as any);
     },
     onError: (error: AxiosError<any>) => {
       console.error("Topup failed:", error.response?.data?.message);

@@ -61,7 +61,7 @@ export const verificationService = {
     request: BiometricVerificationRequest
   ): Promise<BiometricVerificationResponse> => {
     try {
-      console.log("[Verification] Verifying biometric for unlock");
+
 
       const response = await apiClient.post<
         ApiResponse<BiometricVerificationResponse>
@@ -75,15 +75,13 @@ export const verificationService = {
         message: "Verification failed",
       };
 
-      console.log("[Verification] Biometric unlock response", {
-        success: result.success,
-      });
+
 
       return result;
     } catch (err: any) {
       const message =
         err.response?.data?.message || "Biometric verification failed";
-      console.error("[Verification] Biometric unlock error", { message });
+
 
       return {
         success: false,
@@ -103,7 +101,7 @@ export const verificationService = {
     request: BiometricVerificationRequest
   ): Promise<BiometricVerificationResponse> => {
     try {
-      console.log("[Verification] Verifying biometric for transaction");
+
 
       const response = await apiClient.post<
         ApiResponse<BiometricVerificationResponse>
@@ -117,17 +115,14 @@ export const verificationService = {
         message: "Verification failed",
       };
 
-      console.log("[Verification] Biometric transaction response", {
-        success: result.success,
-        hasToken: !!result.verificationToken,
-      });
+
 
       return result;
     } catch (err: any) {
       const message =
         err.response?.data?.message || "Biometric verification failed";
-      console.error("[Verification] Biometric transaction error", { message });
-      console.error("[ERROR FROM SERVER]: ", err);
+
+
 
       return {
         success: false,
@@ -151,12 +146,7 @@ export const verificationService = {
    */
   submitTopup: async (request: TopupRequest): Promise<TopupResponse> => {
     try {
-      console.log("[Verification] Submitting topup", {
-        amount: request.amount,
-        productCode: request.productCode,
-        usePin: !!request.pin,
-        useBiometric: !!request.verificationToken,
-      });
+
 
       const response = await topupService.initiateTopup(request);
 
@@ -172,10 +162,7 @@ export const verificationService = {
           : undefined,
       };
 
-      console.log("[Verification] Topup response", {
-        success: result.success,
-        transactionId: result.transaction?.id,
-      });
+
 
       return result;
     } catch (err: any) {
@@ -184,12 +171,7 @@ export const verificationService = {
       const errorData = err.response?.data;
       const message = err.response?.data?.message || "Topup failed";
 
-      console.error("[Verification] Topup error", {
-        status,
-        message,
-        errorData,
-        url: err.config?.url,
-      });
+
 
       // If this is a session/auth error (401, 403), the api-client interceptor
       // has already handled clearing the session. Don't repeat that here.

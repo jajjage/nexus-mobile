@@ -89,14 +89,14 @@ export default function AirtimeScreen() {
   const { mutateAsync: topup, isPending: isTopupPending } = useTopup();
   const { processPayment, submitPIN, reset: resetPaymentFlow, isLoading: isPaymentProcessing, currentStep: paymentStep, error: paymentError } = useCompletePaymentFlow({
     onSuccess: (transactionId) => {
-      console.log("[AirtimeScreen] Payment successful:", transactionId);
+
       setLastTransactionId(transactionId);
       setLastErrorMessage(null);
       setCheckoutMode("success");
       checkoutSheetRef.current?.expand();
     },
     onError: (error) => {
-      console.error("[AirtimeScreen] Payment failed:", error);
+
       setLastErrorMessage(error);
       setCheckoutMode("failed");
       checkoutSheetRef.current?.expand();
@@ -240,7 +240,7 @@ export default function AirtimeScreen() {
         return;
       }
 
-      console.log("[AirtimeScreen] Starting payment process for product:", selectedProduct.productCode);
+
 
       // Get markup for this product
       const supplierId = selectedProduct.supplierOffers?.[0]?.supplierId || "";
@@ -260,7 +260,7 @@ export default function AirtimeScreen() {
 
       // If biometric failed or PIN required, show PIN modal
       if (!result.success && result.error?.includes("PIN")) {
-        console.log("[AirtimeScreen] Showing PIN modal for verification");
+
         setPendingPaymentData({
           product: selectedProduct,
           phoneNumber: normalizedPhone,
@@ -271,7 +271,7 @@ export default function AirtimeScreen() {
         setShowPinModal(true);
       }
     } catch (error) {
-      console.error("[AirtimeScreen] Payment initiation error:", error);
+
       const errorMsg = error instanceof Error ? error.message : "Payment processing failed";
       setLastErrorMessage(getUserFriendlyError(errorMsg));
       setCheckoutMode("failed");
@@ -285,7 +285,7 @@ export default function AirtimeScreen() {
 
       try {
         setPinError(undefined); // Clear previous error
-        console.log("[AirtimeScreen] Submitting PIN for verification");
+
 
         // Submit PIN through the complete payment flow
         const result = await submitPIN({
@@ -308,7 +308,7 @@ export default function AirtimeScreen() {
           setPinError(undefined);
         }
       } catch (error) {
-        console.error("[AirtimeScreen] PIN submission error:", error);
+
         const errorMsg = error instanceof Error ? error.message : "PIN submission failed";
         const friendlyError = getUserFriendlyError(errorMsg);
         setPinError(friendlyError);
@@ -328,9 +328,10 @@ export default function AirtimeScreen() {
     checkoutSheetRef.current?.close();
     if (checkoutMode === "success") {
       // Reset form after success
-      setPhoneNumber("");
-      setSelectedNetwork(null);
-      setDetectedNetwork(null);
+      // Reset form after success - Keep phone/network for easier repeat transactions
+      // setPhoneNumber("");
+      // setSelectedNetwork(null);
+      // setDetectedNetwork(null);
       setSelectedAmount(null);
       
       // Check if user wants auto-redirect

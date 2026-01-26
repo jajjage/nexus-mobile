@@ -174,6 +174,10 @@ const styles = StyleSheet.create({
     shadowRadius: 3.84,
     elevation: 5,
   },
+  accountDetails: {
+    alignItems: 'center',
+    width: '100%',
+  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
