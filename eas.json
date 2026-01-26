@@ -25,7 +25,8 @@
         "buildType": "app-bundle",
         "env": {
           "ANDROID_NATIVE_DEBUG_SYMBOLS": "false",
-          "EXPO_PUBLIC_WEBAUTHN_ENV": "production"
+          "EXPO_PUBLIC_WEBAUTHN_ENV": "production",
+          "NODE_ENV": "production"
         }
       },
       "ios": {}
@@ -36,7 +37,8 @@
         "gradleCommand": ":app:assembleRelease",
         "env": {
           "ANDROID_NATIVE_DEBUG_SYMBOLS": "false",
-          "EXPO_PUBLIC_WEBAUTHN_ENV": "production"
+          "EXPO_PUBLIC_WEBAUTHN_ENV": "production",
+          "NODE_ENV": "production"
         }
       },
       "ios": {}
@@ -48,7 +50,8 @@
         "env": {
           "BUILD_ARM64_ONLY": "true",
           "EXPO_PUBLIC_WEBAUTHN_ENV": "production",
-          "ANDROID_NATIVE_DEBUG_SYMBOLS": "false"
+          "ANDROID_NATIVE_DEBUG_SYMBOLS": "false",
+          "NODE_ENV": "production"
         }
       },
       "ios": {}
