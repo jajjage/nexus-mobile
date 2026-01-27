@@ -1,5 +1,6 @@
 // context/AuthContext.tsx
 import { tokenStorage, userStorage } from "@/lib/secure-store";
+import { userService } from "@/services/user.service";
 import { User } from "@/types/api.types";
 import React, { ReactNode, createContext, useContext, useEffect, useState } from "react";
 
@@ -46,14 +47,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return;
         }
 
-        // Tokens exist, restore user from SecureStore
+        // Tokens exist, restore user from SecureStore for immediate display
         const storedUser = await userStorage.getUser<User>();
         if (storedUser) {
           console.log("[AuthContext] Restored user from SecureStore:", storedUser.userId);
           setUserState(storedUser);
-        } else {
-          console.log("[AuthContext] No stored user found, but tokens exist - will fetch profile");
         }
+
+        // Prefetch latest profile from API to ensure data is fresh
+        // This keeps the global loader visible until we have the latest data
+        try {
+          console.log("[AuthContext] Fetching latest profile...");
+          const profileResponse = await userService.getProfile();
+          
+          if (profileResponse?.data) {
+            // Merge with stored user or use fresh profile
+            // profileResponse.data contains the actual User object
+            const freshUser = profileResponse.data as unknown as User; 
+            setUserState(freshUser);
+            // Update cache
+            await userStorage.setUser(freshUser);
+            if (freshUser.role) {
+                await userStorage.setUserRole(freshUser.role);
+            }
+          }
+        } catch (apiError) {
+          console.warn("[AuthContext] Failed to fetch latest profile, using cached user:", apiError);
+          // If API fails but we have storedUser, we proceed (offline mode or server error)
+          // If no storedUser and API fails, user stays null -> might redirect to login?
+          // If token was invalid, apiClient interceptor might have called markSessionAsExpired
+        }
+
       } catch (error) {
         console.error("Failed to load user from storage", error);
         setUserState(null);

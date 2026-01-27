@@ -6,7 +6,7 @@
 
 import { Transaction } from "@/types/wallet.types";
 import * as Clipboard from "expo-clipboard";
-import { Copy, CreditCard } from "lucide-react-native";
+import { Copy, CreditCard, Phone, Wifi } from "lucide-react-native";
 import React from "react";
 import {
     Image,
@@ -159,13 +159,25 @@ export const TransactionReceipt = React.forwardRef<View, TransactionReceiptProps
       minimumFractionDigits: 2,
     })}`;
 
-    const operatorCode = transaction.related?.operatorCode?.toLowerCase();
+    // Normalize operator code (handle 'mtn-data', 'glo-ng' etc)
+    const rawOperatorCode = transaction.related?.operatorCode?.toLowerCase() || "";
+    const operatorCode = rawOperatorCode.split('-')[0]; // simple split
     const logoUrl = operatorCode ? OPERATOR_LOGOS[operatorCode] : undefined;
+    
     const statusConfig = getStatusConfig(transaction.related?.status || "pending", isRefund);
 
     const handleCopyId = async () => {
       await Clipboard.setStringAsync(transaction.id);
       // Show toast or feedback
+    };
+
+    const renderIcon = () => {
+      if (isTopupRequest) {
+        // Prefer specific icons over generic credit card
+        if (isDataProduct) return <Wifi size={32} color="#9333EA" />;
+        return <Phone size={32} color="#2563EB" />;
+      }
+      return <CreditCard size={32} color="#9CA3AF" />;
     };
 
     return (
@@ -181,7 +193,7 @@ export const TransactionReceipt = React.forwardRef<View, TransactionReceiptProps
                 <Text style={styles.creditIconText}>IN</Text>
               </View>
             ) : (
-              <CreditCard size={32} color="#9CA3AF" />
+              renderIcon()
             )}
           </View>
 
@@ -316,6 +328,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#0F172A",
     marginBottom: 4,
+    textAlign: "center",
   },
   description: {
     fontSize: 14,
@@ -330,16 +343,19 @@ const styles = StyleSheet.create({
     color: "#0F172A",
     marginBottom: 16,
     letterSpacing: -0.5,
+    textAlign: "center",
   },
   status: {
     fontSize: 16,
     fontWeight: "600",
     textTransform: "capitalize",
     marginBottom: 8,
+    textAlign: "center",
   },
   date: {
     fontSize: 12,
     color: "#94A3B8",
+    textAlign: "center",
   },
   separator: {
     marginHorizontal: 16,

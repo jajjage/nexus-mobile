@@ -1,3 +1,4 @@
+import { useTheme } from "@/context/ThemeContext";
 import React, { useEffect } from "react";
 import { Image, ImageRequireSource, Modal, StyleSheet, View } from "react-native";
 import Animated, {
@@ -31,6 +32,7 @@ export function LoadingOverlay({
   diameter = 80,
   logo = require("@/assets/images/logo-3.png"),
 }: LoadingLogoProps) {
+  const { colors } = useTheme();
   const scale = useSharedValue(1);
 
   useEffect(() => {
@@ -60,7 +62,7 @@ export function LoadingOverlay({
 
   return (
     <Modal visible={visible} transparent animationType="fade" statusBarTranslucent>
-      <View style={styles.overlay}>
+      <View style={[styles.overlay, { backgroundColor: colors.background }]}>
         <View style={styles.center} pointerEvents="box-none">
           {/* Animated Container (White Circle + Pulse) */}
           <Animated.View
@@ -71,6 +73,7 @@ export function LoadingOverlay({
                 width: containerSize,
                 height: containerSize,
                 borderRadius: containerSize / 2,
+                backgroundColor: colors.card, // Match card color for the pulse circle
               },
             ]}
           >
@@ -92,14 +95,14 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.5)",
+    // Background color set dynamically via style prop
   },
   center: {
     justifyContent: "center",
     alignItems: "center",
   },
   logoContainer: {
-    backgroundColor: "white",
+    // Background color set dynamically via style prop
     justifyContent: "center",
     alignItems: "center",
     // Optional: Add shadow if desired for depth

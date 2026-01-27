@@ -21,28 +21,25 @@ const SoftLockContext = createContext<SoftLockContextType | undefined>(undefined
 const LOCK_TIMEOUT = 5 * 60 * 1000; // 5 minutes
 
 export function SoftLockProvider({ children }: { children: React.ReactNode }) {
-  const { user } = useAuthContext();
+  const { user, isLoading: isAuthLoading } = useAuthContext();
   const [isLocked, setIsLocked] = useState(false);
   const [isEnabled, setIsEnabledState] = useState(true); // Default to enabled
   const [isInitialized, setIsInitialized] = useState(false);
   const appState = useRef(AppState.currentState);
   const backgroundTime = useRef<number | null>(null);
+  const hasInitialLockCheckDone = useRef(false);
 
   // Initialize from storage on mount
   useEffect(() => {
     const init = async () => {
       try {
         const enabledValue = await AsyncStorage.getItem(SOFT_LOCK_ENABLED_KEY);
-        const lockState = await AsyncStorage.getItem(SOFT_LOCK_STATE_KEY);
+        // We don't check SOFT_LOCK_STATE_KEY anymore for initial lock, 
+        // because we force lock on cold start if logged in.
         
         // If no value stored, default to enabled
         const enabled = enabledValue === null ? true : enabledValue === 'true';
         setIsEnabledState(enabled);
-        
-        // If app was closed while locked (and user is logged in), restore lock state
-        if (enabled && lockState === 'locked' && user) {
-          setIsLocked(true);
-        }
       } catch (e) {
         console.error('[SoftLock] Failed to initialize from storage', e);
       } finally {
@@ -50,7 +47,24 @@ export function SoftLockProvider({ children }: { children: React.ReactNode }) {
       }
     };
     init();
-  }, [user]);
+  }, []);
+
+  // Handle Cold Start Locking
+  useEffect(() => {
+    // Wait until both Auth and SoftLock are initialized
+    if (isAuthLoading || !isInitialized) return;
+    
+    // Only run this check once per app launch
+    if (hasInitialLockCheckDone.current) return;
+    
+    hasInitialLockCheckDone.current = true;
+
+    // If user is logged in (session restored) and soft lock is enabled -> LOCK
+    if (user && isEnabled) {
+      console.log("[SoftLock] Cold start with user session -> Locking app");
+      setIsLocked(true);
+    }
+  }, [isAuthLoading, isInitialized, user, isEnabled]);
 
   useEffect(() => {
     if (!isEnabled || !isInitialized) return;

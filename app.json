@@ -13,6 +13,9 @@
       "googleServicesFile": "./GoogleService-Info.plist",
       "jsEngine": "hermes",
       "supportsTablet": true,
+      "associatedDomains": [
+        "webcredentials:nexusdatasub.com"
+      ],
       "infoPlist": {
         "UIBackgroundModes": [
           "remote-notification"

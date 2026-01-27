@@ -128,6 +128,14 @@ export function useSecurityVerification(
   }, []);
 
   /**
+   * Open PIN pad modal manually
+   */
+  const openPinPad = useCallback(() => {
+    setShowPinPad(true);
+    setVerificationError(null);
+  }, []);
+
+  /**
    * Reset verification state
    */
   const resetVerification = useCallback(() => {
@@ -140,6 +148,7 @@ export function useSecurityVerification(
     startVerification,
     handlePinSubmit,
     closePinPad,
+    openPinPad,
     resetVerification,
     showPinPad,
     isVerifying,

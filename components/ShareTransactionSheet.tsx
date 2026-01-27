@@ -7,12 +7,14 @@ import {
     ActivityIndicator,
     Alert,
     Modal,
+    Platform,
     ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
     View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ViewShot, { captureRef } from 'react-native-view-shot';
 import { TransactionReceipt } from './purchase/TransactionReceipt';
 
@@ -27,6 +29,7 @@ export function ShareTransactionSheet({
   onClose,
   transaction,
 }: ShareTransactionSheetProps) {
+  const insets = useSafeAreaInsets();
   const receiptRef = useRef<View>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [shareType, setShareType] = useState<'image' | 'pdf' | null>(null);
@@ -118,10 +121,17 @@ export function ShareTransactionSheet({
     <Modal
       visible={visible}
       animationType="slide"
-      presentationStyle="pageSheet"
+      presentationStyle={Platform.OS === 'ios' ? 'pageSheet' : 'fullScreen'}
       onRequestClose={onClose}
+      statusBarTranslucent
     >
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[
+        styles.container, 
+        { 
+          backgroundColor: colors.background,
+          paddingTop: Platform.OS === 'android' ? insets.top : 0 
+        }
+      ]}>
         {/* Header */}
         <View style={[styles.header, { borderBottomColor: colors.border }]}>
           <Text style={[styles.headerTitle, { color: colors.foreground }]}>Share Receipt</Text>

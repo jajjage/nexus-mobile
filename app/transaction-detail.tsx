@@ -130,8 +130,7 @@ export default function TransactionDetailScreen() {
     const iconSize = 32;
     
     if (transaction.relatedType === "topup_request") {
-      const isData = transaction.productCode?.toLowerCase().includes("data") ||
-        transaction.productCode?.toLowerCase().includes("gb");
+      const isData = isDataTransaction(transaction);
       
       if (isData) {
         return (

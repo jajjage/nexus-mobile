@@ -23,6 +23,7 @@
     "Pressable",
     "Proguard",
     "Topup",
-    "webauthn"
+    "webauthn",
+    "webcredentials"
   ]
 }

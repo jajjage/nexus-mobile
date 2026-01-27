@@ -157,7 +157,7 @@ export function useAuth() {
 // ============================================================================
 
 export function useLogin() {
-  const { setUser } = useAuthContext();
+  const { setUser, setIsLoading } = useAuthContext();
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
@@ -188,20 +188,43 @@ export function useLogin() {
       return authService.login(loginData);
     },
     onSuccess: async (response) => {
-      // Invalidate and refetch user profile
-      await queryClient.invalidateQueries({ queryKey: authKeys.currentUser() });
-      
-      toast.success("Welcome back! 👋", {
-        description: "Login successful",
-      });
-      
-      router.replace("/(tabs)");
+      // Show global loader to cover the transition and data fetching
+      setIsLoading(true);
+
+      try {
+        // Fetch full profile immediately
+        const profile = await authService.getProfile();
+        
+        // Update React Query cache
+        queryClient.setQueryData(authKeys.currentUser(), profile);
+        
+        // Update Context State
+        setUser(profile);
+
+        // Pre-fetch critical home screen data if possible (e.g. balance)
+        // await queryClient.prefetchQuery(...) // Optional
+
+        toast.success("Welcome back! 👋", {
+          description: "Login successful",
+        });
+        
+        router.replace("/(tabs)");
+      } catch (error) {
+        console.error("[useLogin] Failed to fetch profile after login:", error);
+        toast.error("Login Error", { description: "Could not load user profile" });
+      } finally {
+        // Hide loader after a short delay to allow Home screen to render
+        setTimeout(() => {
+          setIsLoading(false);
+        }, 500); 
+      }
     },
     onError: (error: AxiosError<any>) => {
       const message = error.response?.data?.message || "Login failed. Please try again.";
       toast.error("Login Failed", {
         description: message,
       });
+      setIsLoading(false);
     },
   });
 
