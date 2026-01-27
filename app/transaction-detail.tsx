@@ -18,6 +18,7 @@ import {
     getStatusConfig,
     getTransactionDescription,
     getTransactionTypeLabel,
+    isDataTransaction,
     isRefundTransaction,
 } from "@/lib/transactionUtils";
 import * as Clipboard from "expo-clipboard";

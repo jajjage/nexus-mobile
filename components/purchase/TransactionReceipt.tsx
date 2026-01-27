@@ -172,26 +172,22 @@ export const TransactionReceipt = React.forwardRef<View, TransactionReceiptProps
     };
 
     const renderIcon = () => {
+      const iconSize = 32;
       if (isTopupRequest) {
-        // Prefer specific icons over generic credit card
-        if (isDataProduct) return <Wifi size={32} color="#9333EA" />;
-        return <Phone size={32} color="#2563EB" />;
+        if (isDataProduct) return <Wifi size={iconSize} color="#9333EA" />;
+        return <Phone size={iconSize} color="#2563EB" />;
       }
-      return <CreditCard size={32} color="#9CA3AF" />;
+      return <CreditCard size={iconSize} color="#9CA3AF" />;
     };
 
     return (
       <View ref={ref} style={styles.container}>
         {/* Top Section */}
         <View style={styles.topSection}>
-          {/* Logo / Icon */}
-          <View style={styles.logoContainer}>
+          {/* Logo / Icon Container */}
+          <View style={[styles.logoContainer, isTopupRequest && isDataProduct && { backgroundColor: '#F3E8FF' }, isTopupRequest && !isDataProduct && { backgroundColor: '#DBEAFE' }]}>
             {showLogo && isTopupRequest && logoUrl ? (
-              <Image source={{ uri: logoUrl }} style={styles.logo} resizeMode="cover" />
-            ) : isCredit ? (
-              <View style={styles.creditIcon}>
-                <Text style={styles.creditIconText}>IN</Text>
-              </View>
+              <Image source={{ uri: logoUrl }} style={styles.logo} resizeMode="contain" />
             ) : (
               renderIcon()
             )}
@@ -203,8 +199,8 @@ export const TransactionReceipt = React.forwardRef<View, TransactionReceiptProps
           {/* Description */}
           <Text style={styles.description}>{getTransactionDescription(transaction)}</Text>
 
-          {/* Amount */}
-          <Text style={styles.amount}>{formattedAmount}</Text>
+          {/* Amount / Bundle Name */}
+          <Text style={styles.amount} numberOfLines={2}>{formattedAmount}</Text>
 
           {/* Status */}
           <Text style={[styles.status, { color: statusConfig.color }]}>

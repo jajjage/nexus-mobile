@@ -5,6 +5,7 @@
     "source.sortMembers": "explicit"
   },
   "cSpell.words": [
+    "airtel",
     "androidx",
     "applinks",
     "bouncycastle",
@@ -12,7 +13,9 @@
     "conscrypt",
     "dimezis",
     "dontwarn",
+    "etisalat",
     "Gluestack",
+    "gorhom",
     "Gson",
     "jajjage",
     "keepclassmembers",
@@ -21,6 +24,7 @@
     "okhttp",
     "openjsse",
     "Parcelable",
+    "prefs",
     "Pressable",
     "Proguard",
     "Topup",
