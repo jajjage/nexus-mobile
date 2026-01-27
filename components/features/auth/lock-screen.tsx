@@ -37,7 +37,10 @@ export const LockScreen = ({ onUnlock }: { onUnlock: () => void }) => {
   }, []);
 
   // Get biometric icon based on platform
-  const BiometricIcon = Platform.OS === 'ios' ? () => <ScanFace size={40} color={colors.primary} /> : () => <Fingerprint size={40} color={colors.primary} />;
+  const BiometricIcon = ({ size = 40 }: { size?: number }) => 
+    Platform.OS === 'ios' ? 
+      <ScanFace size={size} color={colors.primary} /> : 
+      <Fingerprint size={size} color={colors.primary} />;
 
 
   return (
@@ -70,7 +73,7 @@ export const LockScreen = ({ onUnlock }: { onUnlock: () => void }) => {
             onPress={() => startVerification()}
             style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: `rgba(230, 158, 25, 0.15)`, justifyContent: 'center', alignItems: 'center', marginBottom: 20 }}
           >
-            <BiometricIcon />
+            <BiometricIcon size={40} />
           </TouchableOpacity>
           <Text style={{ fontSize: 16, fontWeight: '500', color: colors.foreground, marginBottom: 24, textAlign: 'center' }}>
             Tap to unlock with biometric
@@ -79,28 +82,28 @@ export const LockScreen = ({ onUnlock }: { onUnlock: () => void }) => {
 
         {/* Unlock Button */}
         {!showPinPad && (
-          <View style={{ width: '100%', gap: 16 }}>
+          <View style={{ width: '100%', gap: 12 }}>
             <TouchableOpacity 
               onPress={() => startVerification()}
               style={{ 
                 backgroundColor: colors.primary, 
-                paddingVertical: 14, 
-                paddingHorizontal: 24, 
+                paddingVertical: 12, 
+                paddingHorizontal: 20, 
                 borderRadius: 12,
                 flexDirection: 'row',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: 12,
+                gap: 10,
                 width: '100%',
                 shadowColor: colors.primary,
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.2,
-                shadowRadius: 8,
-                elevation: 4,
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.15,
+                shadowRadius: 4,
+                elevation: 3,
               }}
             >
-              <BiometricIcon />
-              <Text style={{ color: '#fff', fontWeight: '600', fontSize: 16 }}>
+              <BiometricIcon size={20} />
+              <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>
                 Unlock with Biometric
               </Text>
             </TouchableOpacity>
@@ -108,7 +111,7 @@ export const LockScreen = ({ onUnlock }: { onUnlock: () => void }) => {
             <TouchableOpacity 
               onPress={() => openPinPad()}
               style={{
-                paddingVertical: 14,
+                paddingVertical: 12,
                 width: '100%',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -118,7 +121,7 @@ export const LockScreen = ({ onUnlock }: { onUnlock: () => void }) => {
                 backgroundColor: colors.card,
               }}
             >
-              <Text style={{ color: colors.foreground, fontSize: 16, fontWeight: '600' }}>
+              <Text style={{ color: colors.foreground, fontSize: 14, fontWeight: '600' }}>
                 Use Passcode Instead
               </Text>
             </TouchableOpacity>

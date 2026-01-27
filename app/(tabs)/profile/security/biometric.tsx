@@ -1,28 +1,39 @@
-import { darkColors, lightColors } from "@/constants/palette";
+import { useTheme } from "@/context/ThemeContext";
 import { useAuthContext } from "@/context/AuthContext";
 import { useBiometricEnrollments, useDeleteBiometricEnrollment } from "@/hooks/useBiometricManagement";
 import { useBiometricRegistration } from "@/hooks/useBiometricRegistration";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { useRouter } from "expo-router";
-import { useState } from "react";
-import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View, useColorScheme } from "react-native";
+import { useEffect, useState } from "react";
+import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 export default function BiometricDevicesScreen() {
   const router = useRouter();
-  const colorScheme = useColorScheme();
-  const colors = colorScheme === "dark" ? darkColors : lightColors;
+  const { colors, isDark } = useTheme();
   const { data: enrollments, isLoading, error, refetch } = useBiometricEnrollments();
   const deleteEnrollmentMutation = useDeleteBiometricEnrollment();
   const { registerBiometric, isLoading: isEnrolling } = useBiometricRegistration();
   const { updateUser } = useAuthContext();
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [togglingBiometric, setTogglingBiometric] = useState(false);
+  
+  // Local state for current device enrollment
+  const [isLocalEnrolled, setIsLocalEnrolled] = useState(false);
 
-  // Get current device's biometric enrollment (if any)
-  const currentDeviceEnrollment = enrollments?.find(
-    (e) => e.is_active && e.platform === Platform.OS
-  );
-  const isCurrentDeviceBiometricEnabled = !!currentDeviceEnrollment;
+  // Check local enrollment status on mount
+  useEffect(() => {
+    checkLocalStatus();
+  }, []);
+
+  const checkLocalStatus = async () => {
+    try {
+      const enrolled = await AsyncStorage.getItem("biometric_enrolled");
+      setIsLocalEnrolled(enrolled === "true");
+    } catch (e) {
+      console.error("Failed to check local biometric status", e);
+    }
+  };
 
   const handleRemoveDevice = async (enrollmentId: string, deviceName: string) => {
     setDeletingId(enrollmentId);
@@ -42,18 +53,34 @@ export default function BiometricDevicesScreen() {
   const handleToggleBiometric = async () => {
     setTogglingBiometric(true);
     try {
-      if (isCurrentDeviceBiometricEnabled && currentDeviceEnrollment) {
-        // Turn OFF: Revoke the current device's biometric
-        console.log("[BiometricDevicesScreen] Revoking biometric for current device");
-        await deleteEnrollmentMutation.mutateAsync({
-          enrollmentId: currentDeviceEnrollment.id,
-          reason: "User disabled biometric on this device",
-        });
-        Alert.alert(
-          "Success",
-          "Biometric has been disabled on this device",
-          [{ text: "OK" }]
+      if (isLocalEnrolled) {
+        // Turn OFF: 
+        // 1. Find the backend enrollment for this device (best effort match)
+        // If we can't find it easily, we just clear local state and backend user flag?
+        // Ideally we revoke the specific credential.
+        // For now, we update local state and try to find a matching enrollment to revoke.
+        
+        console.log("[BiometricDevicesScreen] Disabling biometric for current device");
+        
+        // Attempt to find enrollment to revoke (active, same platform)
+        // This is a heuristic. Ideally we store the credentialId locally.
+        const enrollmentToRevoke = enrollments?.find(
+            (e) => e.is_active && e.platform === Platform.OS
         );
+
+        if (enrollmentToRevoke) {
+             await deleteEnrollmentMutation.mutateAsync({
+                enrollmentId: enrollmentToRevoke.id,
+                reason: "User disabled biometric on this device",
+             });
+        }
+
+        // Always clear local state
+        await AsyncStorage.removeItem("biometric_enrolled");
+        setIsLocalEnrolled(false);
+        
+        Alert.alert("Success", "Biometric has been disabled on this device");
+
       } else {
         // Turn ON: Register biometric for current device
         console.log("[BiometricDevicesScreen] Starting biometric enrollment for current device");
@@ -62,13 +89,13 @@ export default function BiometricDevicesScreen() {
         if (result.success && result.enrolled) {
           // Update user state
           updateUser({ hasBiometric: true });
+          // Update local state
+          await AsyncStorage.setItem("biometric_enrolled", "true");
+          setIsLocalEnrolled(true);
+          
           // Refetch devices list
           await refetch();
-          Alert.alert(
-            "Success",
-            "Biometric has been enabled on this device",
-            [{ text: "OK" }]
-          );
+          Alert.alert("Success", "Biometric has been enabled on this device");
         } else {
           Alert.alert("Enrollment Failed", result.message || "Please try again");
         }
@@ -107,9 +134,9 @@ export default function BiometricDevicesScreen() {
 
   if (error) {
     return (
-      <View style={[styles.container, styles.centerContent]}>
-        <FontAwesome name="exclamation-circle" size={40} color="#e63636" />
-        <Text style={styles.errorText}>Failed to load devices</Text>
+      <View style={[styles.container, styles.centerContent, { backgroundColor: colors.background }]}>
+        <FontAwesome name="exclamation-circle" size={40} color={colors.destructive} />
+        <Text style={[styles.errorText, { color: colors.destructive }]}>Failed to load devices</Text>
       </View>
     );
   }
@@ -117,31 +144,21 @@ export default function BiometricDevicesScreen() {
   const activeDevices = enrollments?.filter((e) => e.is_active) || [];
   const inactiveDevices = enrollments?.filter((e) => !e.is_active) || [];
 
-  // Debug logging
-  console.log("[BiometricDevicesScreen] Debug:", {
-    enrollmentsData: enrollments,
-    currentDeviceEnrollment,
-    isCurrentDeviceBiometricEnabled,
-    allActiveDevices: activeDevices.length,
-    isLoading,
-    error,
-  });
-
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <ScrollView style={[styles.container, { backgroundColor: colors.background }]} showsVerticalScrollIndicator={false}>
       {/* Info Banner */}
-      <View style={styles.infoBanner}>
-        <FontAwesome name="lock" size={18} color={lightColors.primary} />
-        <Text style={styles.infoText}>
+      <View style={[styles.infoBanner, { backgroundColor: isDark ? `${colors.primary}15` : "#f0f7ff", borderLeftColor: colors.primary }]}>
+        <FontAwesome name="lock" size={18} color={colors.primary} />
+        <Text style={[styles.infoText, { color: colors.foreground }]}>
           Manage your registered biometric devices for secure authentication.
         </Text>
       </View>
 
-      {/* Loading Indicator (if fetching data) */}
+      {/* Loading Indicator */}
       {isLoading && (
         <View style={{ paddingVertical: 20, alignItems: "center" }}>
-          <ActivityIndicator size="large" color={lightColors.primary} />
-          <Text style={{ marginTop: 12, color: lightColors.textSecondary }}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={{ marginTop: 12, color: colors.mutedForeground }}>
             Loading devices...
           </Text>
         </View>
@@ -150,27 +167,30 @@ export default function BiometricDevicesScreen() {
       {/* Current Device Biometric Toggle Section */}
       {!isLoading && (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>This Device</Text>
-          <View style={styles.toggleContainer}>
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>This Device</Text>
+          <View style={[styles.toggleContainer, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <View style={styles.toggleInfo}>
-              <View style={styles.toggleIconBg}>
+              <View style={[styles.toggleIconBg, { backgroundColor: isDark ? `${colors.primary}15` : "#f0f7ff" }]}>
                 <FontAwesome
                   name="mobile"
                   size={20}
-                  color={isCurrentDeviceBiometricEnabled ? lightColors.primary : lightColors.mutedForeground}
+                  color={isLocalEnrolled ? colors.primary : colors.mutedForeground}
                 />
               </View>
               <View style={styles.toggleDetails}>
-                <Text style={styles.toggleTitle}>Biometric {Platform.OS === "ios" ? "Face ID" : "Fingerprint"}</Text>
-                <Text style={styles.toggleStatus}>
-                  {isCurrentDeviceBiometricEnabled ? "Enabled on this device" : "Not enabled on this device"}
+                <Text style={[styles.toggleTitle, { color: colors.foreground }]}>
+                    Biometric {Platform.OS === "ios" ? "Face ID" : "Fingerprint"}
+                </Text>
+                <Text style={[styles.toggleStatus, { color: colors.mutedForeground }]}>
+                  {isLocalEnrolled ? "Enabled on this device" : "Not enabled on this device"}
                 </Text>
               </View>
             </View>
             <Pressable
               style={({ pressed }) => [
                 styles.toggleButton,
-                isCurrentDeviceBiometricEnabled && styles.toggleButtonActive,
+                isLocalEnrolled && { backgroundColor: isDark ? `${colors.success}20` : "#e8f5e9" },
+                !isLocalEnrolled && { backgroundColor: isDark ? colors.border : "#f5f5f5" },
                 pressed && styles.toggleButtonPressed,
                 togglingBiometric && styles.toggleButtonDisabled,
               ]}
@@ -180,13 +200,13 @@ export default function BiometricDevicesScreen() {
               {togglingBiometric ? (
                 <ActivityIndicator 
                   size="small" 
-                  color={isCurrentDeviceBiometricEnabled ? "#22c55e" : "#999"}
+                  color={isLocalEnrolled ? colors.success : colors.mutedForeground}
                 />
               ) : (
                 <View
                   style={[
                     styles.toggleSwitch,
-                    isCurrentDeviceBiometricEnabled && styles.toggleSwitchOn,
+                    isLocalEnrolled ? { backgroundColor: colors.success, alignItems: 'flex-end' } : { backgroundColor: "#ccc", alignItems: 'flex-start' },
                   ]}
                 >
                   <View style={styles.toggleDot} />
@@ -200,22 +220,22 @@ export default function BiometricDevicesScreen() {
       {/* Active Devices */}
       {activeDevices.length > 0 && (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Registered Devices ({activeDevices.length})</Text>
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Registered Devices ({activeDevices.length})</Text>
           <View style={styles.devicesList}>
             {activeDevices.map((device) => (
-              <View key={device.id} style={styles.deviceCard}>
+              <View key={device.id} style={[styles.deviceCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
                 <View style={styles.deviceHeader}>
                   <View style={styles.deviceInfo}>
-                    <View style={styles.deviceIconBg}>
+                    <View style={[styles.deviceIconBg, { backgroundColor: isDark ? `${colors.primary}15` : "#f0f7ff" }]}>
                       <FontAwesome
                         name={getPlatformIcon(device.platform)}
                         size={18}
-                        color={lightColors.primary}
+                        color={colors.primary}
                       />
                     </View>
                     <View style={styles.deviceDetails}>
-                      <Text style={styles.deviceName}>{device.device_name}</Text>
-                      <Text style={styles.deviceMeta}>
+                      <Text style={[styles.deviceName, { color: colors.foreground }]}>{device.device_name}</Text>
+                      <Text style={[styles.deviceMeta, { color: colors.mutedForeground }]}>
                         {device.platform.charAt(0).toUpperCase() + device.platform.slice(1)} •{" "}
                         {device.authenticator_attachment === "platform"
                           ? "Built-in"
@@ -224,18 +244,18 @@ export default function BiometricDevicesScreen() {
                     </View>
                   </View>
                   <View style={styles.statusBadge}>
-                    <FontAwesome name="check-circle" size={14} color="#22c55e" />
+                    <FontAwesome name="check-circle" size={14} color={colors.success} />
                   </View>
                 </View>
-                <View style={styles.deviceStats}>
-                  <Text style={styles.statText}>
+                <View style={[styles.deviceStats, { borderTopColor: isDark ? colors.border : "#f5f5f5" }]}>
+                  <Text style={[styles.statText, { color: colors.mutedForeground }]}>
                     Verified {device.verification_count} times
                   </Text>
-                  <Text style={styles.statText}>
+                  <Text style={[styles.statText, { color: colors.mutedForeground }]}>
                     Enrolled {formatDate(device.enrolled_at)}
                   </Text>
                   {device.last_verified_at && (
-                    <Text style={styles.statText}>
+                    <Text style={[styles.statText, { color: colors.mutedForeground }]}>
                       Last used {formatDate(device.last_verified_at)}
                     </Text>
                   )}
@@ -243,17 +263,18 @@ export default function BiometricDevicesScreen() {
                 <Pressable
                   style={({ pressed }) => [
                     styles.removeButton,
-                    pressed && styles.removeButtonPressed,
+                    { backgroundColor: isDark ? `${colors.destructive}15` : "#ffe6e6", borderColor: isDark ? `${colors.destructive}30` : "#ffcccc" },
+                    pressed && { opacity: 0.7 },
                   ]}
                   onPress={() => handleRemoveDevice(device.id, device.device_name)}
                   disabled={deletingId === device.id}
                 >
                   {deletingId === device.id ? (
-                    <ActivityIndicator size="small" color="#e63636" />
+                    <ActivityIndicator size="small" color={colors.destructive} />
                   ) : (
                     <>
-                      <FontAwesome name="trash" size={14} color="#e63636" />
-                      <Text style={styles.removeButtonText}>Remove</Text>
+                      <FontAwesome name="trash" size={14} color={colors.destructive} />
+                      <Text style={[styles.removeButtonText, { color: colors.destructive }]}>Remove</Text>
                     </>
                   )}
                 </Pressable>
@@ -266,24 +287,24 @@ export default function BiometricDevicesScreen() {
       {/* Inactive Devices */}
       {inactiveDevices.length > 0 && (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Revoked Devices</Text>
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Revoked Devices</Text>
           <View style={styles.devicesList}>
             {inactiveDevices.map((device) => (
-              <View key={device.id} style={[styles.deviceCard, styles.inactiveCard]}>
+              <View key={device.id} style={[styles.deviceCard, styles.inactiveCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
                 <View style={styles.deviceHeader}>
                   <View style={styles.deviceInfo}>
-                    <View style={[styles.deviceIconBg, styles.inactiveIconBg]}>
+                    <View style={[styles.deviceIconBg, { backgroundColor: isDark ? colors.border : "#f5f5f5" }]}>
                       <FontAwesome
                         name={getPlatformIcon(device.platform)}
                         size={18}
-                        color={lightColors.foreground}
+                        color={colors.foreground}
                       />
                     </View>
                     <View style={styles.deviceDetails}>
-                      <Text style={[styles.deviceName, styles.inactiveText]}>
+                      <Text style={[styles.deviceName, styles.inactiveText, { color: colors.mutedForeground }]}>
                         {device.device_name}
                       </Text>
-                      <Text style={[styles.deviceMeta, styles.inactiveText]}>Revoked</Text>
+                      <Text style={[styles.deviceMeta, styles.inactiveText, { color: colors.mutedForeground }]}>Revoked</Text>
                     </View>
                   </View>
                 </View>
@@ -293,26 +314,24 @@ export default function BiometricDevicesScreen() {
         </View>
       )}
 
-
-
       {/* Info Section */}
-      <View style={styles.infoSection}>
-        <Text style={styles.infoSectionTitle}>About Biometric Devices</Text>
+      <View style={[styles.infoSection, { backgroundColor: isDark ? colors.card : "#f9f9f9", borderColor: colors.border }]}>
+        <Text style={[styles.infoSectionTitle, { color: colors.foreground }]}>About Biometric Devices</Text>
         <View style={styles.infoItem}>
-          <FontAwesome name="check" size={14} color="#22c55e" />
-          <Text style={styles.infoItemText}>
+          <FontAwesome name="check" size={14} color={colors.success} />
+          <Text style={[styles.infoItemText, { color: colors.mutedForeground }]}>
             Each device stores your unique biometric data locally
           </Text>
         </View>
         <View style={styles.infoItem}>
-          <FontAwesome name="check" size={14} color="#22c55e" />
-          <Text style={styles.infoItemText}>
+          <FontAwesome name="check" size={14} color={colors.success} />
+          <Text style={[styles.infoItemText, { color: colors.mutedForeground }]}>
             You can register multiple devices for added convenience
           </Text>
         </View>
         <View style={styles.infoItem}>
-          <FontAwesome name="check" size={14} color="#22c55e" />
-          <Text style={styles.infoItemText}>
+          <FontAwesome name="check" size={14} color={colors.success} />
+          <Text style={[styles.infoItemText, { color: colors.mutedForeground }]}>
             Remove devices you no longer use for security
           </Text>
         </View>
@@ -324,7 +343,6 @@ export default function BiometricDevicesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: lightColors.background,
   },
   centerContent: {
     justifyContent: "center",
@@ -336,16 +354,13 @@ const styles = StyleSheet.create({
     padding: 16,
     marginHorizontal: 16,
     marginVertical: 16,
-    backgroundColor: "#f0f7ff",
     borderRadius: 10,
     borderLeftWidth: 4,
-    borderLeftColor: lightColors.primary,
     gap: 12,
   },
   infoText: {
     flex: 1,
     fontSize: 13,
-    color: lightColors.foreground,
     lineHeight: 18,
   },
   section: {
@@ -356,17 +371,14 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: "600",
-    color: lightColors.foreground,
     marginBottom: 12,
   },
   devicesList: {
     gap: 12,
   },
   deviceCard: {
-    backgroundColor: lightColors.card,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: lightColors.input,
     padding: 14,
   },
   inactiveCard: {
@@ -388,12 +400,8 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 8,
-    backgroundColor: "#f0f7ff",
     justifyContent: "center",
     alignItems: "center",
-  },
-  inactiveIconBg: {
-    backgroundColor: "#f5f5f5",
   },
   deviceDetails: {
     flex: 1,
@@ -401,15 +409,13 @@ const styles = StyleSheet.create({
   deviceName: {
     fontSize: 14,
     fontWeight: "600",
-    color: lightColors.foreground,
     marginBottom: 2,
   },
   inactiveText: {
-    color: lightColors.mutedForeground,
+    // handled dynamically
   },
   deviceMeta: {
     fontSize: 12,
-    color: lightColors.mutedForeground,
   },
   statusBadge: {
     marginLeft: 8,
@@ -419,11 +425,9 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: "#f5f5f5",
   },
   statText: {
     fontSize: 11,
-    color: lightColors.mutedForeground,
   },
   removeButton: {
     flexDirection: "row",
@@ -432,37 +436,27 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 6,
-    backgroundColor: "#ffe6e6",
     borderWidth: 1,
-    borderColor: "#ffcccc",
     gap: 6,
-  },
-  removeButtonPressed: {
-    backgroundColor: "#ffcccc",
   },
   removeButtonText: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#e63636",
   },
   errorText: {
     fontSize: 16,
-    color: "#e63636",
     marginTop: 12,
   },
   infoSection: {
     marginHorizontal: 16,
     marginBottom: 30,
     padding: 16,
-    backgroundColor: "#f9f9f9",
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: lightColors.input,
   },
   infoSectionTitle: {
     fontSize: 14,
     fontWeight: "600",
-    color: lightColors.foreground,
     marginBottom: 12,
   },
   infoItem: {
@@ -474,7 +468,6 @@ const styles = StyleSheet.create({
   infoItemText: {
     flex: 1,
     fontSize: 12,
-    color: lightColors.mutedForeground,
     lineHeight: 16,
   },
   toggleContainer: {
@@ -482,10 +475,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     padding: 16,
-    backgroundColor: lightColors.card,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: lightColors.input,
     gap: 12,
   },
   toggleInfo: {
@@ -498,7 +489,6 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 10,
-    backgroundColor: "#f0f7ff",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -508,23 +498,17 @@ const styles = StyleSheet.create({
   toggleTitle: {
     fontSize: 14,
     fontWeight: "600",
-    color: lightColors.foreground,
     marginBottom: 4,
   },
   toggleStatus: {
     fontSize: 12,
-    color: lightColors.mutedForeground,
   },
   toggleButton: {
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 24,
-    backgroundColor: "#f5f5f5",
     justifyContent: "center",
     alignItems: "center",
-  },
-  toggleButtonActive: {
-    backgroundColor: "#e8f5e9",
   },
   toggleButtonPressed: {
     opacity: 0.7,
@@ -536,14 +520,11 @@ const styles = StyleSheet.create({
     width: 50,
     height: 28,
     borderRadius: 14,
-    backgroundColor: "#ccc",
     justifyContent: "center",
-    alignItems: "flex-start",
     paddingHorizontal: 2,
   },
   toggleSwitchOn: {
-    backgroundColor: "#22c55e",
-    alignItems: "flex-end",
+    // handled dynamically
   },
   toggleDot: {
     width: 24,
