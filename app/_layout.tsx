@@ -13,13 +13,14 @@ import 'react-native-reanimated';
 import { Toaster } from 'sonner-native';
 
 import { darkColors, lightColors } from '@/constants/palette';
-import { AuthProvider } from '@/context/AuthContext';
+import { AuthProvider, useAuthContext } from '@/context/AuthContext';
 import { SoftLockProvider } from '@/context/SoftLockContext';
 import { ThemeProvider, useTheme } from '@/context/ThemeContext';
 import { useMobileNotificationNavigation } from '@/hooks/useMobileNotificationNavigation';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 
 
+import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { GluestackUIProvider } from '@/components/ui/gluestack-ui-provider';
 import '../global.css';
 
@@ -81,11 +82,14 @@ const queryClient = new QueryClient({
 });
 
 // Helper component to initialize app-wide logic that depends on providers
+// Also handles the global loading overlay
 function AppInitializer() {
   usePushNotifications();
   useMobileNotificationNavigation();
-  return null;
-
+  
+  const { isLoading } = useAuthContext();
+  
+  return <LoadingOverlay visible={isLoading} />;
 }
 
 export default function RootLayout() {

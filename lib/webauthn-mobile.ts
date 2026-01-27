@@ -14,7 +14,7 @@
  * 4. Real authenticator data from biometric hardware is used in production
  */
 
-import { encodeCBORMap, sha256, uint8ArrayToBase64Url } from "@/lib/cbor-encoder";
+import { encodeCBOR, encodeCBORMap, sha256, uint8ArrayToBase64Url } from "@/lib/cbor-encoder";
 import { isWebAuthnDevelopment, isWebAuthnProduction, logWebAuthnEnvironment } from "@/lib/webauthn-env";
 import { WebAuthnAuthenticationResponse } from "@/types/biometric.types";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -504,18 +504,24 @@ function buildAuthenticatorDataBytes(rpIdHash: Uint8Array, credentialId: string,
  */
 function buildCOSEPublicKey(challenge: string): Uint8Array {
   // COSE key structure for P-256
-  // This is a simplified version - real implementation would use actual key material
-  const keyData = {
-    1: 2,                           // kty: EC2
-    3: -7,                          // alg: ES256
-    '-1': 1,                        // crv: P-256
-    '-2': challenge.substring(0, 32), // x coordinate (from challenge for demo)
-    '-3': challenge.substring(32, 64), // y coordinate (from challenge for demo)
-  };
+  // CRITICAL: Use a Map to ensure keys are encoded as INTEGERS, not strings
+  // WebAuthn/COSE spec requires integer keys (1, 3, -1, -2, -3)
+  const keyMap = new Map();
+
+  keyMap.set(1, 2);   // kty: EC2
+  keyMap.set(3, -7);  // alg: ES256
+  keyMap.set(-1, 1);  // crv: P-256
+
+  // Coordinates must be Byte Strings (Uint8Array), not Text Strings
+  // For this mock/phase 1 implementation, we generate 32-byte values from the challenge
+  const xBytes = sha256(challenge); 
+  const yBytes = sha256(challenge + "y_coord");
+
+  keyMap.set(-2, xBytes); // x coordinate
+  keyMap.set(-3, yBytes); // y coordinate
   
-  // Encode as CBOR
-  const cborBytes = encodeCBORMap(keyData);
-  return cborBytes;
+  // Encode Map as CBOR
+  return encodeCBOR(keyMap);
 }
 
 /**

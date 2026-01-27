@@ -52,6 +52,7 @@
     },
     "assetBundlePatterns": [
       "assets/images/**/*",
+      "assets/optimized/**/*",
       "assets/fonts/**/*"
     ],
     "plugins": [
