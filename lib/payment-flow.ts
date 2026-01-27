@@ -93,7 +93,7 @@ export async function getBiometricChallenge(): Promise<BiometricChallengeRespons
 export async function verifyBiometricAndGetToken(): Promise<string> {
   try {
     // Step 1: Get biometric challenge from backend
-    const { challenge, rpId } = await getBiometricChallenge();
+    const { challenge, rpId, allowCredentials } = await getBiometricChallenge();
 
     // Step 2: Check hardware support
     const hasHardware = await LocalAuthentication.hasHardwareAsync();
