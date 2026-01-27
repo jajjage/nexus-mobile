@@ -1,11 +1,11 @@
 import { userService } from "@/services/user.service";
 import {
-    GetPurchasesParams,
-    GetSupplierMarkupParams,
-    SetPinRequest,
-    TopupRequest,
-    UpdatePasswordRequest,
-    UpdateProfileRequest,
+  GetPurchasesParams,
+  GetSupplierMarkupParams,
+  SetPinRequest,
+  TopupRequest,
+  UpdatePasswordRequest,
+  UpdateProfileRequest,
 } from "@/types/user.types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AxiosError } from "axios";
@@ -212,6 +212,36 @@ export const useCreateTopupWithCallback = (
     },
     onError: (error: AxiosError<any>) => {
       console.error("Topup failed:", error.response?.data?.message);
+    },
+  });
+  
+};
+
+import { useAuthContext } from "@/context/AuthContext";
+
+/**
+ * Delete user account
+ */
+export const useDeleteAccount = () => {
+  const queryClient = useQueryClient();
+  const router = useRouter();
+  const { setUser } = useAuthContext();
+
+  return useMutation({
+    mutationFn: (password: string) => userService.deleteAccount(password),
+    onSuccess: (data) => {
+      // Clear all cached data
+      queryClient.clear();
+      
+      // Clear auth state immediately
+      setUser(null);
+
+      // Redirect to home page (login) after account deletion
+      router.replace("/(auth)/login");
+    },
+    onError: (error: AxiosError<any>) => {
+      console.error("Account deletion failed:", error.response?.data?.message);
+      throw error; // Re-throw so the calling component can handle the error
     },
   });
 };

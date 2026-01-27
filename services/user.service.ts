@@ -1,19 +1,19 @@
 import apiClient from "@/lib/api-client";
 import { ApiResponse } from "@/types/api.types";
 import {
-    CreateVirtualAccountRequest,
-    CreateVirtualAccountResponse,
-    GetPurchasesParams,
-    GetSupplierMarkupParams,
-    PaginatedSupplierMarkupResponse,
-    ProfileResponse,
-    PurchaseResponse,
-    PurchasesListResponse,
-    SetPinRequest,
-    TopupRequest,
-    TopupResponse,
-    UpdatePasswordRequest,
-    UpdateProfileRequest,
+  CreateVirtualAccountRequest,
+  CreateVirtualAccountResponse,
+  GetPurchasesParams,
+  GetSupplierMarkupParams,
+  PaginatedSupplierMarkupResponse,
+  ProfileResponse,
+  PurchaseResponse,
+  PurchasesListResponse,
+  SetPinRequest,
+  TopupRequest,
+  TopupResponse,
+  UpdatePasswordRequest,
+  UpdateProfileRequest,
 } from "@/types/user.types";
 
 export const userService = {
@@ -146,6 +146,16 @@ export const userService = {
       "/user/virtual-account",
       data
     );
+    return response.data;
+  },
+
+    /**
+   * Delete current user's account
+   */
+  deleteAccount: async (password: string): Promise<ApiResponse> => {
+    const response = await apiClient.delete<ApiResponse>("/user/profile/me", {
+      data: { password },
+    });
     return response.data;
   },
 };
