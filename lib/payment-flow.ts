@@ -127,7 +127,8 @@ export async function verifyBiometricAndGetToken(): Promise<string> {
     
     // Step 5: Build assertion and verify with backend
     console.log("[PaymentFlow] Building WebAuthn assertion");
-    const assertion = await buildWebAuthnAssertion(challenge);
+    // Pass allowCredentials to filter specific keys (skips account selection list if unique)
+    const assertion = await buildWebAuthnAssertion(challenge, rpId, allowCredentials);
 
     console.log("[PaymentFlow] Verifying signature with backend");
     const response = await apiClient.post("/biometric/auth/verify", {

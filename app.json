@@ -36,6 +36,10 @@
         "monochromeImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
+      "associatedDomains": [
+        "applinks:nexusdatasub.com",
+        "webcredentials:nexusdatasub.com"
+      ],
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "softwareKeyboardLayoutMode": "resize",

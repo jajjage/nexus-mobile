@@ -94,12 +94,18 @@ export async function buildWebAuthnAttestationResponse(
 
     console.log("[Passkey] Registration successful");
 
+    // Android Hack: Patch CBOR header 0xB90003 -> 0xA3 to satisfy strict backend checks
+    let finalAttestationObject = result.response.attestationObject;
+    if (Platform.OS === 'android') {
+        finalAttestationObject = patchAndroidAttestation(finalAttestationObject);
+    }
+
     return {
       id: result.id,
       rawId: result.rawId,
       response: {
         clientDataJSON: result.response.clientDataJSON,
-        attestationObject: result.response.attestationObject,
+        attestationObject: finalAttestationObject,
       },
       type: "public-key",
       deviceName: Platform.OS === 'ios' ? "iPhone" : "Android",
@@ -121,7 +127,8 @@ export async function buildWebAuthnAttestationResponse(
  */
 export async function buildWebAuthnAssertion(
   challenge: string,
-  rpId: string = "nexusdatasub.com"
+  rpId: string = "nexusdatasub.com",
+  allowCredentials?: { id: string; type: string; transports?: string[] }[]
 ): Promise<WebAuthnAuthenticationResponse> {
   try {
     console.log("[Passkey] Starting authentication...", isExpoGo ? "(Expo Go Mock)" : "(Native)");
@@ -159,6 +166,7 @@ export async function buildWebAuthnAssertion(
     const result = await Passkey.get({
       challenge: challenge,
       rpId: rpId,
+      allowCredentials: allowCredentials, // Pass the filter to OS
       userVerification: "required",
       timeout: 60000,
     });
@@ -210,6 +218,80 @@ function toBase64Url(base64: string): string {
 
 function encodeBase64Url(str: string): string {
   return toBase64Url(btoa(str));
+}
+
+function base64UrlToUint8Array(base64Url: string): Uint8Array {
+  const padding = '='.repeat((4 - base64Url.length % 4) % 4);
+  const base64 = (base64Url + padding).replace(/-/g, '+').replace(/_/g, '/');
+  
+  // Use atob logic for binary string conversion
+  const rawData = typeof atob === 'function' ? atob(base64) : decodeBase64Polyfill(base64);
+  const outputArray = new Uint8Array(rawData.length);
+
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
+function decodeBase64Polyfill(input: string): string {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
+  let str = input.replace(/=+$/, '');
+  let output = '';
+
+  if (str.length % 4 == 1) {
+    throw new Error("'atob' failed: The string to be decoded is not correctly encoded.");
+  }
+  for (let bc = 0, bs = 0, buffer, i = 0;
+    buffer = str.charAt(i++);
+
+    ~buffer && (bs = bc % 4 ? bs * 64 + buffer : buffer,
+      bc++ % 4) ? output += String.fromCharCode(255 & bs >> (-2 * bc & 6)) : 0
+  ) {
+    buffer = chars.indexOf(buffer);
+  }
+
+  return output;
+}
+
+function uint8ArrayToBase64Url(bytes: Uint8Array): string {
+  let binary = '';
+  const len = bytes.byteLength;
+  for (let i = 0; i < len; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return toBase64Url(btoa(binary));
+}
+
+/**
+ * Patch Android CBOR Header
+ * Converts non-minimal Map(3) header 0xB90003 to minimal 0xA3
+ */
+function patchAndroidAttestation(attestationBase64: string): string {
+  try {
+    const bytes = base64UrlToUint8Array(attestationBase64);
+    
+    // Check for 0xB9 0x00 0x03 (Map(3) with 16-bit length)
+    if (bytes.length > 3 && bytes[0] === 0xB9 && bytes[1] === 0x00 && bytes[2] === 0x03) {
+      console.log("[Passkey] Applying CBOR patch: 0xB90003 -> 0xA3");
+      
+      // Create new array with 2 fewer bytes
+      const patched = new Uint8Array(bytes.length - 2);
+      
+      // Write new header 0xA3
+      patched[0] = 0xA3;
+      
+      // Copy rest of data starting from index 3
+      patched.set(bytes.subarray(3), 1);
+      
+      return uint8ArrayToBase64Url(patched);
+    }
+    
+    return attestationBase64;
+  } catch (e) {
+    console.warn("[Passkey] Failed to patch CBOR header:", e);
+    return attestationBase64;
+  }
 }
 
 function createMockAttestationObject(challenge: string): string {
