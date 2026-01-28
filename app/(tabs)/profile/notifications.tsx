@@ -1,16 +1,15 @@
 import { Box, Heading, HStack, Text, VStack } from "@/components/ui";
-import { darkColors, lightColors } from "@/constants/palette";
+import { useTheme } from "@/context/ThemeContext";
 import { useNotificationPreferences, useUpdateNotificationPreference } from "@/hooks/useNotificationPreferences";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { Stack, useRouter } from "expo-router";
 import { ArrowLeft } from "lucide-react-native";
 import { useState } from "react";
-import { ActivityIndicator, ScrollView, Switch, TouchableOpacity, useColorScheme, View } from "react-native";
+import { ActivityIndicator, ScrollView, Switch, TouchableOpacity, View } from "react-native";
 
 export default function NotificationsScreen() {
   const router = useRouter();
-  const colorScheme = useColorScheme();
-  const colors = colorScheme === "dark" ? darkColors : lightColors;
+  const { colors } = useTheme();
   const { data: preferences, isLoading, error } = useNotificationPreferences();
   const updatePreferenceMutation = useUpdateNotificationPreference();
   const [loadingKey, setLoadingKey] = useState<string | null>(null);
@@ -44,82 +43,81 @@ export default function NotificationsScreen() {
     );
   }
 
-  const buildPreferenceGroups = () => {
-    if (!preferences || !Array.isArray(preferences)) return [];
-    
-    const prefMap = preferences.reduce((acc, pref) => {
-      acc[pref.category] = pref.subscribed;
-      return acc;
-    }, {} as Record<string, boolean>);
+  const CATEGORY_META: Record<string, { label: string; description: string }> = {
+    transaction_purchase_confirmation: {
+      label: "Purchase Confirmations",
+      description: "Notify when purchases complete",
+    },
+    transaction_receipt: {
+      label: "Receipt Notifications",
+      description: "Send receipt after each transaction",
+    },
+    account_password_change: {
+      label: "Password Changes",
+      description: "Alert when password is changed",
+    },
+    account_login_notification: {
+      label: "Login Notifications",
+      description: "Notify on new device login",
+    },
+    account_security_alert: {
+      label: "Security Alerts",
+      description: "Unusual account activity alerts",
+    },
+    promo_special_offer: {
+      label: "Special Offers",
+      description: "Exclusive deals and promotions",
+    },
+    promo_cashback: {
+      label: "Cashback Alerts",
+      description: "When you earn cashback rewards",
+    },
+    promo_referral_bonus: {
+      label: "Referral Bonuses",
+      description: "When referrals are successful",
+    },
+  };
 
-    return [
-      {
-        title: "Transactions",
-        description: "Purchase confirmations and receipts",
-        items: [
-          {
-            key: "transaction_purchase_confirmation",
-            label: "Purchase Confirmations",
-            description: "Notify when purchases complete",
-            value: prefMap.transaction_purchase_confirmation ?? true,
-          },
-          {
-            key: "transaction_receipt",
-            label: "Receipt Notifications",
-            description: "Send receipt after each transaction",
-            value: prefMap.transaction_receipt ?? true,
-          },
-        ],
-      },
-      {
-        title: "Account",
-        description: "Security and account updates",
-        items: [
-          {
-            key: "account_password_change",
-            label: "Password Changes",
-            description: "Alert when password is changed",
-            value: prefMap.account_password_change ?? true,
-          },
-          {
-            key: "account_login_notification",
-            label: "Login Notifications",
-            description: "Notify on new device login",
-            value: prefMap.account_login_notification ?? true,
-          },
-          {
-            key: "account_security_alert",
-            label: "Security Alerts",
-            description: "Unusual account activity alerts",
-            value: prefMap.account_security_alert ?? true,
-          },
-        ],
-      },
-      {
-        title: "Promotions",
-        description: "Offers and campaigns",
-        items: [
-          {
-            key: "promo_special_offer",
-            label: "Special Offers",
-            description: "Exclusive deals and promotions",
-            value: prefMap.promo_special_offer ?? false,
-          },
-          {
-            key: "promo_cashback",
-            label: "Cashback Alerts",
-            description: "When you earn cashback rewards",
-            value: prefMap.promo_cashback ?? true,
-          },
-          {
-            key: "promo_referral_bonus",
-            label: "Referral Bonuses",
-            description: "When referrals are successful",
-            value: prefMap.promo_referral_bonus ?? true,
-          },
-        ],
-      },
-    ];
+  const buildPreferenceGroups = () => {
+    // Access the 'data' property from the backend response
+    const prefsList = preferences?.data || [];
+    
+    if (!Array.isArray(prefsList) || prefsList.length === 0) return [];
+
+    // Group items by their prefix (e.g., 'transaction', 'account')
+    const groups: Record<string, any[]> = {};
+
+    prefsList.forEach((pref) => {
+      const parts = pref.category.split('_');
+      const groupKey = parts[0] || 'other';
+      const meta = CATEGORY_META[pref.category] || {
+        label: pref.category.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' '),
+        description: "Receive updates for this category",
+      };
+
+      if (!groups[groupKey]) {
+        groups[groupKey] = [];
+      }
+
+      groups[groupKey].push({
+        key: pref.category,
+        label: meta.label,
+        description: meta.description,
+        value: pref.subscribed,
+      });
+    });
+
+    const groupTitles: Record<string, { title: string; description: string }> = {
+      transaction: { title: "Transactions", description: "Purchase confirmations and receipts" },
+      account: { title: "Account", description: "Security and account updates" },
+      promo: { title: "Promotions", description: "Offers and campaigns" },
+      other: { title: "General", description: "Other notifications" },
+    };
+
+    return Object.keys(groups).map((key) => ({
+      ... (groupTitles[key] || { title: key.charAt(0).toUpperCase() + key.slice(1), description: "" }),
+      items: groups[key],
+    }));
   };
 
   const preferenceGroups = buildPreferenceGroups();
@@ -152,7 +150,14 @@ export default function NotificationsScreen() {
       </Box>
 
       {/* Preference Groups */}
-      {preferenceGroups.map((group, groupIndex) => (
+      {preferenceGroups.length === 0 ? (
+        <Box className="flex-1 justify-center items-center py-20 px-10">
+          <FontAwesome name="bell-slash" size={40} color={colors.textDisabled} />
+          <Text className="text-typography-500 mt-4 text-center">
+            No notification categories available at this time.
+          </Text>
+        </Box>
+      ) : preferenceGroups.map((group, groupIndex) => (
         <Box key={groupIndex} className="px-4 mb-6">
           <VStack space="md">
             <VStack space="xs">
