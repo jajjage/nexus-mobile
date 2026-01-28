@@ -16,6 +16,7 @@ import { darkColors, lightColors } from '@/constants/palette';
 import { AuthProvider, useAuthContext } from '@/context/AuthContext';
 import { SoftLockProvider } from '@/context/SoftLockContext';
 import { ThemeProvider, useTheme } from '@/context/ThemeContext';
+import { useAppRating } from '@/hooks/useAppRating';
 import { useMobileNotificationNavigation } from '@/hooks/useMobileNotificationNavigation';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 
@@ -86,6 +87,7 @@ const queryClient = new QueryClient({
 function AppInitializer() {
   usePushNotifications();
   useMobileNotificationNavigation();
+  useAppRating();
   
   const { isLoading } = useAuthContext();
   

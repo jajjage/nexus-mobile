@@ -79,7 +79,6 @@ export default function OnboardingScreen() {
         index: currentIndex + 1, 
         animated: true 
       });
-      setCurrentIndex(currentIndex + 1);
     } else {
       completeOnboarding();
     }
@@ -135,6 +134,9 @@ export default function OnboardingScreen() {
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={viewabilityConfig}
         bounces={false}
+        getItemLayout={(data, index) => (
+          {length: width, offset: width * index, index}
+        )}
       />
 
       {/* Bottom Navigation */}

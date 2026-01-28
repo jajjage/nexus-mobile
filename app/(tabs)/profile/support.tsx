@@ -9,30 +9,33 @@ export default function SupportScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme();
   const colors = colorScheme === "dark" ? darkColors : lightColors;
+  const WHATSAPP_NUMBER = "+2347033776056"; // Replace with your support WhatsApp number
+  const WHATSAPP_MESSAGE = encodeURIComponent("Hello Nexus Support, I need help with my account.");
+
   const supportItems = [
     {
       icon: "envelope",
       title: "Email Support",
       description: "support@nexus.ng",
-      action: () => Linking.openURL("mailto:support@nexus.ng"),
+      action: () => Linking.openURL("mailto:nexuskano99@gmail.com"),
     },
     {
       icon: "phone",
       title: "Call Us",
-      description: "+234 (0) 700 000 0000",
-      action: () => Linking.openURL("tel:+2347000000000"),
+      description: "+234 (0) 7033 377 6056",
+      action: () => Linking.openURL("tel:+2347033776056"),
     },
     {
       icon: "comments",
       title: "Chat with Us",
-      description: "Live chat available 9AM - 6PM",
-      action: () => {}, // Implement in-app chat
+      description: "WhatsApp Support 9AM - 6PM",
+      action: () => Linking.openURL(`https://wa.me/${WHATSAPP_NUMBER}?text=${WHATSAPP_MESSAGE}`),
     },
     {
       icon: "book",
       title: "Help Center",
       description: "Browse FAQs and guides",
-      action: () => Linking.openURL("https://help.nexus.ng"),
+      action: () => Linking.openURL("https://help.nexusdatasub.com"),
     },
   ];
 

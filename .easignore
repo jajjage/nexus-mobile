@@ -5,7 +5,7 @@ __tests__/
 __mocks__/
 .storybook/
 *.stories.tsx
-
+credentials/
 # Documentation
 docs/
 README.md
@@ -18,3 +18,5 @@ CONTRIBUTING.md
 # CI/CD
 .github/
 .gitlab-ci.yml
+credentials.json
+.fastlane/
