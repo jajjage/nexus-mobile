@@ -17,7 +17,7 @@ export default function EnableBiometricScreen() {
   const { registerBiometric, isLoading: isEnrolling, error } = useBiometricRegistration();
   const { label, isAvailable } = useBiometricType();
   const theme = useTheme();
-  const { updateUser, user } = useAuthContext();
+  const { updateUser, user, setIsLocalBiometricSetup } = useAuthContext();
   const queryClient = useQueryClient();
   
   const [state, setState] = useState<'checking' | 'ready' | 'success' | 'error'>('checking');
@@ -68,6 +68,7 @@ export default function EnableBiometricScreen() {
         // Save to local storage as well for quick reference
         await AsyncStorage.setItem('biometric_enrolled', 'true');
         await AsyncStorage.setItem('biometric_setup_completed', 'true');
+        setIsLocalBiometricSetup(true);
         
         setState('success');
         // Redirect directly to dashboard - all setup is complete
@@ -101,6 +102,7 @@ export default function EnableBiometricScreen() {
       updateUser({ hasBiometric: true }); // Set to true so we don't ask again
       await AsyncStorage.setItem('biometric_setup_completed', 'true');
       await AsyncStorage.setItem('biometric_skipped', 'true');
+      setIsLocalBiometricSetup(true);
       // Go directly to dashboard
       router.replace('/(tabs)');
     } catch (err) {

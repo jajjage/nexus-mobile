@@ -23,7 +23,7 @@ export const authKeys = {
 // ============================================================================
 
 export function useAuth() {
-  const { user, setUser, isLoading, setIsLoading, isSessionExpired, markSessionAsExpired } = useAuthContext();
+  const { user, setUser, isLoading, setIsLoading, isSessionExpired, markSessionAsExpired, isLocalBiometricSetup } = useAuthContext();
   const queryClient = useQueryClient();
   
   // Check if we have a token stored (enables the query)
@@ -146,6 +146,7 @@ export function useAuth() {
     isLoading: hasToken === null || isLoading || query.isLoading,
     isError: query.isError,
     refetch: query.refetch,
+    isLocalBiometricSetup,
     // Permission helpers
     checkPermission: (permission: string) => user?.permissions?.includes(permission) ?? false,
     checkRole: (role: string) => user?.role === role,

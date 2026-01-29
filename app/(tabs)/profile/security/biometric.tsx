@@ -91,6 +91,7 @@ export default function BiometricDevicesScreen() {
           updateUser({ hasBiometric: true });
           // Update local state
           await AsyncStorage.setItem("biometric_enrolled", "true");
+          await AsyncStorage.setItem("biometric_setup_completed", "true");
           setIsLocalEnrolled(true);
           
           // Refetch devices list

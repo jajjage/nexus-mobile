@@ -2,6 +2,7 @@
 import { tokenStorage, userStorage } from "@/lib/secure-store";
 import { userService } from "@/services/user.service";
 import { User } from "@/types/api.types";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { ReactNode, createContext, useContext, useEffect, useState } from "react";
 
 /**
@@ -20,6 +21,8 @@ interface AuthContextType {
   setIsLoading: (loading: boolean) => void;
   isSessionExpired: boolean;
   markSessionAsExpired: () => void;
+  isLocalBiometricSetup: boolean;
+  setIsLocalBiometricSetup: (isSetup: boolean) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -28,6 +31,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUserState] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSessionExpired, setIsSessionExpired] = useState(false);
+  const [isLocalBiometricSetup, setIsLocalBiometricSetup] = useState(false);
 
   // Load user from SecureStore on mount
   // CRITICAL: Also verify tokens exist - if tokens are missing, don't restore user
@@ -46,6 +50,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setIsLoading(false);
           return;
         }
+
+        // Check local biometric setup state
+        const bioSetup = await AsyncStorage.getItem('biometric_setup_completed');
+        setIsLocalBiometricSetup(bioSetup === 'true');
 
         // Tokens exist, restore user from SecureStore for immediate display
         const storedUser = await userStorage.getUser<User>();
@@ -97,6 +105,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         await userStorage.setUser(newUser);
         await userStorage.setUserRole(newUser.role);
+        
+        // Check local biometric setup again on login
+        const bioSetup = await AsyncStorage.getItem('biometric_setup_completed');
+        setIsLocalBiometricSetup(bioSetup === 'true');
       } catch (e) {
         console.error("Failed to save user to SecureStore", e);
       }
@@ -105,6 +117,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         await userStorage.clearAll();
         await tokenStorage.clearTokens();
+        // Don't clear biometric_setup_completed here?
+        // Actually, if user logs out, we should probably force setup again for new user?
+        // But biometric enrollment is device-wide usually.
+        // If a NEW user logs in, they might need setup.
+        // Let's assume biometric setup is per-login-session roughly?
+        // Actually, biometric_enrolled is device-specific.
+        // If user A enrolls, then logs out. User B logs in.
+        // User B shouldn't be auto-enrolled.
+        // So we should probably clear biometric_setup_completed on logout IF we want multi-user safety.
+        // But for now, let's keep it simple. If I clear it, they have to setup every time they login.
+        // Wait, typical flow: Login -> Setup -> Done.
+        // If I logout and login again, I am already setup.
+        // So DO NOT clear it on logout.
       } catch (e) {
         console.error("Failed to clear auth data", e);
       }
@@ -156,6 +181,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setIsLoading,
         isSessionExpired,
         markSessionAsExpired,
+        isLocalBiometricSetup,
+        setIsLocalBiometricSetup,
       }}
     >
       {children}

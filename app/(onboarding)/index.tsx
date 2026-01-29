@@ -56,17 +56,11 @@ export default function OnboardingScreen() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const flatListRef = useRef<FlatList<SlideData>>(null);
 
-  const onViewableItemsChanged = useRef(
-    ({ viewableItems }: { viewableItems: ViewToken[] }) => {
-      if (viewableItems.length > 0 && viewableItems[0].index !== null) {
-        setCurrentIndex(viewableItems[0].index);
-      }
-    }
-  ).current;
-
-  const viewabilityConfig = useRef({
-    itemVisiblePercentThreshold: 50,
-  }).current;
+  const handleScroll = (event: any) => {
+    const scrollPosition = event.nativeEvent.contentOffset.x;
+    const index = Math.round(scrollPosition / width);
+    setCurrentIndex(index);
+  };
 
   const completeOnboarding = async () => {
     await AsyncStorage.setItem(ONBOARDING_KEY, "true");
@@ -79,6 +73,10 @@ export default function OnboardingScreen() {
         index: currentIndex + 1, 
         animated: true 
       });
+      // We manually update state here to ensure UI responsiveness if the user clicks fast,
+      // but onMomentumScrollEnd will reconcile it.
+      // Actually, relying on scroll end is safer to avoid sync issues, but immediate feedback is nice.
+      // Let's rely on scroll end for the source of truth to avoid jumping.
     } else {
       completeOnboarding();
     }
@@ -131,8 +129,7 @@ export default function OnboardingScreen() {
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
-        onViewableItemsChanged={onViewableItemsChanged}
-        viewabilityConfig={viewabilityConfig}
+        onMomentumScrollEnd={handleScroll}
         bounces={false}
         getItemLayout={(data, index) => (
           {length: width, offset: width * index, index}

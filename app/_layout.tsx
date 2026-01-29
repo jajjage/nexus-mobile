@@ -83,13 +83,20 @@ const queryClient = new QueryClient({
 });
 
 // Helper component to initialize app-wide logic that depends on providers
-// Also handles the global loading overlay
+// Also handles the global loading overlay and Splash Screen hiding
 function AppInitializer() {
   usePushNotifications();
   useMobileNotificationNavigation();
   useAppRating();
   
   const { isLoading } = useAuthContext();
+
+  useEffect(() => {
+    if (!isLoading) {
+      // Hide the native splash screen only when auth loading is complete
+      SplashScreen.hideAsync();
+    }
+  }, [isLoading]);
   
   return <LoadingOverlay visible={isLoading} />;
 }
@@ -105,11 +112,7 @@ export default function RootLayout() {
     if (error) throw error;
   }, [error]);
 
-  useEffect(() => {
-    if (loaded) {
-      SplashScreen.hideAsync();
-    }
-  }, [loaded]);
+  // Removed early SplashScreen.hideAsync here - moved to AppInitializer
 
   if (!loaded) {
     return null;

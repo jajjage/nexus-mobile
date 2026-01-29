@@ -61,8 +61,9 @@ export default function SetupIndex() {
   }
   
   // Step 3: Biometrics (optional but encouraged)
-  // Check both backend state AND local storage
-  const biometricSetupComplete = user.hasBiometric || localBiometricCompleted;
+  // Check ONLY local storage to ensure biometric is set up on THIS device
+  // user.hasBiometric might be true from another device, but we need local enrollment
+  const biometricSetupComplete = localBiometricCompleted;
   if (!biometricSetupComplete) {
     return <Redirect href="/(setup)/enable-biometric" />;
   }

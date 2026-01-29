@@ -8,7 +8,7 @@ import { ActivityIndicator, View } from 'react-native';
 import { useClientOnlyValue } from '@/components/useClientOnlyValue';
 
 export default function TabLayout() {
-  const { isAuthenticated, isLoading, user } = useAuth();
+  const { isAuthenticated, isLoading, user, isLocalBiometricSetup } = useAuth();
   const { colors, isDark } = useTheme();
   const isReseller = user?.role === 'reseller';
   const segments = useSegments();
@@ -32,10 +32,12 @@ export default function TabLayout() {
   }
 
   // Redirect to setup if incomplete
-  if (user && (!user.hasPin || !user.hasPasscode)) {
+  // Also check isLocalBiometricSetup to ensure biometric is configured on THIS device
+  if (user && (!user.hasPin || !user.hasPasscode || !isLocalBiometricSetup)) {
     console.log('[TabLayout] User incomplete setup, redirecting to setup:', JSON.stringify({
       hasPin: user.hasPin,
       hasPasscode: user.hasPasscode,
+      isLocalBiometricSetup,
       userId: user.userId
     }, null, 2));
     return <Redirect href="/(setup)" />;
