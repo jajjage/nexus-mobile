@@ -4,10 +4,12 @@ import { Redirect, Tabs, useSegments } from 'expo-router';
 import { Briefcase, Home, Trophy, User, Users } from 'lucide-react-native';
 import React from 'react';
 import { ActivityIndicator, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useClientOnlyValue } from '@/components/useClientOnlyValue';
 
 export default function TabLayout() {
+  const insets = useSafeAreaInsets();
   const { isAuthenticated, isLoading, user, isLocalBiometricSetup } = useAuth();
   const { colors, isDark } = useTheme();
   const isReseller = user?.role === 'reseller';
@@ -55,9 +57,9 @@ export default function TabLayout() {
           backgroundColor: colors.card,
           borderTopWidth: 1,
           borderTopColor: colors.border,
-          height: 64,
+          height: 64 + insets.bottom,
           paddingTop: 8,
-          paddingBottom: 8,
+          paddingBottom: 8 + insets.bottom,
         },
         tabBarLabelStyle: {
           fontSize: 10,
