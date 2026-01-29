@@ -147,6 +147,7 @@ function RootLayoutNav() {
             <StatusBar style={isDark ? 'light' : 'dark'} />
             <NavThemeProvider value={isDark ? NexusDarkTheme : NexusLightTheme}>
               <Stack screenOptions={{ animation: 'slide_from_right' }}>
+                <Stack.Screen name="index" options={{ headerShown: false }} />
                 <Stack.Screen name="(setup)" options={{ headerShown: false }} />
                 <Stack.Screen name="(onboarding)" options={{ headerShown: false }} />
                 <Stack.Screen name="(auth)" options={{ headerShown: false }} />

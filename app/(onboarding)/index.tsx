@@ -69,14 +69,11 @@ export default function OnboardingScreen() {
 
   const handleNext = () => {
     if (currentIndex < slides.length - 1) {
-      flatListRef.current?.scrollToIndex({ 
-        index: currentIndex + 1, 
+      flatListRef.current?.scrollToOffset({ 
+        offset: (currentIndex + 1) * width,
         animated: true 
       });
-      // We manually update state here to ensure UI responsiveness if the user clicks fast,
-      // but onMomentumScrollEnd will reconcile it.
-      // Actually, relying on scroll end is safer to avoid sync issues, but immediate feedback is nice.
-      // Let's rely on scroll end for the source of truth to avoid jumping.
+      setCurrentIndex(currentIndex + 1);
     } else {
       completeOnboarding();
     }
@@ -131,9 +128,11 @@ export default function OnboardingScreen() {
         showsHorizontalScrollIndicator={false}
         onMomentumScrollEnd={handleScroll}
         bounces={false}
-        getItemLayout={(data, index) => (
-          {length: width, offset: width * index, index}
-        )}
+        getItemLayout={(data, index) => ({
+          length: width,
+          offset: width * index,
+          index,
+        })}
       />
 
       {/* Bottom Navigation */}
