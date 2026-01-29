@@ -383,7 +383,7 @@ export default function AirtimeScreen() {
       </ScrollView>
 
       {/* Footer */}
-      <View style={[styles.footer, { borderTopColor: colors.border, backgroundColor: colors.card }]}>
+      <View style={[styles.footer, { borderTopColor: colors.border, backgroundColor: colors.card, paddingBottom: Math.max(insets.bottom, 16) }]}>
         <View style={styles.footerInfo}>
           <Text style={[styles.balanceLabel, { color: colors.textSecondary }]}>Balance</Text>
           <Text style={[styles.balanceAmount, { color: colors.foreground }]}>

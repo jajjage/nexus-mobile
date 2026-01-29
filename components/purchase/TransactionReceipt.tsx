@@ -102,7 +102,7 @@ export const TransactionReceipt = React.forwardRef<View, TransactionReceiptProps
           </Text>
 
           {/* Date */}
-          <Text style={styles.date}>{formatDate(transaction.createdAt)}</Text>
+          <Text style={styles.date}>{formatTransactionDate(transaction.createdAt)}</Text>
         </View>
 
         {/* Dotted Separator */}
@@ -131,7 +131,7 @@ export const TransactionReceipt = React.forwardRef<View, TransactionReceiptProps
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>Cashback Used</Text>
               <Text style={[styles.detailValue, styles.cashbackValue]}>
-                -{getCashbackDisplay(transaction)}
+                -{getCashbackUsed(transaction)}
               </Text>
             </View>
           )}
@@ -141,7 +141,7 @@ export const TransactionReceipt = React.forwardRef<View, TransactionReceiptProps
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>Service</Text>
               <View style={styles.detailValueContainer}>
-                <Text style={styles.detailValue}>{getServiceTypeLabelLocal(transaction)}</Text>
+                <Text style={styles.detailValue}>{getServiceTypeLabel(transaction)}</Text>
                 <Text style={styles.detailValueSubtext}>
                   {transaction.productCode || transaction.related?.productCode || "N/A"}
                 </Text>
