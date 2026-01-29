@@ -59,16 +59,11 @@ export function NetworkDetectorInput({
   // Handle text input with paste logic
   const handleChangeText = useCallback(
     (text: string) => {
-      // Strip non-digits
-      let cleaned = text.replace(/\D/g, "");
+      // Allow digits and plus sign
+      let cleaned = text.replace(/[^0-9+]/g, "");
 
-      // Convert 234 prefix to 0
-      if (cleaned.startsWith("234") && cleaned.length > 3) {
-        cleaned = "0" + cleaned.slice(3);
-      }
-
-      // Limit to 11 characters
-      cleaned = cleaned.slice(0, 11);
+      // Limit to 14 characters (sufficient for +234...)
+      cleaned = cleaned.slice(0, 14);
 
       onChangeText(cleaned);
 
@@ -158,8 +153,8 @@ export function NetworkDetectorInput({
           onChangeText={handleChangeText}
           placeholder={placeholder}
           placeholderTextColor={colors.textDisabled}
-          keyboardType="number-pad"
-          maxLength={11}
+          keyboardType="phone-pad"
+          maxLength={14}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
           editable={!disabled}

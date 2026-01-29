@@ -5,6 +5,7 @@
  */
 
 import { Transaction } from "@/types/wallet.types";
+import { NETWORK_PROVIDERS, NetworkProvider } from "./detectNetwork";
 
 // ============= Status Configuration =============
 
@@ -378,12 +379,16 @@ const OPERATOR_LOGOS: Record<string, string> = {
 };
 
 /**
- * Get operator logo URL
+ * Get local operator logo asset
  */
-export function getOperatorLogo(transaction: Transaction): string | undefined {
-  const operatorCode = transaction.related?.operatorCode?.toUpperCase();
-  if (operatorCode && OPERATOR_LOGOS[operatorCode]) {
-    return OPERATOR_LOGOS[operatorCode];
+export function getLocalOperatorLogo(transaction: Transaction): any {
+  const rawCode = transaction.related?.operatorCode?.toLowerCase() || "";
+  // Handle combined codes like 'mtn-data'
+  const code = rawCode.split("-")[0] as NetworkProvider;
+  
+  if (code && NETWORK_PROVIDERS[code]) {
+    return NETWORK_PROVIDERS[code].logo;
   }
   return undefined;
 }
+

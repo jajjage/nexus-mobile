@@ -14,6 +14,7 @@ import {
     getCashbackUsed,
     getDisplayStatus,
     getFormattedAmount,
+    getLocalOperatorLogo,
     getServiceTypeLabel,
     getStatusConfig,
     getTransactionDescription,
@@ -40,6 +41,7 @@ import {
 import React, { useState } from "react";
 import {
     ActivityIndicator,
+    Image,
     Pressable,
     ScrollView,
     StyleSheet,
@@ -131,8 +133,17 @@ export default function TransactionDetailScreen() {
     const iconSize = 32;
     
     if (transaction.relatedType === "topup_request") {
+      const operatorLogo = getLocalOperatorLogo(transaction);
       const isData = isDataTransaction(transaction);
       
+      if (operatorLogo) {
+        return (
+          <View style={[styles.iconCircle, { backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: colors.border, overflow: 'hidden' }]}>
+            <Image source={operatorLogo} style={{ width: 64, height: 64 }} resizeMode="cover" />
+          </View>
+        );
+      }
+
       if (isData) {
         return (
           <View style={[styles.iconCircle, { backgroundColor: isDark ? "rgba(147, 51, 234, 0.2)" : "#F3E8FF" }]}>

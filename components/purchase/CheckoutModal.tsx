@@ -26,6 +26,7 @@ import {
   View,
   useColorScheme
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export type CheckoutMode = "checkout" | "success" | "failed";
 
@@ -74,12 +75,13 @@ export const CheckoutModal = forwardRef<BottomSheet, CheckoutModalProps>(
     },
     ref
   ) => {
+    const insets = useSafeAreaInsets();
     const colorScheme = useColorScheme();
     const colors = colorScheme === "dark" ? darkColors : lightColors;
 
     const snapPoints = useMemo(() => {
-      if (mode === "checkout") return ["70%"]; // Increased height for new layout
-      return ["50%"];
+      if (mode === "checkout") return ["75%"]; // Increased height for safe area
+      return ["55%"];
     }, [mode]);
 
     const [showShareSheet, setShowShareSheet] = React.useState(false);
@@ -135,10 +137,15 @@ export const CheckoutModal = forwardRef<BottomSheet, CheckoutModalProps>(
 
     // Render based on mode
     const renderContent = () => {
+      const contentStyle = [
+        styles.content,
+        { paddingBottom: Math.max(insets.bottom, 24) } // Add safe area padding
+      ];
+
       switch (mode) {
         case "success":
           return (
-            <View style={styles.content}>
+            <View style={contentStyle}>
               <View
                 style={[
                   styles.statusIcon,
@@ -210,7 +217,7 @@ export const CheckoutModal = forwardRef<BottomSheet, CheckoutModalProps>(
 
         case "failed":
           return (
-            <View style={styles.content}>
+            <View style={contentStyle}>
               <View
                 style={[
                   styles.statusIcon,
@@ -266,7 +273,7 @@ export const CheckoutModal = forwardRef<BottomSheet, CheckoutModalProps>(
         default:
           // Checkout mode
           return (
-            <View style={styles.content}>
+            <View style={contentStyle}>
               <Text style={[styles.title, { color: colors.foreground }]}>
                 Confirm Purchase
               </Text>
@@ -291,8 +298,7 @@ export const CheckoutModal = forwardRef<BottomSheet, CheckoutModalProps>(
                   </Text>
                   <View style={styles.detailValueContainer}>
                      {networkInfo && (
-                        /* Use Image instead of view with letter if possible, but keeping consistent with request */
-                       <View style={[styles.miniLogo, { backgroundColor: "transparent" /* Transparent for image */ }]}>
+                       <View style={[styles.miniLogo, { backgroundColor: "transparent" }]}>
                           <Image 
                             source={networkInfo.logo} 
                             style={{ width: 16, height: 16, borderRadius: 8 }} 
@@ -301,7 +307,7 @@ export const CheckoutModal = forwardRef<BottomSheet, CheckoutModalProps>(
                        </View>
                      )}
                     <Text style={[styles.detailValue, { color: colors.foreground }]}>
-                      Mobile Data
+                      {data.productName.includes("Airtime") ? "Airtime" : "Mobile Data"}
                     </Text>
                   </View>
                 </View>
@@ -317,7 +323,7 @@ export const CheckoutModal = forwardRef<BottomSheet, CheckoutModalProps>(
 
                 <View style={styles.detailRow}>
                   <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>
-                    Data Bundle
+                    Details
                   </Text>
                   <Text style={[styles.detailValue, { color: colors.foreground }]}>
                     {data.productName}
@@ -326,7 +332,7 @@ export const CheckoutModal = forwardRef<BottomSheet, CheckoutModalProps>(
 
                  <View style={styles.detailRow}>
                   <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>
-                    Amount to Paid
+                    Amount to Pay
                   </Text>
                   <Text style={[styles.detailValue, { color: colors.foreground, fontWeight: '700' }]}>
                     ₦{data.amount.toLocaleString()}
@@ -362,42 +368,6 @@ export const CheckoutModal = forwardRef<BottomSheet, CheckoutModalProps>(
                        </Text>
                     </View>
                  )}
-
-                 {/* Price Breakdown */}
-                 {/* {(data.supplierCost !== undefined || data.markup !== undefined) && (
-                    <View style={{ marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: colors.border }}>
-                       {data.faceValue !== undefined && data.faceValue > 0 && (
-                         <View style={styles.detailRow}>
-                           <Text style={[styles.detailLabel, { color: colors.textSecondary, fontSize: 12 }]}>
-                              Face Value
-                           </Text>
-                           <Text style={[styles.detailValue, { color: colors.textSecondary, fontSize: 12 }]}>
-                              ₦{data.faceValue.toLocaleString()}
-                           </Text>
-                         </View>
-                       )}
-                       {data.supplierCost !== undefined && data.supplierCost > 0 && (
-                         <View style={styles.detailRow}>
-                           <Text style={[styles.detailLabel, { color: colors.textSecondary, fontSize: 12 }]}>
-                              Supplier Cost
-                           </Text>
-                           <Text style={[styles.detailValue, { color: colors.textSecondary, fontSize: 12 }]}>
-                              ₦{data.supplierCost.toLocaleString()}
-                           </Text>
-                         </View>
-                       )}
-                       {data.markup !== undefined && data.markupPercent !== undefined && data.markup > 0 && (
-                         <View style={styles.detailRow}>
-                           <Text style={[styles.detailLabel, { color: colors.textSecondary, fontSize: 12 }]}>
-                              Service Fee ({data.markupPercent}%)
-                           </Text>
-                           <Text style={[styles.detailValue, { color: colors.primary, fontSize: 12, fontWeight: '600' }]}>
-                              +₦{data.markup.toLocaleString()}
-                           </Text>
-                         </View>
-                       )}
-                    </View>
-                 )} */}
               </View>
 
               {/* Payment Method Section */}
