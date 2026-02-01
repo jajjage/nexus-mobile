@@ -1,19 +1,25 @@
 /**
- * Airtime Purchase Screen
- * Dynamic Products + Complete Payment Flow
+ * Airtime Purchase Screen - Simplified "Magic" Flow
+ * 
+ * New Flow:
+ * 1. User enters Phone Number (Auto-detects network logo for UX)
+ * 2. User enters Amount (Any value 50-50,000)
+ * 3. System uses "GENERAL_AIRTIME" product code
+ * 4. Backend handles routing and porting
  */
 
 import BottomSheet from "@gorhom/bottom-sheet";
 import * as Haptics from "expo-haptics";
 import { Stack, useRouter } from "expo-router";
 import { ArrowLeft } from "lucide-react-native";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
-  ActivityIndicator,
-  Dimensions,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View
 } from "react-native";
@@ -24,8 +30,7 @@ import {
   CheckoutData,
   CheckoutModal,
   CheckoutMode,
-  NetworkDetectorInput,
-  NetworkSelector
+  NetworkDetectorInput
 } from "@/components/purchase";
 import { PinPadModal } from "@/components/security/PinPadModal";
 import { designTokens } from "@/constants/palette";
@@ -37,8 +42,6 @@ import { useSupplierMarkupMap } from "@/hooks/useSupplierMarkup";
 import { useTopup } from "@/hooks/useTopup";
 import { useWalletBalance } from "@/hooks/useWalletBalance";
 import {
-  NETWORK_PROVIDERS,
-  NetworkInfo,
   NetworkProvider,
   isValidNigerianPhone,
   normalizePhoneNumber,
@@ -47,9 +50,6 @@ import { calculateFinalPrice } from "@/lib/price-calculator";
 import { Product } from "@/types/product.types";
 import { getUserFriendlyError } from "@/utils/errors";
 
-const { width } = Dimensions.get("window");
-const CARD_WIDTH = (width - 48 - 12) / 2; // 2 columns with gaps
-
 export default function AirtimeScreen() {
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
@@ -57,13 +57,9 @@ export default function AirtimeScreen() {
 
   // === STATE ===
   const [phoneNumber, setPhoneNumber] = useState("");
-  const [selectedNetwork, setSelectedNetwork] = useState<NetworkProvider | null>(null);
+  const [amount, setAmount] = useState("");
   const [detectedNetwork, setDetectedNetwork] = useState<NetworkProvider | null>(null);
-  const [networkMismatch, setNetworkMismatch] = useState(false);
   
-  // Dynamic Product Selection
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-
   // Modals & Flows
   const [checkoutMode, setCheckoutMode] = useState<CheckoutMode>("checkout");
   const [showPinModal, setShowPinModal] = useState(false);
@@ -75,8 +71,8 @@ export default function AirtimeScreen() {
 
   const checkoutSheetRef = useRef<BottomSheet>(null);
 
-  // === DATA HOOKS ===
-  const { data: productsData, isLoading: productsLoading } = useProducts({
+  // === HOOKS ===
+  const { data: productsData } = useProducts({
     productType: "airtime",
     isActive: true,
   });
@@ -106,112 +102,64 @@ export default function AirtimeScreen() {
   const normalizedPhone = normalizePhoneNumber(phoneNumber);
   const isPhoneValid = isValidNigerianPhone(normalizedPhone);
 
-  // === NETWORK LOGIC ===
-  useEffect(() => {
-    setNetworkMismatch(!!detectedNetwork && !!selectedNetwork && detectedNetwork !== selectedNetwork);
-  }, [detectedNetwork, selectedNetwork]);
+  // Validate Amount
+  const numericAmount = parseFloat(amount.replace(/[^0-9.]/g, "") || "0");
+  const isAmountValid = numericAmount >= 50 && numericAmount <= 50000;
 
-  // Derive unique networks from loaded products
-  const networks = useMemo(() => {
-    if (!productsData?.products) return [];
-    const uniqueNetworks = new Map<string, NetworkInfo>();
+  // Find matching product for detected network to check cashback rules
+  const matchingProduct = useMemo(() => {
+    if (!productsData?.products || !detectedNetwork) return null;
+    return productsData.products.find(p => 
+      p.operator?.name?.toLowerCase().includes(detectedNetwork)
+    );
+  }, [productsData, detectedNetwork]);
 
-    productsData.products.forEach((p: Product) => {
-      if (p.operator?.name) {
-        const rawName = p.operator.name.toLowerCase();
-        let slug: NetworkProvider;
-        if (rawName.includes("mtn")) slug = "mtn";
-        else if (rawName.includes("glo")) slug = "glo";
-        else if (rawName.includes("airtel")) slug = "airtel";
-        else if (rawName.includes("9mobile") || rawName.includes("etisalat")) slug = "9mobile";
-        else return;
-
-        if (!uniqueNetworks.has(slug)) {
-          const localInfo = NETWORK_PROVIDERS[slug];
-          uniqueNetworks.set(slug, {
-            name: p.operator.name,
-            slug: slug,
-            color: localInfo?.color || "#000000",
-            logoUrl: p.operator.logoUrl || localInfo?.logoUrl,
-            logo: localInfo?.logo || p.operator.logoUrl
-          });
-        }
-      }
-    });
-
-    return Array.from(uniqueNetworks.values()).sort((a, b) => {
-      if (a.slug === "mtn") return -1;
-      if (b.slug === "mtn") return 1;
-      return a.name.localeCompare(b.name);
-    });
-  }, [productsData]);
-
-  // Auto-select first network
-  useEffect(() => {
-    if (!selectedNetwork && networks.length > 0) {
-      setSelectedNetwork(networks[0].slug);
-    }
-  }, [networks, selectedNetwork]);
-
-  // === PRODUCT FILTERING ===
-  const filteredProducts = useMemo(() => {
-    if (!productsData?.products) return [];
-    let products = productsData.products;
-
-    // Filter by Network
-    if (selectedNetwork) {
-      const operatorInfo = networks.find(n => n.slug === selectedNetwork);
-      if (operatorInfo) {
-        products = products.filter(p => p.operator?.name === operatorInfo.name);
-      }
-    }
-
-    // Sort by Amount
-    return products.sort((a, b) => {
-      const amountA = parseFloat(a.denomAmount || "0");
-      const amountB = parseFloat(b.denomAmount || "0");
-      return amountA - amountB;
-    });
-  }, [productsData, selectedNetwork, networks]);
+  // Dynamic Cashback Preview
+  const estimatedCashback = useMemo(() => {
+    if (!matchingProduct?.has_cashback || !isAmountValid) return 0;
+    const percentage = matchingProduct.cashback_percentage || 0;
+    return numericAmount * (percentage / 100);
+  }, [matchingProduct, numericAmount, isAmountValid]);
 
   // === HANDLERS ===
   const handleNetworkDetected = useCallback((network: NetworkProvider | null) => {
     setDetectedNetwork(network);
     if (network) {
-      const isAvailable = networks.some(n => n.slug === network);
-      if (isAvailable && selectedNetwork !== network) {
-        setSelectedNetwork(network);
-        setSelectedProduct(null);
-        Haptics.selectionAsync();
-      }
+      Haptics.selectionAsync();
     }
-  }, [networks, selectedNetwork]);
-
-  const handleNetworkSelect = useCallback((network: NetworkProvider) => {
-    setSelectedNetwork(network);
-    setSelectedProduct(null);
-    Haptics.selectionAsync();
   }, []);
 
-  const handleProductSelect = useCallback((product: Product) => {
-    setSelectedProduct(product);
-    Haptics.selectionAsync();
-  }, []);
+  // Construct the Magic Product
+  const selectedProduct = useMemo((): Product | null => {
+    if (!isAmountValid) return null;
+    
+    return {
+      id: "GENERAL_AIRTIME",
+      name: `₦${numericAmount.toLocaleString()} Airtime`,
+      code: "GENERAL_AIRTIME",
+      productCode: "GENERAL_AIRTIME",
+      denomAmount: numericAmount.toString(),
+      type: "airtime",
+      // Include detected network in the product metadata if needed, 
+      // though backend handles routing.
+      operator: detectedNetwork ? { name: detectedNetwork } : undefined
+    } as unknown as Product;
+  }, [numericAmount, isAmountValid, detectedNetwork]);
 
   const handleProceedToCheckout = useCallback(() => {
-    if (!isPhoneValid || !selectedNetwork || !selectedProduct) return;
+    if (!isPhoneValid || !isAmountValid || !selectedProduct) return;
     Haptics.selectionAsync();
     setCheckoutMode("checkout");
     checkoutSheetRef.current?.expand();
-  }, [isPhoneValid, selectedNetwork, selectedProduct]);
+  }, [isPhoneValid, isAmountValid, selectedProduct]);
 
   // === PAYMENT CONFIRMATION ===
   const handleConfirmPayment = useCallback(async () => {
     if (!selectedProduct || !normalizedPhone) return;
 
     try {
-      const supplierId = selectedProduct.supplierOffers?.[0]?.supplierId || "";
-      const markup = markupMap.get(supplierId) || 0;
+      // General Airtime usually has 0 markup, but we keep the logic structure
+      const markup = 0; 
 
       checkoutSheetRef.current?.close();
 
@@ -237,7 +185,7 @@ export default function AirtimeScreen() {
       setCheckoutMode("failed");
       checkoutSheetRef.current?.expand();
     }
-  }, [selectedProduct, normalizedPhone, useCashback, cashbackBalance, processPayment, markupMap]);
+  }, [selectedProduct, normalizedPhone, useCashback, cashbackBalance, processPayment]);
 
   const handlePinSubmit = useCallback(async (pin: string) => {
     if (!pendingPaymentData) return;
@@ -262,7 +210,8 @@ export default function AirtimeScreen() {
   const handleClose = useCallback(() => {
     checkoutSheetRef.current?.close();
     if (checkoutMode === "success") {
-      setSelectedProduct(null);
+      setAmount("");
+      // setPhoneNumber(""); // Keep phone number for convenience
       const prefs = require("@/hooks/useAppPreferences").getAppPreferences();
       if (prefs.autoRedirectAfterPurchase) {
         setTimeout(() => router.push("/(tabs)"), 500);
@@ -273,17 +222,16 @@ export default function AirtimeScreen() {
   const handleRetry = useCallback(() => setCheckoutMode("checkout"), []);
 
   // === CHECKOUT DATA ===
-  const checkoutData: CheckoutData | null = selectedProduct && selectedNetwork ? (() => {
-    const supplierId = selectedProduct.supplierOffers?.[0]?.supplierId || "";
-    const markup = markupMap.get(supplierId) || 0;
+  const checkoutData: CheckoutData | null = selectedProduct ? (() => {
+    const markup = 0;
     const priceDetails = calculateFinalPrice(selectedProduct, useCashback, cashbackBalance, markup);
 
     return {
-      productName: selectedProduct.name || `₦${parseFloat(selectedProduct.denomAmount).toLocaleString()} Airtime`,
+      productName: selectedProduct.name,
       recipientPhone: normalizedPhone,
       amount: priceDetails.finalSellingPrice,
-      originalAmount: priceDetails.hasOfferDiscount ? priceDetails.baseSellingPrice : undefined,
-      network: selectedNetwork,
+      originalAmount: undefined,
+      network: detectedNetwork || undefined, // Pass detected network for UI logo
       transactionId: lastTransactionId || undefined,
       errorMessage: lastErrorMessage || undefined,
       bonusToEarn: priceDetails.bonusToEarn,
@@ -294,7 +242,7 @@ export default function AirtimeScreen() {
     };
   })() : null;
 
-  const canProceed = isPhoneValid && selectedNetwork && selectedProduct && !networkMismatch;
+  const canProceed = isPhoneValid && isAmountValid && !!selectedProduct;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
@@ -312,110 +260,109 @@ export default function AirtimeScreen() {
         }}
       />
 
-      <ScrollView style={styles.flex} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* Phone */}
-        <View style={[styles.section, { marginTop: 0, marginBottom: designTokens.spacing.md }]}>
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Phone Number</Text>
-          <NetworkDetectorInput
-            value={phoneNumber}
-            onChangeText={setPhoneNumber}
-            onNetworkDetected={handleNetworkDetected}
-          />
-          {networkMismatch && (
-            <Text style={[styles.warningText, { color: colors.destructive }]}>
-              Selected network differs from detected network ({detectedNetwork})
-            </Text>
-          )}
-        </View>
+      <KeyboardAvoidingView 
+        style={styles.flex} 
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
+        <ScrollView style={styles.flex} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+          
+          {/* Phone Number Section */}
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Phone Number</Text>
+            <NetworkDetectorInput
+              value={phoneNumber}
+              onChangeText={setPhoneNumber}
+              onNetworkDetected={handleNetworkDetected}
+              placeholder="0803 000 0000"
+            />
+          </View>
 
-        {/* Network */}
-        <NetworkSelector
-          networks={networks}
-          selectedNetwork={selectedNetwork}
-          onSelect={handleNetworkSelect}
-          detectedNetwork={detectedNetwork}
-        />
-
-        {/* Product Grid */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Select Amount</Text>
-          {productsLoading ? (
-            <View style={{ padding: 20, alignItems: 'center' }}>
-              <ActivityIndicator size="small" color={colors.primary} />
+          {/* Amount Section */}
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Amount</Text>
+            <View style={[styles.amountInputContainer, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+              <Text style={[styles.currencySymbol, { color: colors.textSecondary }]}>₦</Text>
+              <TextInput
+                style={[styles.amountInput, { color: colors.foreground }]}
+                value={amount}
+                onChangeText={setAmount}
+                placeholder="100 - 50,000"
+                placeholderTextColor={colors.textDisabled}
+                keyboardType="numeric"
+                maxLength={6}
+              />
             </View>
-          ) : filteredProducts.length === 0 ? (
-            <Text style={{ color: colors.textSecondary, padding: 20, textAlign: 'center' }}>
-              {selectedNetwork ? "No plans available." : "Select a network."}
-            </Text>
-          ) : (
-            <View style={styles.amountGrid}>
-              {filteredProducts.map((product) => {
-                const isSelected = selectedProduct?.id === product.id;
-                const amount = parseFloat(product.denomAmount || "0");
-                return (
-                  <TouchableOpacity
-                    key={product.id}
-                    style={[
-                      styles.amountCard,
-                      { 
-                        width: CARD_WIDTH,
-                        backgroundColor: isSelected ? colors.primary : colors.card,
-                        borderColor: isSelected ? colors.primary : colors.border,
-                        borderWidth: isSelected ? 2 : 1,
-                        shadowColor: isSelected ? colors.primary : "transparent",
-                        shadowOffset: { width: 0, height: isSelected ? 4 : 0 },
-                        shadowOpacity: isSelected ? 0.3 : 0,
-                        shadowRadius: isSelected ? 8 : 0,
-                        elevation: isSelected ? 5 : 0,
-                      }
-                    ]}
-                    onPress={() => handleProductSelect(product)}
-                  >
-                    <Text style={[styles.amountText, { color: isSelected ? "#FFFFFF" : colors.foreground, fontSize: isSelected ? designTokens.fontSize.xl : designTokens.fontSize.lg }]}>
-                      ₦{amount.toLocaleString()}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
+            
+            {/* Validation & Cashback Feedback */}
+            <View style={styles.amountFeedback}>
+              {!isAmountValid && amount.length > 0 ? (
+                <Text style={[styles.feedbackText, { color: colors.destructive }]}>
+                  Amount must be between ₦50 and ₦50,000
+                </Text>
+              ) : isAmountValid ? (
+                <Text style={[styles.feedbackText, { color: colors.success }]}>
+                  You will earn approx. ₦{estimatedCashback.toFixed(2)} cashback
+                </Text>
+              ) : null}
             </View>
-          )}
-        </View>
-      </ScrollView>
+          </View>
 
-      {/* Footer */}
-      <View style={[styles.footer, { borderTopColor: colors.border, backgroundColor: colors.card, paddingBottom: Math.max(insets.bottom, 16) }]}>
-        <View style={styles.footerInfo}>
-          <Text style={[styles.balanceLabel, { color: colors.textSecondary }]}>Balance</Text>
-          <Text style={[styles.balanceAmount, { color: colors.foreground }]}>
-            ₦{walletBalance?.toLocaleString() ?? "0.00"}
-          </Text>
-        </View>
-        <TouchableOpacity
-          style={[
-            styles.proceedButton,
-            {
-              flex: 1,
-              backgroundColor: canProceed ? colors.primary : colors.muted,
-            },
-          ]}
-          onPress={handleProceedToCheckout}
-          disabled={!canProceed}
-          activeOpacity={0.8}
-        >
-          <Text
+          {/* Quick Amounts (Optional Helper) */}
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: colors.foreground, marginBottom: 8 }]}>Quick Select</Text>
+            <View style={styles.quickGrid}>
+              {["100", "200", "500", "1000", "2000", "5000"].map((val) => (
+                <TouchableOpacity
+                  key={val}
+                  style={[styles.quickChip, { borderColor: colors.border, backgroundColor: colors.card }]}
+                  onPress={() => {
+                    Haptics.selectionAsync();
+                    setAmount(val);
+                  }}
+                >
+                  <Text style={[styles.quickChipText, { color: colors.textSecondary }]}>₦{val}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+        </ScrollView>
+
+        {/* Footer */}
+        <View style={[styles.footer, { borderTopColor: colors.border, backgroundColor: colors.card, paddingBottom: Math.max(insets.bottom, 16) }]}>
+          <View style={styles.footerInfo}>
+            <Text style={[styles.balanceLabel, { color: colors.textSecondary }]}>Balance</Text>
+            <Text style={[styles.balanceAmount, { color: colors.foreground }]}>
+              ₦{walletBalance?.toLocaleString() ?? "0.00"}
+            </Text>
+          </View>
+          <TouchableOpacity
             style={[
-              styles.proceedButtonText,
+              styles.proceedButton,
               {
-                color: canProceed ? colors.primaryForeground : colors.textDisabled,
+                flex: 1,
+                backgroundColor: canProceed ? colors.primary : colors.muted,
               },
             ]}
+            onPress={handleProceedToCheckout}
+            disabled={!canProceed}
+            activeOpacity={0.8}
           >
-            {selectedProduct
-              ? `Continue - ₦${parseFloat(selectedProduct.denomAmount).toLocaleString()}`
-              : "Select Amount"}
-          </Text>
-        </TouchableOpacity>
-      </View>
+            <Text
+              style={[
+                styles.proceedButtonText,
+                {
+                  color: canProceed ? colors.primaryForeground : colors.textDisabled,
+                },
+              ]}
+            >
+              {isAmountValid 
+                ? `Pay ₦${numericAmount.toLocaleString()}` 
+                : "Enter Amount"}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
 
       <CheckoutModal
         ref={checkoutSheetRef}
@@ -449,13 +396,55 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   flex: { flex: 1 },
   backButton: { padding: designTokens.spacing.xs, marginLeft: 8 },
-  scrollContent: { paddingTop: -designTokens.spacing.md, paddingBottom: designTokens.spacing.xxl * 2 },
-  section: { paddingHorizontal: designTokens.spacing.md, marginBottom: designTokens.spacing.md },
+  scrollContent: { paddingVertical: designTokens.spacing.md },
+  section: { paddingHorizontal: designTokens.spacing.md, marginBottom: designTokens.spacing.lg },
   sectionTitle: { fontSize: designTokens.fontSize.base, fontWeight: "600", marginBottom: designTokens.spacing.sm },
   warningText: { fontSize: designTokens.fontSize.sm, marginTop: designTokens.spacing.xs },
-  amountGrid: { flexDirection: "row", flexWrap: "wrap", gap: designTokens.spacing.sm },
-  amountCard: { paddingVertical: designTokens.spacing.lg, borderRadius: designTokens.radius.lg, borderWidth: 1, alignItems: "center", justifyContent: "center" },
-  amountText: { fontSize: designTokens.fontSize.lg, fontWeight: "700" },
+  
+  amountInputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderRadius: designTokens.radius.lg,
+    paddingHorizontal: designTokens.spacing.md,
+    height: 56,
+  },
+  currencySymbol: {
+    fontSize: designTokens.fontSize.xl,
+    fontWeight: "600",
+    marginRight: designTokens.spacing.xs,
+  },
+  amountInput: {
+    flex: 1,
+    fontSize: designTokens.fontSize.xl,
+    fontWeight: "600",
+    height: "100%",
+  },
+  amountFeedback: {
+    marginTop: 8,
+    minHeight: 20,
+  },
+  feedbackText: {
+    fontSize: designTokens.fontSize.xs,
+    fontWeight: "500",
+  },
+  
+  quickGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  quickChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  quickChipText: {
+    fontSize: 14,
+    fontWeight: "500",
+  },
+
   footer: { flexDirection: "row", alignItems: "center", padding: designTokens.spacing.md, borderTopWidth: 1, gap: designTokens.spacing.md },
   footerInfo: { alignItems: "flex-start" },
   balanceLabel: { fontSize: designTokens.fontSize.xs },
