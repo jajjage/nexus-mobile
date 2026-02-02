@@ -3,10 +3,10 @@
 import { useTheme } from "@/context/ThemeContext";
 import React from "react";
 import {
-    Pressable,
-    StyleSheet,
-    Text,
-    View,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
 } from "react-native";
 
 interface PromoBannerProps {
@@ -20,8 +20,8 @@ export function PromoBanner({ variant, onPress }: PromoBannerProps) {
   const config = {
     savings: {
       title: "Save & Secure",
-      description: "Enjoy up to 15% interest on your savings.",
-      buttonText: "Start Saving",
+      description: "Enjoy Cashback on Every Transaction.",
+      buttonText: "Start Earning",
       backgroundColor: isDark ? "#0D3B66" : "#E3F2FD",
       accentColor: isDark ? "#64B5F6" : "#1565C0",
     },
