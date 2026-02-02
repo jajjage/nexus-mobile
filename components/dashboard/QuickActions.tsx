@@ -2,7 +2,7 @@
 // Following HOME_PAGE_GUIDE.md specifications
 import { useTheme } from "@/context/ThemeContext";
 import { useRouter } from "expo-router";
-import { Phone, Receipt, Send, Wifi } from "lucide-react-native";
+import { Grid, Phone, Receipt, Wifi } from "lucide-react-native";
 import React from "react";
 import {
     Pressable,
@@ -20,10 +20,10 @@ interface QuickAction {
 
 const actions: QuickAction[] = [
   {
-    id: "transfer",
-    label: "Transfer",
-    Icon: Send,
-    route: "/transfer",
+    id: "data",
+    label: "Data",
+    Icon: Wifi,
+    route: "/data",
   },
   {
     id: "airtime",
@@ -32,16 +32,16 @@ const actions: QuickAction[] = [
     route: "/airtime",
   },
   {
-    id: "data",
-    label: "Data",
-    Icon: Wifi,
-    route: "/data",
-  },
-  {
     id: "bills",
     label: "Pay Bills",
     Icon: Receipt,
     route: "/pay-bills",
+  },
+  {
+    id: "more",
+    label: "More",
+    Icon: Grid,
+    route: "/more-services",
   },
 ];
 

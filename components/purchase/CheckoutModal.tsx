@@ -335,7 +335,7 @@ export const CheckoutModal = forwardRef<BottomSheet, CheckoutModalProps>(
                     Amount to Pay
                   </Text>
                   <Text style={[styles.detailValue, { color: colors.foreground, fontWeight: '700' }]}>
-                    ₦{data.amount.toLocaleString()}
+                    ₦{totalToPay.toLocaleString()}
                   </Text>
                 </View>
 
