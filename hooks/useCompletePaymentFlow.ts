@@ -6,6 +6,7 @@
 
 import { useAuth } from "@/hooks/useAuth";
 import { useTopup } from "@/hooks/useTopup";
+import { useWalletBalance } from "@/hooks/useWalletBalance";
 import {
   determinePaymentMethod,
   verifyBiometricAndGetToken
@@ -34,6 +35,7 @@ export function useCompletePaymentFlow(
   options: PaymentFlowHookOptions = {}
 ) {
   const { user } = useAuth();
+  const { balance: walletBalance } = useWalletBalance();
   const topupMutation = useTopup();
 
   const [isProcessing, setIsProcessing] = useState(false);
@@ -70,8 +72,11 @@ export function useCompletePaymentFlow(
         const validation = validatePurchase(
           phoneNumber,
           product,
-          parseFloat(user?.balance || "0"),
-          undefined
+          walletBalance,
+          markupPercent,
+          undefined,
+          useCashback,
+          userCashbackBalance
         );
 
         if (!validation.isValid) {

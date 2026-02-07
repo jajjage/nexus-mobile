@@ -127,7 +127,9 @@ export function validatePurchase(
   product: Product | null,
   userBalance: number,
   markupPercent: number = 0,
-  selectedAmount?: number
+  selectedAmount?: number,
+  useCashback: boolean = false,
+  cashbackBalance: number = 0
 ): PurchaseValidation {
   const errors: string[] = [];
 
@@ -142,7 +144,7 @@ export function validatePurchase(
   } else {
     // Calculate price and check balance
     try {
-      const priceCalc = calculateFinalPrice(product, false, 0, markupPercent);
+      const priceCalc = calculateFinalPrice(product, useCashback, cashbackBalance, markupPercent);
       if (priceCalc.payableAmount > userBalance) {
         errors.push(
           `Insufficient balance. Need ₦${priceCalc.payableAmount.toFixed(2)}, have ₦${userBalance.toFixed(2)}`

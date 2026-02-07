@@ -330,9 +330,10 @@ export default function DataScreen() {
         userCashbackBalance: cashbackBalance,
       });
 
-      // If biometric failed or PIN required, show PIN modal
-      if (!result.success && result.error?.includes("PIN")) {
+      if (result.success) return;
 
+      // If biometric failed or PIN required, show PIN modal
+      if (result.error?.includes("PIN")) {
         setPendingPaymentData({
           product: selectedProduct,
           phoneNumber: normalizedPhone,
@@ -340,6 +341,11 @@ export default function DataScreen() {
           markupPercent: markup,
         });
         setShowPinModal(true);
+      } else {
+        // Handle validation errors (e.g. Insufficient Balance) or other failures
+        setLastErrorMessage(getUserFriendlyError(result.error || "Payment failed"));
+        setCheckoutMode("failed");
+        checkoutSheetRef.current?.expand();
       }
     } catch (error) {
 

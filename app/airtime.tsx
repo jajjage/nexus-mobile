@@ -171,7 +171,9 @@ export default function AirtimeScreen() {
         userCashbackBalance: cashbackBalance,
       });
 
-      if (!result.success && result.error?.includes("PIN")) {
+      if (result.success) return;
+
+      if (result.error?.includes("PIN")) {
         setPendingPaymentData({
           product: selectedProduct,
           phoneNumber: normalizedPhone,
@@ -179,6 +181,11 @@ export default function AirtimeScreen() {
           markupPercent: markup,
         });
         setShowPinModal(true);
+      } else {
+        // Handle validation errors (e.g. Insufficient Balance) or other failures
+        setLastErrorMessage(getUserFriendlyError(result.error || "Payment failed"));
+        setCheckoutMode("failed");
+        checkoutSheetRef.current?.expand();
       }
     } catch (error: any) {
       setLastErrorMessage(getUserFriendlyError(error.message || "Payment failed"));

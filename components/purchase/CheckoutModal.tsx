@@ -19,6 +19,7 @@ import React, { forwardRef, useCallback, useMemo } from "react";
 import {
   ActivityIndicator,
   Image,
+  Pressable,
   StyleSheet,
   Switch,
   Text,
@@ -77,7 +78,8 @@ export const CheckoutModal = forwardRef<BottomSheet, CheckoutModalProps>(
   ) => {
     const insets = useSafeAreaInsets();
     const colorScheme = useColorScheme();
-    const colors = colorScheme === "dark" ? darkColors : lightColors;
+    const isDark = colorScheme === "dark";
+    const colors = isDark ? darkColors : lightColors;
 
     const snapPoints = useMemo(() => {
       if (mode === "checkout") return ["75%"]; // Increased height for safe area
@@ -91,7 +93,10 @@ export const CheckoutModal = forwardRef<BottomSheet, CheckoutModalProps>(
       ? Math.min(cashbackBalance, data?.amount || 0)
       : 0;
     const totalToPay = (data?.amount || 0) - cashbackToUse;
-    const insufficientBalance = totalToPay > walletBalance;
+    
+    // Add small tolerance (0.01) for floating point precision issues
+    const insufficientBalance = totalToPay > (walletBalance + 0.01);
+    const insufficientBalanceExact = totalToPay > walletBalance; // used for text feedback if needed
 
     // Helper to create a Transaction object from checkout data for the receipt
     const createTransactionFromCheckoutData = useCallback((): Transaction | null => {
@@ -344,16 +349,26 @@ export const CheckoutModal = forwardRef<BottomSheet, CheckoutModalProps>(
                        <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>
                           Use Cashback (₦{cashbackBalance.toLocaleString()})
                        </Text>
-                      <Switch
-                        value={useCashback}
-                        onValueChange={onUseCashbackChange}
-                        trackColor={{
-                          false: colors.muted,
-                          true: `${colors.success}50`,
+                      <Pressable 
+                        onPress={() => {
+                          Haptics.selectionAsync();
+                          onUseCashbackChange(!useCashback);
                         }}
-                        thumbColor={useCashback ? colors.success : colors.border}
-                        style={{ transform: [{ scale: 0.8 }] }} 
-                      />
+                        style={[
+                          styles.customToggleTrack,
+                          { backgroundColor: useCashback ? colors.success : (isDark ? colors.border : '#E2E8F0') }
+                        ]}
+                      >
+                        <View 
+                          style={[
+                            styles.customToggleDot,
+                            { 
+                              transform: [{ translateX: useCashback ? 16 : 0 }],
+                              backgroundColor: '#FFFFFF' 
+                            }
+                          ]} 
+                        />
+                      </Pressable>
                     </View>
                  )}
 
@@ -755,5 +770,22 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     justifyContent: "center",
     alignItems: "center",
+  },
+  customToggleTrack: {
+    width: 36,
+    height: 20,
+    borderRadius: 10,
+    padding: 2,
+    justifyContent: 'center',
+  },
+  customToggleDot: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 1.5,
+    elevation: 2,
   },
 });

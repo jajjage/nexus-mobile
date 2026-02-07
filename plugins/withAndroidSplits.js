@@ -1,39 +1,47 @@
 const { withAppBuildGradle } = require('expo/config-plugins');
 
+/**
+ * Config plugin to ensure 32-bit and 64-bit ARM support.
+ * Essential for compatibility with budget/older Android devices.
+ */
 const withAndroidSplits = (config) => {
   return withAppBuildGradle(config, (config) => {
     if (config.modResults.language === 'groovy') {
       config.modResults.contents = updateGradleConfig(config.modResults.contents);
-    } else {
-      throw new Error('Cannot add splits to build.gradle because it is not groovy');
     }
     return config;
   });
 };
 
 function updateGradleConfig(buildGradle) {
-  // Check if we are building for ARM64 only (super lean)
+  // Check if we specifically want to restrict the build (e.g. for small dev APKs)
   const arm64Only = process.env.BUILD_ARM64_ONLY === 'true';
   
-  // Default to ARM only (exclude x86/x64 emulators) - this saves ~40-50%
-  // If arm64Only is true, we save even more.
-  const abiFilters = arm64Only 
-    ? 'abiFilters "arm64-v8a"' 
-    : 'abiFilters "armeabi-v7a", "arm64-v8a"';
+  // SUPPORTED ARCHITECTURES:
+  // - "armeabi-v7a": 32-bit ARM (Older/Budget phones)
+  // - "arm64-v8a": 64-bit ARM (Modern phones)
+  const compatibleFilters = '"armeabi-v7a", "arm64-v8a"';
+  const restrictedFilters = '"arm64-v8a"';
 
-  if (buildGradle.includes('ndk {')) {
-    // If ndk block exists, we might need to be careful, but standard expo template usually doesn't have it in defaultConfig
-    return buildGradle.replace(/ndk\s?{/, `ndk { ${abiFilters}`);
+  const selectedFilters = arm64Only ? restrictedFilters : compatibleFilters;
+
+  // 1. If abiFilters already exists, update it
+  if (buildGradle.includes('abiFilters')) {
+    return buildGradle.replace(/abiFilters\s+.*$/, `abiFilters ${selectedFilters}`);
   }
 
-  // Insert inside defaultConfig { ... }
-  // Use a more robust regex to find defaultConfig
+  // 2. If ndk block exists but no filters, add them
+  if (buildGradle.includes('ndk {')) {
+    return buildGradle.replace('ndk {', `ndk {\n            abiFilters ${selectedFilters}`);
+  }
+
+  // 3. Most common case for Expo: add ndk block to defaultConfig
   if (buildGradle.includes('defaultConfig {')) {
     return buildGradle.replace(
-      /defaultConfig\s?{/,
+      'defaultConfig {',
       `defaultConfig {
         ndk {
-            ${abiFilters}
+            abiFilters ${selectedFilters}
         }`
     );
   }
