@@ -93,6 +93,7 @@
           }
         }
       ],
+      "./plugins/withOptionalBiometrics.js",
       "expo-secure-store",
       "./plugins/withAndroidSplits.js"
     ],
