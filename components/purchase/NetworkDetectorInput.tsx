@@ -59,11 +59,23 @@ export function NetworkDetectorInput({
   // Handle text input with paste logic
   const handleChangeText = useCallback(
     (text: string) => {
-      // Allow digits and plus sign
-      let cleaned = text.replace(/[^0-9+]/g, "");
+      const raw = text.trim();
 
-      // Limit to 14 characters (sufficient for +234...)
-      cleaned = cleaned.slice(0, 14);
+      // Allow only digits and an optional leading plus sign.
+      let cleaned = raw.replace(/[^\d+]/g, "");
+      cleaned = cleaned.replace(/\+/g, (match, offset) => (offset === 0 ? match : ""));
+
+      // Preserve pasted country code when keyboard quick-paste drops the prefix visually.
+      const rawPlus2340 = raw.startsWith("+2340");
+      const raw2340 = raw.startsWith("2340");
+      if (rawPlus2340 && !cleaned.startsWith("+2340")) {
+        cleaned = "+2340" + cleaned.replace(/^(\+?2340)/, "");
+      } else if (raw2340 && !(cleaned.startsWith("2340") || cleaned.startsWith("+2340"))) {
+        cleaned = "2340" + cleaned.replace(/^(\+?2340)/, "");
+      }
+
+      // Soft cap to avoid accidental very long pastes.
+      cleaned = cleaned.slice(0, 20);
 
       onChangeText(cleaned);
 
@@ -154,7 +166,7 @@ export function NetworkDetectorInput({
           placeholder={placeholder}
           placeholderTextColor={colors.textDisabled}
           keyboardType="phone-pad"
-          maxLength={14}
+          maxLength={20}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
           editable={!disabled}

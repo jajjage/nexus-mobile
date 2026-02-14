@@ -99,9 +99,15 @@ export function detectNetworkProvider(phone: string): NetworkProvider | null {
   // Handle different formats
   let prefix: string;
 
-  if (cleaned.startsWith("+234")) {
+  if (cleaned.startsWith("+2340")) {
+    // +2340XXXXXXXXXX format - strip redundant trunk 0, convert to 0XXX
+    prefix = cleaned.slice(4, 8);
+  } else if (cleaned.startsWith("+234")) {
     // +234XXXXXXXXXX format - convert to 0XXX
     prefix = "0" + cleaned.slice(4, 7);
+  } else if (cleaned.startsWith("2340")) {
+    // 2340XXXXXXXXXX format - strip redundant trunk 0
+    prefix = cleaned.slice(3, 7);
   } else if (cleaned.startsWith("234")) {
     // 234XXXXXXXXXX format - convert to 0XXX
     prefix = "0" + cleaned.slice(3, 6);
@@ -146,8 +152,18 @@ export function isValidNigerianPhone(phone: string): boolean {
     return true;
   }
 
+  // Also allow +234 with trunk zero (common pasted contact format)
+  if (/^\+2340\d{10}$/.test(cleaned)) {
+    return true;
+  }
+
   // Also allow 234 format (13 chars total)
   if (/^234\d{10}$/.test(cleaned)) {
+    return true;
+  }
+
+  // Also allow 234 with trunk zero
+  if (/^2340\d{10}$/.test(cleaned)) {
     return true;
   }
 
@@ -160,7 +176,15 @@ export function isValidNigerianPhone(phone: string): boolean {
 export function normalizePhoneNumber(phone: string): string {
   const cleaned = phone.replace(/[\s\-\(\)]/g, "");
 
+  if (cleaned.startsWith("+2340")) {
+    return "0" + cleaned.slice(5);
+  }
+
   if (cleaned.startsWith("+234")) {
+    return "0" + cleaned.slice(4);
+  }
+
+  if (cleaned.startsWith("2340")) {
     return "0" + cleaned.slice(4);
   }
 
