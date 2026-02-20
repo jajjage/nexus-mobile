@@ -8,13 +8,13 @@ import { ProductCategory } from "@/types/product.types";
 import * as Haptics from "expo-haptics";
 import React from "react";
 import {
-    ActivityIndicator,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
-    useColorScheme,
+  ActivityIndicator,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  useColorScheme,
 } from "react-native";
 
 interface CategoryTabsProps {
@@ -38,15 +38,12 @@ export function CategoryTabs({
     (a, b) => (a.priority || 0) - (b.priority || 0)
   );
 
-  // Always include "All" tab first
-  const allTabs = [
-    { slug: "all", name: "All", id: "all" },
-    ...sortedCategories.map((cat) => ({
-      slug: cat.slug,
-      name: cat.name,
-      id: cat.id,
-    })),
-  ];
+  // Map categories from DB only (no hardcoded "All")
+  const allTabs = sortedCategories.map((cat) => ({
+    slug: cat.slug,
+    name: cat.name,
+    id: cat.id,
+  }));
 
   const handleSelect = (slug: string) => {
     Haptics.selectionAsync();

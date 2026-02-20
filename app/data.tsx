@@ -9,27 +9,27 @@ import { Stack, useRouter } from "expo-router";
 import { ArrowLeft, Wifi } from "lucide-react-native";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-    ActivityIndicator,
-    Dimensions,
-    FlatList,
-    KeyboardAvoidingView,
-    Platform,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Dimensions,
+  FlatList,
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { LoadingOverlay } from "@/components/LoadingOverlay";
 import {
-    CategoryTabs,
-    CheckoutData,
-    CheckoutModal,
-    CheckoutMode,
-    NetworkDetectorInput,
-    NetworkSelector,
-    ProductCard,
+  CategoryTabs,
+  CheckoutData,
+  CheckoutModal,
+  CheckoutMode,
+  NetworkDetectorInput,
+  NetworkSelector,
+  ProductCard,
 } from "@/components/purchase";
 import { PinPadModal } from "@/components/security/PinPadModal";
 import { designTokens } from "@/constants/palette";
@@ -44,11 +44,11 @@ import { useTopup } from "@/hooks/useTopup";
 import { useEligibleOffers } from "@/hooks/useUserOffers";
 import { useWalletBalance } from "@/hooks/useWalletBalance";
 import {
-    NETWORK_PROVIDERS,
-    NetworkInfo,
-    NetworkProvider,
-    isValidNigerianPhone,
-    normalizePhoneNumber,
+  NETWORK_PROVIDERS,
+  NetworkInfo,
+  NetworkProvider,
+  isValidNigerianPhone,
+  normalizePhoneNumber,
 } from "@/lib/detectNetwork";
 import { calculateFinalPrice } from "@/lib/price-calculator";
 import { Product } from "@/types/product.types";
@@ -70,7 +70,7 @@ export default function DataScreen() {
   const [selectedNetwork, setSelectedNetwork] = useState<NetworkProvider | null>(null);
   const [detectedNetwork, setDetectedNetwork] = useState<NetworkProvider | null>(null);
   const [networkMismatch, setNetworkMismatch] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
   // Modals
@@ -175,6 +175,13 @@ export default function DataScreen() {
     }
   }, [networks, selectedNetwork]);
 
+  // Auto-select first category from DB on load
+  useEffect(() => {
+    if (!selectedCategory && categories.length > 0) {
+      setSelectedCategory(categories[0].slug);
+    }
+  }, [categories, selectedCategory]);
+
   // === PRODUCT FILTERING (GUIDE SECTION 4 - FLOW 2) ===
   const filteredProducts = useMemo(() => {
     if (!productsData?.products) return [];
@@ -194,12 +201,12 @@ export default function DataScreen() {
     }
 
     // Step 2: Filter by selected category
-    if (selectedCategory !== "all") {
-      products = products.filter(
-        (p: Product) =>
-          p.category?.slug?.toLowerCase() === selectedCategory.toLowerCase()
-      );
-    }
+      if (selectedCategory) {
+        products = products.filter(
+          (p: Product) =>
+            p.category?.slug?.toLowerCase() === (selectedCategory ?? "").toLowerCase()
+        );
+      }
 
     // Step 3: Deduplication by product ID
     const seen = new Set<string>();
@@ -207,6 +214,13 @@ export default function DataScreen() {
       if (seen.has(p.id)) return false;
       seen.add(p.id);
       return true;
+    });
+
+    // Sort by denomination amount (small to large)
+    products = products.sort((a, b) => {
+      const aAmount = parseFloat(a.denomAmount || "0");
+      const bAmount = parseFloat(b.denomAmount || "0");
+      return aAmount - bAmount;
     });
 
     return products;
