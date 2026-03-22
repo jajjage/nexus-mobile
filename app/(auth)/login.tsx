@@ -33,14 +33,6 @@ import { Input, InputField, InputSlot } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 
-// Valid Nigerian phone prefixes
-const VALID_NIGERIAN_PREFIXES = [
-  "0703", "0706", "0803", "0806", "0810", "0813", "0814", "0816", "0903", "0906", "0913", "0916",
-  "0701", "0708", "0802", "0808", "0812", "0901", "0902", "0907", "0912",
-  "0705", "0805", "0807", "0811", "0815", "0905", "0915",
-  "0809", "0817", "0818", "0908", "0909",
-];
-
 const isValidEmail = (value: string): boolean => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(value);
@@ -48,8 +40,8 @@ const isValidEmail = (value: string): boolean => {
 
 const isValidNigerianPhone = (value: string): boolean => {
   if (value.length !== 11 || !/^\d+$/.test(value)) return false;
-  const prefix = value.substring(0, 4);
-  return VALID_NIGERIAN_PREFIXES.includes(prefix);
+  const prefix = value.substring(0, 3);
+  return ['070', '080', '090', '081', '091'].includes(prefix);
 };
 
 const loginSchema = z.object({

@@ -30,7 +30,8 @@ import {
   CheckoutData,
   CheckoutModal,
   CheckoutMode,
-  NetworkDetectorInput
+  NetworkDetectorInput,
+  NetworkSelector
 } from "@/components/purchase";
 import { PinPadModal } from "@/components/security/PinPadModal";
 import { designTokens } from "@/constants/palette";
@@ -43,6 +44,8 @@ import { useTopup } from "@/hooks/useTopup";
 import { useWalletBalance } from "@/hooks/useWalletBalance";
 import {
   NetworkProvider,
+  NETWORK_PROVIDERS,
+  NetworkInfo,
   isValidNigerianPhone,
   normalizePhoneNumber,
 } from "@/lib/detectNetwork";
@@ -58,7 +61,9 @@ export default function AirtimeScreen() {
   // === STATE ===
   const [phoneNumber, setPhoneNumber] = useState("");
   const [amount, setAmount] = useState("");
+  const [selectedNetwork, setSelectedNetwork] = useState<NetworkProvider | null>(null);
   const [detectedNetwork, setDetectedNetwork] = useState<NetworkProvider | null>(null);
+  const [networkMismatch, setNetworkMismatch] = useState(false);
   
   // Modals & Flows
   const [checkoutMode, setCheckoutMode] = useState<CheckoutMode>("checkout");
@@ -106,13 +111,66 @@ export default function AirtimeScreen() {
   const numericAmount = parseFloat(amount.replace(/[^0-9.]/g, "") || "0");
   const isAmountValid = numericAmount >= 50 && numericAmount <= 50000;
 
+  // Derive unique networks from products
+  const networks = useMemo(() => {
+    if (!productsData?.products) return [];
+
+    const uniqueNetworks = new Map<string, NetworkInfo>();
+
+    productsData.products.forEach((p: Product) => {
+      if (p.operator && p.operator.name) {
+        const rawName = p.operator.name.toLowerCase();
+        let slug: NetworkProvider;
+        
+        if (rawName.includes("mtn")) slug = "mtn";
+        else if (rawName.includes("glo")) slug = "glo";
+        else if (rawName.includes("airtel")) slug = "airtel";
+        else if (rawName.includes("9mobile") || rawName.includes("etisalat")) slug = "9mobile";
+        else return;
+
+        if (!uniqueNetworks.has(slug)) {
+          const localInfo = NETWORK_PROVIDERS[slug];
+          uniqueNetworks.set(slug, {
+            name: p.operator.name,
+            slug: slug,
+            color: localInfo?.color || "#000000",
+            logoUrl: p.operator.logoUrl || localInfo?.logoUrl,
+            logo: localInfo?.logo || p.operator.logoUrl
+          });
+        }
+      }
+    });
+
+    return Array.from(uniqueNetworks.values()).sort((a, b) => {
+      if (a.slug === "mtn") return -1;
+      if (b.slug === "mtn") return 1;
+      return a.name.localeCompare(b.name);
+    });
+  }, [productsData]);
+
+  useEffect(() => {
+    if (detectedNetwork && selectedNetwork && detectedNetwork !== selectedNetwork) {
+      setNetworkMismatch(true);
+    } else {
+      setNetworkMismatch(false);
+    }
+  }, [detectedNetwork, selectedNetwork]);
+
+  useEffect(() => {
+    if (!selectedNetwork && networks.length > 0) {
+      setSelectedNetwork(networks[0].slug);
+    }
+  }, [networks, selectedNetwork]);
+
   // Find matching product for detected network to check cashback rules
   const matchingProduct = useMemo(() => {
-    if (!productsData?.products || !detectedNetwork) return null;
+    if (!productsData?.products || !selectedNetwork) return null;
+    const operatorInfo = networks.find(n => n.slug === selectedNetwork);
+    if (!operatorInfo) return null;
     return productsData.products.find(p => 
-      p.operator?.name?.toLowerCase().includes(detectedNetwork)
+      p.operator?.name === operatorInfo.name
     );
-  }, [productsData, detectedNetwork]);
+  }, [productsData, selectedNetwork, networks]);
 
   // Dynamic Cashback Preview
   const estimatedCashback = useMemo(() => {
@@ -125,8 +183,17 @@ export default function AirtimeScreen() {
   const handleNetworkDetected = useCallback((network: NetworkProvider | null) => {
     setDetectedNetwork(network);
     if (network) {
-      Haptics.selectionAsync();
+      const isAvailable = networks.some(n => n.slug === network);
+      if (isAvailable && selectedNetwork !== network) {
+        setSelectedNetwork(network);
+        Haptics.selectionAsync();
+      }
     }
+  }, [networks, selectedNetwork]);
+
+  const handleNetworkSelect = useCallback((network: NetworkProvider) => {
+    Haptics.selectionAsync();
+    setSelectedNetwork(network);
   }, []);
 
   // Construct the Magic Product
@@ -140,11 +207,11 @@ export default function AirtimeScreen() {
       productCode: "GENERAL_AIRTIME",
       denomAmount: numericAmount.toString(),
       type: "airtime",
-      // Include detected network in the product metadata if needed, 
+      // Include selected network in the product metadata if needed, 
       // though backend handles routing.
-      operator: detectedNetwork ? { name: detectedNetwork } : undefined
+      operator: selectedNetwork ? { name: selectedNetwork } : undefined
     } as unknown as Product;
-  }, [numericAmount, isAmountValid, detectedNetwork]);
+  }, [numericAmount, isAmountValid, selectedNetwork]);
 
   const handleProceedToCheckout = useCallback(() => {
     if (!isPhoneValid || !isAmountValid || !selectedProduct) return;
@@ -238,7 +305,7 @@ export default function AirtimeScreen() {
       recipientPhone: normalizedPhone,
       amount: priceDetails.finalSellingPrice,
       originalAmount: undefined,
-      network: detectedNetwork || undefined, // Pass detected network for UI logo
+      network: selectedNetwork || undefined, // Pass selected network for UI logo
       transactionId: lastTransactionId || undefined,
       errorMessage: lastErrorMessage || undefined,
       bonusToEarn: priceDetails.bonusToEarn,
@@ -282,7 +349,20 @@ export default function AirtimeScreen() {
               onNetworkDetected={handleNetworkDetected}
               placeholder="0803 000 0000"
             />
+            {networkMismatch && (
+              <Text style={[styles.warningText, { color: colors.warning }]}>
+                ⚠️ Phone number belongs to {detectedNetwork?.toUpperCase()}, but {selectedNetwork?.toUpperCase()} is selected
+              </Text>
+            )}
           </View>
+
+          {/* Network Selector */}
+          <NetworkSelector
+            networks={networks}
+            selectedNetwork={selectedNetwork}
+            onSelect={handleNetworkSelect}
+            detectedNetwork={detectedNetwork}
+          />
 
           {/* Amount Section */}
           <View style={styles.section}>

@@ -32,18 +32,10 @@ import { Input, InputField, InputSlot } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 
-// Valid Nigerian phone prefixes
-const VALID_NIGERIAN_PREFIXES = [
-  "0703", "0706", "0803", "0806", "0810", "0813", "0814", "0816", "0903", "0906", "0913", "0916",
-  "0701", "0708", "0802", "0808", "0812", "0901", "0902", "0907", "0912",
-  "0705", "0805", "0807", "0811", "0815", "0905", "0915",
-  "0809", "0817", "0818", "0908", "0909",
-];
-
 const isValidNigerianPhone = (phone: string): boolean => {
-  if (phone.length !== 11) return false;
-  const prefix = phone.substring(0, 4);
-  return VALID_NIGERIAN_PREFIXES.includes(prefix);
+  if (phone.length !== 11 || !/^\d+$/.test(phone)) return false;
+  const prefix = phone.substring(0, 3);
+  return ['070', '080', '090', '081', '091'].includes(prefix);
 };
 
 const registerSchema = z
@@ -59,6 +51,7 @@ const registerSchema = z
       .string()
       .min(8, "Password must be at least 8 characters"),
     confirmPassword: z.string(),
+    referralCode: z.string().optional(),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords do not match",
@@ -84,6 +77,7 @@ export default function RegisterScreen() {
       phoneNumber: "",
       password: "",
       confirmPassword: "",
+      referralCode: "",
     },
     mode: "onChange",
   });
@@ -96,6 +90,7 @@ export default function RegisterScreen() {
       email: data.email,
       phoneNumber: data.phoneNumber,
       password: data.password,
+      referralCode: data.referralCode || undefined,
     });
   };
 
@@ -312,6 +307,37 @@ export default function RegisterScreen() {
                   {errors.confirmPassword && (
                     <FormControlError className="mt-1">
                       <FormControlErrorText>{errors.confirmPassword.message}</FormControlErrorText>
+                    </FormControlError>
+                  )}
+                </FormControl>
+
+                {/* Referral Code Field (Optional) */}
+                <FormControl isInvalid={!!errors.referralCode}>
+                  <FormControlLabel className="mb-2">
+                    <FormControlLabelText className="text-typography-700 font-medium">
+                      Referral Code (Optional)
+                    </FormControlLabelText>
+                  </FormControlLabel>
+                  <Controller
+                    control={control}
+                    name="referralCode"
+                    render={({ field: { onChange, onBlur, value } }) => (
+                      <Input variant="outline" size="xl" className="bg-background-0 rounded-xl">
+                        <InputField
+                          placeholder="E.g. ABC123"
+                          autoCapitalize="characters"
+                          onBlur={onBlur}
+                          onChangeText={onChange}
+                          value={value}
+                          className="text-typography-900"
+                          placeholderTextColor="#9CA3AF"
+                        />
+                      </Input>
+                    )}
+                  />
+                  {errors.referralCode && (
+                    <FormControlError className="mt-1">
+                      <FormControlErrorText>{errors.referralCode.message}</FormControlErrorText>
                     </FormControlError>
                   )}
                 </FormControl>

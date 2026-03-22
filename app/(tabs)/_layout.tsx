@@ -7,6 +7,7 @@ import { ActivityIndicator, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useClientOnlyValue } from '@/components/useClientOnlyValue';
+import { WhatsAppFAB } from '@/components/WhatsAppFAB';
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
@@ -48,8 +49,9 @@ export default function TabLayout() {
   console.log('[TabLayout] User setup complete, rendering tabs');
 
   return (
-    <Tabs
-      key={isReseller ? 'reseller' : 'user'}
+    <>
+      <Tabs
+        key={isReseller ? 'reseller' : 'user'}
       screenOptions={{
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textSecondary,
@@ -116,6 +118,8 @@ export default function TabLayout() {
         }}
       />
     </Tabs>
+    <WhatsAppFAB />
+    </>
   );
 }
 

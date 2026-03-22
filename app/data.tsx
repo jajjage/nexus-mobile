@@ -468,7 +468,7 @@ export default function DataScreen() {
         })()
       : null;
 
-  const canProceed = isPhoneValid && selectedNetwork && selectedProduct && !networkMismatch;
+  const canProceed = isPhoneValid && selectedNetwork && selectedProduct;
 
   // Optimize rendering with React.memo
   const MemoizedProductItem = React.memo(
