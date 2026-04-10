@@ -12,7 +12,7 @@ import BottomSheet from "@gorhom/bottom-sheet";
 import * as Haptics from "expo-haptics";
 import { Stack, useRouter } from "expo-router";
 import { ArrowLeft } from "lucide-react-native";
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -43,9 +43,9 @@ import { useSupplierMarkupMap } from "@/hooks/useSupplierMarkup";
 import { useTopup } from "@/hooks/useTopup";
 import { useWalletBalance } from "@/hooks/useWalletBalance";
 import {
-  NetworkProvider,
   NETWORK_PROVIDERS,
   NetworkInfo,
+  NetworkProvider,
   isValidNigerianPhone,
   normalizePhoneNumber,
 } from "@/lib/detectNetwork";
@@ -228,8 +228,6 @@ export default function AirtimeScreen() {
       // General Airtime usually has 0 markup, but we keep the logic structure
       const markup = 0; 
 
-      checkoutSheetRef.current?.close();
-
       const result = await processPayment({
         product: selectedProduct,
         phoneNumber: normalizedPhone,
@@ -238,7 +236,11 @@ export default function AirtimeScreen() {
         userCashbackBalance: cashbackBalance,
       });
 
-      if (result.success) return;
+      if (result.success) {
+        // Success - close sheet and let the component handle state
+        checkoutSheetRef.current?.close();
+        return;
+      }
 
       if (result.error?.includes("PIN")) {
         setPendingPaymentData({
@@ -247,17 +249,18 @@ export default function AirtimeScreen() {
           useCashback,
           markupPercent: markup,
         });
-        setShowPinModal(true);
+        checkoutSheetRef.current?.close();
+        // Wait for BottomSheet close animation (350ms) + buffer
+        setTimeout(() => setShowPinModal(true), 450);
       } else {
-        // Handle validation errors (e.g. Insufficient Balance) or other failures
+        // Handle validation errors - set error state (sheet stays open)
         setLastErrorMessage(getUserFriendlyError(result.error || "Payment failed"));
-        setCheckoutMode("failed");
-        checkoutSheetRef.current?.expand();
+        // Wait for Reanimated animation to finish before changing state (400ms)
+        setTimeout(() => setCheckoutMode("failed"), 400);
       }
     } catch (error: any) {
       setLastErrorMessage(getUserFriendlyError(error.message || "Payment failed"));
-      setCheckoutMode("failed");
-      checkoutSheetRef.current?.expand();
+      setTimeout(() => setCheckoutMode("failed"), 400);
     }
   }, [selectedProduct, normalizedPhone, useCashback, cashbackBalance, processPayment]);
 
@@ -293,7 +296,10 @@ export default function AirtimeScreen() {
     }
   }, [checkoutMode, router]);
 
-  const handleRetry = useCallback(() => setCheckoutMode("checkout"), []);
+  const handleRetry = useCallback(() => {
+    // Wait for animation to complete before state change
+    setTimeout(() => setCheckoutMode("checkout"), 250);
+  }, []);
 
   // === CHECKOUT DATA ===
   const checkoutData: CheckoutData | null = selectedProduct ? (() => {

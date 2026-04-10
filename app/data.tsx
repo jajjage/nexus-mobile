@@ -326,14 +326,9 @@ export default function DataScreen() {
     if (!selectedProduct || !normalizedPhone) return;
 
     try {
-
-
       // Get markup for this product
       const supplierId = selectedProduct.supplierOffers?.[0]?.supplierId || "";
       const markup = markupMap.get(supplierId) || 0;
-
-      // Close checkout modal
-      checkoutSheetRef.current?.close();
 
       // Initiate payment flow (handles biometric → PIN → transaction)
       const result = await processPayment({
@@ -344,7 +339,11 @@ export default function DataScreen() {
         userCashbackBalance: cashbackBalance,
       });
 
-      if (result.success) return;
+      if (result.success) {
+        // Success - close sheet
+        checkoutSheetRef.current?.close();
+        return;
+      }
 
       // If biometric failed or PIN required, show PIN modal
       if (result.error?.includes("PIN")) {
@@ -354,19 +353,19 @@ export default function DataScreen() {
           useCashback,
           markupPercent: markup,
         });
-        setShowPinModal(true);
+        checkoutSheetRef.current?.close();
+        // Wait for BottomSheet close animation (350ms) + buffer
+        setTimeout(() => setShowPinModal(true), 450);
       } else {
-        // Handle validation errors (e.g. Insufficient Balance) or other failures
+        // Handle validation errors - keep sheet open
         setLastErrorMessage(getUserFriendlyError(result.error || "Payment failed"));
-        setCheckoutMode("failed");
-        checkoutSheetRef.current?.expand();
+        // Wait for Reanimated animation to finish before changing state (400ms)
+        setTimeout(() => setCheckoutMode("failed"), 400);
       }
     } catch (error) {
-
       const errorMsg = error instanceof Error ? error.message : "Payment processing failed";
       setLastErrorMessage(getUserFriendlyError(errorMsg));
-      setCheckoutMode("failed");
-      checkoutSheetRef.current?.expand();
+      setTimeout(() => setCheckoutMode("failed"), 400);
     }
   }, [selectedProduct, normalizedPhone, useCashback, cashbackBalance, processPayment, markupMap]);
 
@@ -410,7 +409,8 @@ export default function DataScreen() {
 
   // Retry after failure
   const handleRetry = useCallback(() => {
-    setCheckoutMode("checkout");
+    // Wait for animation to complete before state change
+    setTimeout(() => setCheckoutMode("checkout"), 250);
   }, []);
 
   // Close and reset

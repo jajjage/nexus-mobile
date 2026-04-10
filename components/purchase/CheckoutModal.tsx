@@ -10,22 +10,21 @@ import { Transaction } from "@/types/wallet.types";
 import BottomSheet, { BottomSheetView } from "@gorhom/bottom-sheet";
 import * as Haptics from "expo-haptics";
 import {
-  CheckCircle,
-  RefreshCw,
-  Share2,
-  XCircle
+    CheckCircle,
+    RefreshCw,
+    Share2,
+    XCircle
 } from "lucide-react-native";
 import React, { forwardRef, useCallback, useMemo } from "react";
 import {
-  ActivityIndicator,
-  Image,
-  Pressable,
-  StyleSheet,
-  Switch,
-  Text,
-  TouchableOpacity,
-  View,
-  useColorScheme
+    ActivityIndicator,
+    Image,
+    Pressable,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+    useColorScheme
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -82,9 +81,10 @@ export const CheckoutModal = forwardRef<BottomSheet, CheckoutModalProps>(
     const colors = isDark ? darkColors : lightColors;
 
     const snapPoints = useMemo(() => {
-      if (mode === "checkout") return ["75%"]; // Increased height for safe area
-      return ["55%"];
-    }, [mode]);
+      // Keep snapPoints stable to prevent view hierarchy crashes
+      // Always use 75% height to avoid layout restructuring when mode changes
+      return ["75%"];
+    }, []);
 
     const [showShareSheet, setShowShareSheet] = React.useState(false);
 
@@ -128,6 +128,12 @@ export const CheckoutModal = forwardRef<BottomSheet, CheckoutModalProps>(
         }
       } as Transaction;
     }, [data, cashbackToUse, walletBalance, totalToPay]);
+
+    // Memoize transaction to prevent re-rendering and view hierarchy issues
+    const cachedTransaction = useMemo(
+      () => createTransactionFromCheckoutData(),
+      [createTransactionFromCheckoutData]
+    );
 
     // Share receipt
     const handleShare = useCallback(() => {
@@ -462,33 +468,35 @@ export const CheckoutModal = forwardRef<BottomSheet, CheckoutModalProps>(
     };
 
     return (
-      <BottomSheet
-        ref={ref}
-        index={-1}
-        snapPoints={snapPoints}
-        enablePanDownToClose
-        onClose={onClose}
-        backgroundStyle={{
-          backgroundColor: colors.card,
-        }}
-        handleIndicatorStyle={{
-          backgroundColor: colors.border,
-          width: 40,
-        }}
-      >
-        <BottomSheetView style={styles.container}>
-          {renderContent()}
+      <>
+        <BottomSheet
+          ref={ref}
+          index={-1}
+          snapPoints={snapPoints}
+          enablePanDownToClose={true}
+          onClose={onClose}
+          backgroundStyle={{
+            backgroundColor: colors.card,
+          }}
+          handleIndicatorStyle={{
+            backgroundColor: colors.border,
+            width: 40,
+          }}
+        >
+          <BottomSheetView style={styles.container}>
+            {renderContent()}
+          </BottomSheetView>
+        </BottomSheet>
 
-          {/* Share Receipt Sheet */}
-          {createTransactionFromCheckoutData() && (
-            <ShareTransactionSheet
-              visible={showShareSheet}
-              onClose={() => setShowShareSheet(false)}
-              transaction={createTransactionFromCheckoutData() as Transaction}
-            />
-          )}
-        </BottomSheetView>
-      </BottomSheet>
+        {/* Share Receipt Sheet - rendered at top level to avoid view hierarchy issues */}
+        {cachedTransaction && (
+          <ShareTransactionSheet
+            visible={showShareSheet}
+            onClose={() => setShowShareSheet(false)}
+            transaction={cachedTransaction}
+          />
+        )}
+      </>
     );
   }
 );
