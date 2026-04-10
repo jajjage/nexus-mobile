@@ -312,7 +312,7 @@ export default function RegisterScreen() {
                 </FormControl>
 
                 {/* Referral Code Field (Optional) */}
-                <FormControl isInvalid={!!errors.referralCode}>
+                {/* <FormControl isInvalid={!!errors.referralCode}>
                   <FormControlLabel className="mb-2">
                     <FormControlLabelText className="text-typography-700 font-medium">
                       Referral Code (Optional)
@@ -340,7 +340,7 @@ export default function RegisterScreen() {
                       <FormControlErrorText>{errors.referralCode.message}</FormControlErrorText>
                     </FormControlError>
                   )}
-                </FormControl>
+                </FormControl> */}
 
                 {/* Register Button */}
                 <Button
