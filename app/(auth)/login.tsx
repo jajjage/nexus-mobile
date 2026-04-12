@@ -1,13 +1,14 @@
 import { useLogin } from "@/hooks/useAuth";
+import { isValidNigerianPhone } from "@/lib/detectNetwork";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link, router } from "expo-router";
 import React, { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
-  Keyboard,
-  Platform,
-  Pressable,
-  TouchableWithoutFeedback,
+    Keyboard,
+    Platform,
+    Pressable,
+    TouchableWithoutFeedback,
 } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -20,11 +21,11 @@ import { Card } from "@/components/ui/card";
 import { Center } from "@/components/ui/center";
 import { Divider } from "@/components/ui/divider";
 import {
-  FormControl,
-  FormControlError,
-  FormControlErrorText,
-  FormControlLabel,
-  FormControlLabelText,
+    FormControl,
+    FormControlError,
+    FormControlErrorText,
+    FormControlLabel,
+    FormControlLabelText,
 } from "@/components/ui/form-control";
 import { Heading } from "@/components/ui/heading";
 import { HStack } from "@/components/ui/hstack";
@@ -36,12 +37,6 @@ import { VStack } from "@/components/ui/vstack";
 const isValidEmail = (value: string): boolean => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(value);
-};
-
-const isValidNigerianPhone = (value: string): boolean => {
-  if (value.length !== 11 || !/^\d+$/.test(value)) return false;
-  const prefix = value.substring(0, 3);
-  return ['070', '080', '090', '081', '091'].includes(prefix);
 };
 
 const loginSchema = z.object({
@@ -100,6 +95,14 @@ export default function LoginScreen() {
     if (data.totpCode) {
       loginPayload.totpCode = data.totpCode;
     }
+    
+    console.log('\n[LOGIN_DEBUG] 📝 Form submission - Payload from login.tsx:', JSON.stringify({
+      isEmail,
+      credentialType: isEmail ? 'email' : 'phone',
+      credential: isEmail ? data.credentials : data.credentials,
+      password: '***masked***',
+      has2FA: !!data.totpCode,
+    }, null, 2));
     
     login(loginPayload);
   };

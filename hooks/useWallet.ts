@@ -1,9 +1,9 @@
 import { walletService } from "@/services/wallet.service";
 import { GetTransactionsParams } from "@/types/wallet.types";
 import {
-  useInfiniteQuery,
-  useQuery,
-  useQueryClient,
+    useInfiniteQuery,
+    useQuery,
+    useQueryClient,
 } from "@tanstack/react-query";
 import { userKeys } from "./useUser";
 
@@ -72,17 +72,21 @@ export const useTransactions = (params?: GetTransactionsParams) => {
 };
 
 /**
- * Get all transactions with infinite scrolling
+ * Get all transactions with infinite scrolling and filtering
+ * Supports filtering by direction, status, date range
  */
 export const useInfiniteTransactions = (params?: GetTransactionsParams) => {
   return useInfiniteQuery({
     queryKey: walletKeys.transactions.list(params),
-    queryFn: ({ pageParam = 1 }) =>
-      walletService.getTransactions({ ...params, page: pageParam }),
+    queryFn: ({ pageParam = 1 }) => {
+      console.log('[INFINITE_TX] Fetching page:', pageParam, 'with params:', params);
+      return walletService.getTransactions({ ...params, page: pageParam });
+    },
     initialPageParam: 1,
     getNextPageParam: (lastPage) => {
       const currentPage = lastPage.data.pagination.page;
       const totalPages = lastPage.data.pagination.totalPages;
+      console.log('[INFINITE_TX] Page info - current:', currentPage, 'total:', totalPages, 'hasNext:', currentPage < totalPages);
       return currentPage < totalPages ? currentPage + 1 : undefined;
     },
   });

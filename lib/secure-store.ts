@@ -1,10 +1,11 @@
 // lib/secure-store.ts
 import * as SecureStore from "expo-secure-store";
+import { AsyncStorage } from "react-native";
 
 const ACCESS_TOKEN_KEY = "nexus_access_token";
 const REFRESH_TOKEN_KEY = "nexus_refresh_token";
-const USER_CACHE_KEY = "nexus_user_cache";
-const USER_ROLE_KEY = "nexus_user_role";
+const USER_CACHE_KEY = "nexus_user_cache";  // Moved to AsyncStorage
+const USER_ROLE_KEY = "nexus_user_role";    // Moved to AsyncStorage
 
 export const tokenStorage = {
   async getAccessToken(): Promise<string | null> {
@@ -30,13 +31,16 @@ export const tokenStorage = {
 };
 
 /**
- * Secure user cache storage - stores user data securely
- * Used for quick app restarts and session restoration
+ * User cache storage - moved to AsyncStorage (non-sensitive data)
+ * We only store critical security data in SecureStore (tokens, PINs, passcodes)
+ * User profiles are cached in AsyncStorage for faster app startup
+ * 
+ * This avoids the 2048 byte SecureStore limit while keeping tokens secure
  */
 export const userStorage = {
   async getUser<T>(): Promise<T | null> {
     try {
-      const data = await SecureStore.getItemAsync(USER_CACHE_KEY);
+      const data = await AsyncStorage.getItem(USER_CACHE_KEY);
       if (data) {
         return JSON.parse(data) as T;
       }
@@ -48,23 +52,24 @@ export const userStorage = {
   },
 
   async setUser<T>(user: T): Promise<void> {
-    await SecureStore.setItemAsync(USER_CACHE_KEY, JSON.stringify(user));
+    console.log('[userStorage] Storing user in AsyncStorage (not SecureStore - non-sensitive data)');
+    await AsyncStorage.setItem(USER_CACHE_KEY, JSON.stringify(user));
   },
 
   async clearUser(): Promise<void> {
-    await SecureStore.deleteItemAsync(USER_CACHE_KEY);
+    await AsyncStorage.removeItem(USER_CACHE_KEY);
   },
 
   async getUserRole(): Promise<string | null> {
-    return SecureStore.getItemAsync(USER_ROLE_KEY);
+    return AsyncStorage.getItem(USER_ROLE_KEY);
   },
 
   async setUserRole(role: string): Promise<void> {
-    await SecureStore.setItemAsync(USER_ROLE_KEY, role);
+    await AsyncStorage.setItem(USER_ROLE_KEY, role);
   },
 
   async clearUserRole(): Promise<void> {
-    await SecureStore.deleteItemAsync(USER_ROLE_KEY);
+    await AsyncStorage.removeItem(USER_ROLE_KEY);
   },
 
   /**
@@ -72,8 +77,8 @@ export const userStorage = {
    */
   async clearAll(): Promise<void> {
     await Promise.all([
-      SecureStore.deleteItemAsync(USER_CACHE_KEY),
-      SecureStore.deleteItemAsync(USER_ROLE_KEY),
+      AsyncStorage.removeItem(USER_CACHE_KEY),
+      AsyncStorage.removeItem(USER_ROLE_KEY),
     ]);
   },
 };

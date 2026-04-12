@@ -52,6 +52,8 @@ export interface GetTransactionsParams {
   page?: number;
   limit?: number;
   direction?: "debit" | "credit";
+  relatedType?: string;  // e.g., "topup_request"
+  status?: "pending" | "success" | "completed" | "failed" | "cancelled" | "reversed" | "retry";
   startDate?: string;
   endDate?: string;
 }

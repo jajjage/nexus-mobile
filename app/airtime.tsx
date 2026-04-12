@@ -94,11 +94,13 @@ export default function AirtimeScreen() {
       setLastTransactionId(transactionId);
       setLastErrorMessage(null);
       setCheckoutMode("success");
+      // Expand sheet directly to show success (sheet is already closed from handleConfirmPayment)
       checkoutSheetRef.current?.expand();
     },
     onError: (error) => {
       setLastErrorMessage(error);
       setCheckoutMode("failed");
+      // Expand sheet to show failure
       checkoutSheetRef.current?.expand();
     },
   });
@@ -225,6 +227,10 @@ export default function AirtimeScreen() {
     if (!selectedProduct || !normalizedPhone) return;
 
     try {
+      // Close the checkout sheet immediately - loading overlay will show instead
+      // This prevents the checkout modal from showing during payment processing
+      checkoutSheetRef.current?.close();
+      
       // General Airtime usually has 0 markup, but we keep the logic structure
       const markup = 0; 
 
@@ -237,8 +243,8 @@ export default function AirtimeScreen() {
       });
 
       if (result.success) {
-        // Success - close sheet and let the component handle state
-        checkoutSheetRef.current?.close();
+        // Success - the onSuccess callback from useCompletePaymentFlow will handle
+        // expanding the sheet and showing the success modal
         return;
       }
 
@@ -249,14 +255,16 @@ export default function AirtimeScreen() {
           useCashback,
           markupPercent: markup,
         });
-        checkoutSheetRef.current?.close();
         // Wait for BottomSheet close animation (350ms) + buffer
         setTimeout(() => setShowPinModal(true), 450);
       } else {
-        // Handle validation errors - set error state (sheet stays open)
+        // Handle validation errors - expand sheet to show error
         setLastErrorMessage(getUserFriendlyError(result.error || "Payment failed"));
         // Wait for Reanimated animation to finish before changing state (400ms)
-        setTimeout(() => setCheckoutMode("failed"), 400);
+        setTimeout(() => {
+          setCheckoutMode("failed");
+          checkoutSheetRef.current?.expand();
+        }, 400);
       }
     } catch (error: any) {
       setLastErrorMessage(getUserFriendlyError(error.message || "Payment failed"));

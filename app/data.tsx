@@ -101,16 +101,16 @@ export default function DataScreen() {
   const { authenticate, checkBiometricSupport } = useBiometricAuth();
   const { processPayment, submitPIN, reset: resetPaymentFlow, isLoading: isPaymentProcessing, currentStep: paymentStep, error: paymentError } = useCompletePaymentFlow({
     onSuccess: (transactionId) => {
-
       setLastTransactionId(transactionId);
       setLastErrorMessage(null);
       setCheckoutMode("success");
+      // Expand sheet directly to show success (sheet is already closed from handleConfirmPayment)
       checkoutSheetRef.current?.expand();
     },
     onError: (error) => {
-
       setLastErrorMessage(error);
       setCheckoutMode("failed");
+      // Expand sheet to show failure
       checkoutSheetRef.current?.expand();
     },
   });
@@ -326,6 +326,10 @@ export default function DataScreen() {
     if (!selectedProduct || !normalizedPhone) return;
 
     try {
+      // Close the checkout sheet immediately - loading overlay will show instead
+      // This prevents the checkout modal from showing during payment processing
+      checkoutSheetRef.current?.close();
+      
       // Get markup for this product
       const supplierId = selectedProduct.supplierOffers?.[0]?.supplierId || "";
       const markup = markupMap.get(supplierId) || 0;
@@ -340,8 +344,8 @@ export default function DataScreen() {
       });
 
       if (result.success) {
-        // Success - close sheet
-        checkoutSheetRef.current?.close();
+        // Success - the onSuccess callback from useCompletePaymentFlow will handle
+        // expanding the sheet and showing the success modal
         return;
       }
 
@@ -353,19 +357,24 @@ export default function DataScreen() {
           useCashback,
           markupPercent: markup,
         });
-        checkoutSheetRef.current?.close();
         // Wait for BottomSheet close animation (350ms) + buffer
         setTimeout(() => setShowPinModal(true), 450);
       } else {
-        // Handle validation errors - keep sheet open
+        // Handle validation errors - expand sheet to show error
         setLastErrorMessage(getUserFriendlyError(result.error || "Payment failed"));
         // Wait for Reanimated animation to finish before changing state (400ms)
-        setTimeout(() => setCheckoutMode("failed"), 400);
+        setTimeout(() => {
+          setCheckoutMode("failed");
+          checkoutSheetRef.current?.expand();
+        }, 400);
       }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : "Payment processing failed";
       setLastErrorMessage(getUserFriendlyError(errorMsg));
-      setTimeout(() => setCheckoutMode("failed"), 400);
+      setTimeout(() => {
+        setCheckoutMode("failed");
+        checkoutSheetRef.current?.expand();
+      }, 400);
     }
   }, [selectedProduct, normalizedPhone, useCashback, cashbackBalance, processPayment, markupMap]);
 

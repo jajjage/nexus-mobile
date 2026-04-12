@@ -186,6 +186,14 @@ export function useLogin() {
         loginData.totpCode = credentials.totpCode;
       }
       
+      console.log('\n[LOGIN_DEBUG] 🔌 useAuth.ts - Final payload with deviceId:', JSON.stringify({
+        email: loginData.email,
+        phone: loginData.phone,
+        password: '***masked***',
+        deviceId: loginData.deviceId,
+        totpCode: loginData.totpCode ? '***present***' : 'undefined',
+      }, null, 2));
+      
       return authService.login(loginData);
     },
     onSuccess: async (response) => {

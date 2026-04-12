@@ -62,7 +62,7 @@ export function LoadingOverlay({
 
   return (
     <Modal visible={visible} transparent animationType="fade" statusBarTranslucent>
-      <View style={[styles.overlay, { backgroundColor: 'transparent' }]}>
+      <View style={[styles.overlay, { backgroundColor: 'rgba(0, 0, 0, 0.7)' }]}>
         <View style={styles.center} pointerEvents="box-none">
           {/* Animated Container (White Circle + Pulse) */}
           <Animated.View

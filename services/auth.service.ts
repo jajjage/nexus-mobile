@@ -2,17 +2,25 @@ import apiClient from "@/lib/api-client";
 import { tokenStorage } from "@/lib/secure-store";
 import { ApiResponse, User } from "@/types/api.types";
 import {
-  ForgotPasswordRequest,
-  LoginRequest,
-  MobileAuthResponse,
-  RegisterRequest,
-  ResetPasswordRequest,
-  UpdatePasswordRequest,
+    ForgotPasswordRequest,
+    LoginRequest,
+    MobileAuthResponse,
+    RegisterRequest,
+    ResetPasswordRequest,
+    UpdatePasswordRequest,
 } from "@/types/auth.types";
 
 export const authService = {
   // Login user - returns tokens + basic user info
   login: async (data: LoginRequest): Promise<MobileAuthResponse> => {
+    console.log('\n[LOGIN_DEBUG] 📤 auth.service.ts - Sending to /mobile/auth/login:', JSON.stringify({
+      email: data.email,
+      phone: data.phone,
+      password: '***masked***',
+      deviceId: data.deviceId,
+      totpCode: data.totpCode ? '***present***' : 'undefined',
+    }, null, 2));
+    
     const response = await apiClient.post<{ success: boolean; message: string; data: MobileAuthResponse; statusCode: number }>(
       "/mobile/auth/login",
       data
@@ -21,6 +29,16 @@ export const authService = {
     // Tokens are in response.data.data (nested inside the API response wrapper)
     const authData = response.data.data;
     const { accessToken, refreshToken } = authData;
+    
+    console.log('\n[LOGIN_DEBUG] ✅ auth.service.ts - Response received:', JSON.stringify({
+      data: {
+        id: authData.id,
+        email: authData.email,
+        role: authData.role,
+        accessToken: accessToken ? `${accessToken.substring(0, 20)}...` : 'undefined',
+        refreshToken: refreshToken ? '***present***' : 'undefined',
+      }
+    }, null, 2));
     
     // Save tokens to secure store (only if valid strings)
     if (accessToken && typeof accessToken === 'string') {

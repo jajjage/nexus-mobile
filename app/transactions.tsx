@@ -1,43 +1,79 @@
 // app/transactions.tsx
 // Full transactions history screen with filters
 import { lightColors } from "@/constants/palette";
-import { useTransactions } from "@/hooks/useWallet";
+import { useInfiniteTransactions } from "@/hooks/useWallet";
 import {
-    getDisplayStatus,
-    getStatusConfig,
-    getTransactionSubtitle,
-    getTransactionTitle,
-    isDataTransaction,
+  getDisplayStatus,
+  getStatusConfig,
+  getTransactionSubtitle,
+  getTransactionTitle,
+  isDataTransaction,
 } from "@/lib/transactionUtils";
-import { Transaction } from "@/types/wallet.types";
+import { GetTransactionsParams, Transaction } from "@/types/wallet.types";
 import { useRouter } from "expo-router";
 import {
-    ArrowDown,
-    ArrowLeft,
-    ArrowUp,
-    CreditCard,
-    Phone,
-    Wifi,
+  ArrowDown,
+  ArrowLeft,
+  ArrowUp,
+  CreditCard,
+  Phone,
+  Search,
+  Wifi,
 } from "lucide-react-native";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
-    FlatList,
-    Pressable,
-    RefreshControl,
-    StyleSheet,
-    Text,
-    View,
+  ActivityIndicator,
+  FlatList,
+  Pressable,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  TextInput,
+  View
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type FilterType = "all" | "credit" | "debit";
+type StatusFilter = "all" | "pending" | "success" | "reversed";
 
 export default function TransactionsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { data: transactions = [], isLoading, refetch } = useTransactions();
   const [activeFilter, setActiveFilter] = useState<FilterType>("all");
+  const [activeStatus, setActiveStatus] = useState<StatusFilter>("all");
   const [refreshing, setRefreshing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Build query params based on active filters
+  const queryParams: GetTransactionsParams = useMemo(() => {
+    const params: GetTransactionsParams = {};
+    
+    if (activeFilter !== "all") {
+      params.direction = activeFilter;
+    }
+    
+    if (activeStatus !== "all") {
+      params.relatedType = "topup_request";
+      params.status = activeStatus as any;
+    }
+    
+    return params;
+  }, [activeFilter, activeStatus]);
+
+  const { 
+    data, 
+    isLoading, 
+    refetch,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteTransactions(queryParams);
+
+  // Flatten paginated data
+  const transactions = useMemo(
+    () => data?.pages.flatMap(page => page.data.transactions) ?? [],
+    [data?.pages]
+  );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -45,11 +81,44 @@ export default function TransactionsScreen() {
     setRefreshing(false);
   }, [refetch]);
 
-  // Filter transactions
-  const filteredTransactions = transactions.filter(tx => {
-    if (activeFilter === "all") return true;
-    return tx.direction === activeFilter;
-  });
+  const handleEndReached = useCallback(() => {
+    console.log('[INFINITE_SCROLL] End reached - hasNextPage:', hasNextPage, 'isFetching:', isFetchingNextPage);
+    if (hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
+    }
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  // Filter and search transactions
+  const filteredTransactions = useMemo(() => {
+    let results = transactions.filter(tx => {
+      if (activeFilter === "all") return true;
+      return tx.direction === activeFilter;
+    });
+
+    // Search by phone, amount, product name, or status
+    // Note: status comes from related.status (topup transactions only)
+    // Valid statuses: "pending", "success", "failed", "reversed"
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      results = results.filter(tx => {
+        const phone = tx.related?.recipient_phone?.toLowerCase() || "";
+        const amount = tx.amount.toString();
+        const product = (tx.related?.type || "").toLowerCase();
+        const title = getTransactionTitle(tx).toLowerCase();
+        const status = (tx.related?.status || "").toLowerCase(); // From topup_request relation
+        
+        return (
+          phone.includes(query) || 
+          amount.includes(query) || 
+          product.includes(query) || 
+          title.includes(query) ||
+          status.includes(query)
+        );
+      });
+    }
+
+    return results;
+  }, [transactions, activeFilter, searchQuery]);
 
   // Get icon for transaction
   const getTransactionIcon = (tx: Transaction) => {
@@ -161,7 +230,29 @@ export default function TransactionsScreen() {
         <View style={styles.placeholder} />
       </View>
 
-      {/* Filter Tabs */}
+      {/* Search Input */}
+      <View style={styles.searchContainer}>
+        <View style={styles.searchInputWrapper}>
+          <Search size={18} color={lightColors.textTertiary} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search by phone, amount, status..."
+            placeholderTextColor={lightColors.textTertiary}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+          {searchQuery.length > 0 && (
+            <Pressable 
+              onPress={() => setSearchQuery("")}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Text style={{fontSize: 18, color: lightColors.textTertiary}}>✕</Text>
+            </Pressable>
+          )}
+        </View>
+      </View>
+
+      {/* Filter Tabs - Direction */}
       <View style={styles.filterContainer}>
         {(["all", "credit", "debit"] as FilterType[]).map((filter) => (
           <Pressable
@@ -184,16 +275,47 @@ export default function TransactionsScreen() {
         ))}
       </View>
 
+      {/* Filter Tabs - Status (for topup transactions) */}
+      <View style={styles.filterContainer}>
+        {(["all", "pending", "success", "reversed"] as StatusFilter[]).map((status) => (
+          <Pressable
+            key={status}
+            style={[
+              styles.filterTab,
+              activeStatus === status && styles.filterTabActive,
+            ]}
+            onPress={() => setActiveStatus(status)}
+          >
+            <Text
+              style={[
+                styles.filterText,
+                activeStatus === status && styles.filterTextActive,
+              ]}
+            >
+              {status.charAt(0).toUpperCase() + status.slice(1)}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+
       {/* Transaction List */}
       <FlatList
         data={filteredTransactions}
         renderItem={renderTransaction}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item, index) => `${item.id}-${index}`}
         contentContainerStyle={[
           styles.listContent,
           filteredTransactions.length === 0 && styles.listContentEmpty,
         ]}
         ListEmptyComponent={renderEmpty}
+        ListFooterComponent={
+          isFetchingNextPage ? (
+            <ActivityIndicator size="large" color="#E69E19" style={styles.loadingFooter} />
+          ) : null
+        }
+        onEndReached={handleEndReached}
+        onEndReachedThreshold={0.3}
+        scrollEnabled={filteredTransactions.length > 0}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -234,6 +356,28 @@ const styles = StyleSheet.create({
   placeholder: {
     width: 40,
   },
+  searchContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: "#FFFFFF",
+    borderBottomWidth: 1,
+    borderBottomColor: "#E0E0E0",
+  },
+  searchInputWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    backgroundColor: "#F5F5F5",
+    borderRadius: 24,
+    gap: 8,
+    height: 44,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: lightColors.textPrimary,
+    padding: 0,
+  },
   filterContainer: {
     flexDirection: "row",
     paddingHorizontal: 16,
@@ -265,6 +409,9 @@ const styles = StyleSheet.create({
   listContentEmpty: {
     flex: 1,
     justifyContent: "center",
+  },
+  loadingFooter: {
+    paddingVertical: 20,
   },
   transactionItem: {
     flexDirection: "row",
