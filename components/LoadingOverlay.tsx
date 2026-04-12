@@ -2,12 +2,12 @@ import { useTheme } from "@/context/ThemeContext";
 import React, { useEffect } from "react";
 import { Image, ImageRequireSource, Modal, StyleSheet, View } from "react-native";
 import Animated, {
-  Easing,
-  cancelAnimation,
-  useAnimatedStyle,
-  useSharedValue,
-  withRepeat,
-  withTiming,
+    Easing,
+    cancelAnimation,
+    useAnimatedStyle,
+    useSharedValue,
+    withRepeat,
+    withTiming,
 } from "react-native-reanimated";
 
 interface LoadingLogoProps {

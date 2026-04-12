@@ -1,6 +1,6 @@
 // lib/secure-store.ts
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SecureStore from "expo-secure-store";
-import { AsyncStorage } from "react-native";
 
 const ACCESS_TOKEN_KEY = "nexus_access_token";
 const REFRESH_TOKEN_KEY = "nexus_refresh_token";
