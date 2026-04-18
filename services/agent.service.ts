@@ -38,6 +38,69 @@ export function normalizeAgentCodeValidation(
   };
 }
 
+export function normalizeAgentStats(
+  response: ApiResponse<AgentStats>
+): AgentStats {
+  const payload: any = response?.data ?? response ?? {};
+  const totalCustomers = Number(payload?.totalCustomers ?? 0);
+  const lifetimeEarnings = Number(
+    payload?.lifetimeEarnings ??
+      payload?.totalCommissionsEarned ??
+      payload?.totalCommissions ??
+      0
+  );
+  const monthlyEarnings = Number(payload?.monthlyEarnings ?? 0);
+  const pendingCommissions = Number(payload?.pendingCommissions ?? 0);
+  const withdrawnCommissions = Number(payload?.withdrawnCommissions ?? 0);
+
+  return {
+    totalCustomers,
+    totalCommissions: Number(payload?.totalCommissions ?? lifetimeEarnings),
+    pendingCommissions,
+    withdrawnCommissions,
+    monthlyEarnings,
+    lifetimeEarnings,
+    totalCommissionsEarned: Number(
+      payload?.totalCommissionsEarned ?? lifetimeEarnings
+    ),
+  };
+}
+
+export function normalizeAvailableBalance(
+  response: ApiResponse<AvailableBalance>
+): AvailableBalance {
+  const payload: any = response?.data ?? response ?? {};
+  const totalAvailable = Number(
+    payload?.totalAvailable ?? payload?.availableBalance ?? 0
+  );
+
+  return {
+    totalAvailable,
+    availableBalance: Number(payload?.availableBalance ?? totalAvailable),
+    claimCount:
+      typeof payload?.claimCount === "number" ? payload.claimCount : undefined,
+  };
+}
+
+export function normalizeWithdrawalResponse(
+  response: ApiResponse<WithdrawalResponse>,
+  requestedAmount: number
+): WithdrawalResponse {
+  const payload: any = response?.data ?? response ?? {};
+
+  return {
+    withdrawalId:
+      payload?.withdrawalId ??
+      payload?.id ??
+      payload?.transactionId ??
+      "",
+    amount: Number(payload?.amount ?? requestedAmount ?? 0),
+    status: payload?.status ?? "pending",
+    createdAt: payload?.createdAt ?? new Date().toISOString(),
+    completedAt: payload?.completedAt ?? null,
+  };
+}
+
 /**
  * Agent Service
  * Handles all agent-related API calls for:
@@ -130,7 +193,10 @@ export const agentService = {
     const response = await apiClient.get<ApiResponse<AgentStats>>(
       "/dashboard/agent/stats"
     );
-    return response.data;
+    return {
+      ...response.data,
+      data: normalizeAgentStats(response.data),
+    };
   },
 
   /**
@@ -173,7 +239,10 @@ export const agentService = {
     const response = await apiClient.get<ApiResponse<AvailableBalance>>(
       "/dashboard/agent/available-balance"
     );
-    return response.data;
+    return {
+      ...response.data,
+      data: normalizeAvailableBalance(response.data),
+    };
   },
 
   /**
@@ -188,7 +257,10 @@ export const agentService = {
       "/dashboard/agent/withdraw",
       { amount } as WithdrawalRequest
     );
-    return response.data;
+    return {
+      ...response.data,
+      data: normalizeWithdrawalResponse(response.data, amount),
+    };
   },
 
   /**

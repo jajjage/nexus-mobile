@@ -210,10 +210,12 @@ export function useWithdrawCommission() {
       const response = await agentService.withdrawCommission(amount);
       return response.data as WithdrawalResponse;
     },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: agentKeys.availableBalance() });
-      queryClient.invalidateQueries({ queryKey: agentKeys.stats() });
-      toast.success(`Withdrawal of ₦${data.amount.toLocaleString()} initiated`);
+    onSuccess: (data, amount) => {
+      queryClient.invalidateQueries({ queryKey: agentKeys.all });
+      queryClient.invalidateQueries({ queryKey: ["wallet"] });
+      toast.success(
+        `Withdrawal of ₦${(data?.amount ?? amount).toLocaleString()} initiated`
+      );
     },
     onError: (error: any) => {
       const message = error?.response?.data?.message || "Failed to process withdrawal";

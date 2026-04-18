@@ -366,6 +366,20 @@ function WithdrawalSection() {
 
   if (isLoading || !balance) return null;
 
+  const maxAmount = balance?.totalAvailable ?? 0;
+
+  const setMaxWithdrawalAmount = () => {
+    onAmountChangeSafe(maxAmount.toString());
+  };
+
+  const onAmountChangeSafe = (value: string) => {
+    const sanitized = value.replace(/[^0-9.]/g, "");
+    const parts = sanitized.split(".");
+    const normalized =
+      parts.length <= 2 ? sanitized : `${parts[0]}.${parts.slice(1).join("")}`;
+    setWithdrawalAmount(normalized);
+  };
+
   const handleWithdraw = () => {
     const amount = parseFloat(withdrawalAmount);
     if (!amount || amount <= 0) {
@@ -389,8 +403,6 @@ function WithdrawalSection() {
     { backgroundColor: colors.primary + "15" },
   ];
 
-  const maxAmount = balance?.totalAvailable ?? 0;
-
   return (
     <View style={[styles.section, { paddingHorizontal: 16 }]}>
       <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
@@ -410,7 +422,10 @@ function WithdrawalSection() {
         </View>
         <TouchableOpacity
           style={[styles.withdrawButton, { backgroundColor: colors.primary }]}
-          onPress={() => setShowWithdrawalModal(true)}
+          onPress={() => {
+            setMaxWithdrawalAmount();
+            setShowWithdrawalModal(true);
+          }}
           disabled={maxAmount === 0}
         >
           <Text style={styles.withdrawButtonText}>
@@ -424,7 +439,8 @@ function WithdrawalSection() {
         visible={showWithdrawalModal}
         maxAmount={maxAmount}
         amount={withdrawalAmount}
-        onAmountChange={setWithdrawalAmount}
+        onAmountChange={onAmountChangeSafe}
+        onUseMax={setMaxWithdrawalAmount}
         onWithdraw={handleWithdraw}
         isLoading={isPending}
         onClose={() => {
@@ -652,6 +668,7 @@ function WithdrawalModal({
   maxAmount,
   amount,
   onAmountChange,
+  onUseMax,
   onWithdraw,
   isLoading,
   onClose,
@@ -660,6 +677,7 @@ function WithdrawalModal({
   maxAmount: number;
   amount: string;
   onAmountChange: (value: string) => void;
+  onUseMax: () => void;
   onWithdraw: () => void;
   isLoading: boolean;
   onClose: () => void;
@@ -705,6 +723,18 @@ function WithdrawalModal({
             >
               Amount to Withdraw
             </Text>
+            <TouchableOpacity
+              style={[
+                styles.useMaxButton,
+                { borderColor: colors.border, backgroundColor: colors.primary + "12" },
+              ]}
+              onPress={onUseMax}
+              disabled={isLoading || maxAmount === 0}
+            >
+              <Text style={[styles.useMaxButtonText, { color: colors.primary }]}>
+                Use max amount
+              </Text>
+            </TouchableOpacity>
             <TextInput
               style={[
                 styles.modalInput,
@@ -720,6 +750,9 @@ function WithdrawalModal({
               value={amount}
               onChangeText={onAmountChange}
             />
+            <Text style={[styles.modalHint, { color: colors.textSecondary }]}>
+              Tap "Use max amount" to withdraw your full available balance.
+            </Text>
 
             <View style={styles.modalActions}>
               <TouchableOpacity
@@ -1048,6 +1081,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 12,
     fontSize: 14,
+  },
+  useMaxButton: {
+    alignSelf: "flex-start",
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginBottom: 8,
+  },
+  useMaxButtonText: {
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  modalHint: {
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: 8,
   },
   modalActions: {
     flexDirection: "row",

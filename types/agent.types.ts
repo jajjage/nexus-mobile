@@ -23,6 +23,7 @@ export interface AgentStats {
   withdrawnCommissions: number;
   monthlyEarnings: number;
   lifetimeEarnings: number;
+  totalCommissionsEarned?: number;
 }
 
 export interface AgentCommission {
@@ -60,6 +61,7 @@ export interface PaginatedResponse<T> {
 
 export interface AvailableBalance {
   totalAvailable: number;
+  availableBalance?: number;
   claimCount?: number;
 }
 
