@@ -3,22 +3,21 @@ import { lightColors } from "@/constants/palette";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
-import React, { useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-    Dimensions,
-    FlatList,
+    Animated,
     Image,
-    Pressable,
+    PanResponder,
     StyleSheet,
     Text,
+    TouchableOpacity,
+    useWindowDimensions,
     View,
-    ViewToken,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-const { width, height } = Dimensions.get("window");
-
 const ONBOARDING_KEY = "@nexus_onboarding_complete";
+const SWIPE_THRESHOLD = 60;
 
 interface SlideData {
   id: string;
@@ -53,13 +52,39 @@ const slides: SlideData[] = [
 
 export default function OnboardingScreen() {
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
   const [currentIndex, setCurrentIndex] = useState(0);
-  const flatListRef = useRef<FlatList<SlideData>>(null);
+  const contentOpacity = useRef(new Animated.Value(1)).current;
+  const contentTranslateX = useRef(new Animated.Value(0)).current;
+  const animationDirectionRef = useRef<1 | -1>(1);
 
-  const handleScroll = (event: any) => {
-    const scrollPosition = event.nativeEvent.contentOffset.x;
-    const index = Math.round(scrollPosition / width);
-    setCurrentIndex(index);
+  const animateSlideContent = () => {
+    contentOpacity.setValue(0);
+    contentTranslateX.setValue(animationDirectionRef.current * 28);
+
+    Animated.parallel([
+      Animated.timing(contentOpacity, {
+        toValue: 1,
+        duration: 220,
+        useNativeDriver: true,
+      }),
+      Animated.timing(contentTranslateX, {
+        toValue: 0,
+        duration: 220,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
+  useEffect(() => {
+    animateSlideContent();
+  }, [currentIndex]);
+
+  const goToIndex = (index: number) => {
+    const boundedIndex = Math.max(0, Math.min(index, slides.length - 1));
+    if (boundedIndex !== currentIndex) {
+      setCurrentIndex(boundedIndex);
+    }
   };
 
   const completeOnboarding = async () => {
@@ -69,11 +94,8 @@ export default function OnboardingScreen() {
 
   const handleNext = () => {
     if (currentIndex < slides.length - 1) {
-      flatListRef.current?.scrollToOffset({ 
-        offset: (currentIndex + 1) * width,
-        animated: true 
-      });
-      setCurrentIndex(currentIndex + 1);
+      animationDirectionRef.current = 1;
+      goToIndex(currentIndex + 1);
     } else {
       completeOnboarding();
     }
@@ -83,23 +105,27 @@ export default function OnboardingScreen() {
     completeOnboarding();
   };
 
-  const renderSlide = ({ item }: { item: SlideData }) => (
-    <View style={styles.slide}>
-      {/* Illustration Container */}
-      <View style={styles.illustrationContainer}>
-        <Image
-          source={item.image}
-          style={styles.illustration}
-          resizeMode="contain"
-        />
-      </View>
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onMoveShouldSetPanResponder: (_, gestureState) =>
+          Math.abs(gestureState.dx) > Math.abs(gestureState.dy) &&
+          Math.abs(gestureState.dx) > 10,
+        onPanResponderRelease: (_, gestureState) => {
+          if (gestureState.dx <= -SWIPE_THRESHOLD && currentIndex < slides.length - 1) {
+            animationDirectionRef.current = 1;
+            goToIndex(currentIndex + 1);
+            return;
+          }
 
-      {/* Text Content */}
-      <View style={styles.textContainer}>
-        <Text style={styles.title}>{item.title}</Text>
-        <Text style={styles.description}>{item.description}</Text>
-      </View>
-    </View>
+          if (gestureState.dx >= SWIPE_THRESHOLD && currentIndex > 0) {
+            animationDirectionRef.current = -1;
+            goToIndex(currentIndex - 1);
+            return;
+          }
+        },
+      }),
+    [currentIndex]
   );
 
   const renderDots = () => (
@@ -118,38 +144,58 @@ export default function OnboardingScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <FlatList
-        ref={flatListRef}
-        data={slides}
-        renderItem={renderSlide}
-        keyExtractor={(item) => item.id}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        onMomentumScrollEnd={handleScroll}
-        bounces={false}
-        getItemLayout={(data, index) => ({
-          length: width,
-          offset: width * index,
-          index,
-        })}
-      />
+      <View style={styles.sliderViewport} {...panResponder.panHandlers}>
+        <Animated.View
+          style={[
+            styles.slide,
+            {
+              opacity: contentOpacity,
+              transform: [{ translateX: contentTranslateX }],
+            },
+          ]}
+        >
+          <View style={styles.illustrationContainer}>
+            <Image
+              source={slides[currentIndex].image}
+              style={{
+                width: width * 0.75,
+                height: width * 0.85,
+              }}
+              resizeMode="contain"
+            />
+          </View>
 
-      {/* Bottom Navigation */}
+          <View style={styles.textContainer}>
+            <Text style={styles.title}>{slides[currentIndex].title}</Text>
+            <Text style={styles.description}>
+              {slides[currentIndex].description}
+            </Text>
+          </View>
+        </Animated.View>
+      </View>
+
       <View style={[styles.bottomNav, { paddingBottom: insets.bottom + 20 }]}>
-        <Pressable onPress={handleSkip} style={styles.skipButton}>
+        <TouchableOpacity
+          onPress={handleSkip}
+          style={styles.skipButton}
+          activeOpacity={0.7}
+        >
           <Text style={styles.skipText}>Skip</Text>
-        </Pressable>
+        </TouchableOpacity>
 
         {renderDots()}
 
-        <Pressable onPress={handleNext} style={styles.nextButton}>
-          <FontAwesome 
-            name="arrow-right" 
-            size={20} 
-            color={lightColors.primaryForeground} 
+        <TouchableOpacity
+          onPress={handleNext}
+          style={styles.nextButton}
+          activeOpacity={0.85}
+        >
+          <FontAwesome
+            name="arrow-right"
+            size={20}
+            color={lightColors.primaryForeground}
           />
-        </Pressable>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -160,8 +206,11 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: lightColors.background,
   },
+  sliderViewport: {
+    flex: 1,
+    overflow: "hidden",
+  },
   slide: {
-    width,
     flex: 1,
     paddingHorizontal: 24,
   },
@@ -175,10 +224,6 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     marginHorizontal: 16,
     padding: 20,
-  },
-  illustration: {
-    width: width * 0.75,
-    height: width * 0.85,
   },
   textContainer: {
     paddingHorizontal: 16,
@@ -207,6 +252,8 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     backgroundColor: lightColors.background,
+    zIndex: 20,
+    elevation: 20,
   },
   skipButton: {
     padding: 12,
@@ -240,12 +287,6 @@ const styles = StyleSheet.create({
     backgroundColor: lightColors.primary,
     justifyContent: "center",
     alignItems: "center",
-  },
-  nextButtonText: {
-    fontSize: 24,
-    color: lightColors.primaryForeground,
-    fontWeight: "600",
-    textAlign: "center",
-    lineHeight: 28,
+    elevation: 4,
   },
 });

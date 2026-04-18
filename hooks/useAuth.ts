@@ -201,7 +201,18 @@ export function useLogin() {
       setIsLoading(true);
 
       try {
-        // Fetch full profile immediately
+        // Wait a moment to ensure token is persisted to SecureStore
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // Verify token is actually stored before fetching profile
+        const storedToken = await tokenStorage.getAccessToken();
+        if (!storedToken) {
+          throw new Error("Token not persisted after login");
+        }
+        
+        console.log("[useLogin] Token verified, fetching profile...");
+        
+        // Fetch full profile
         const profile = await authService.getProfile();
         
         // Update React Query cache
@@ -218,9 +229,27 @@ export function useLogin() {
         });
         
         router.replace("/(tabs)");
-      } catch (error) {
-        console.error("[useLogin] Failed to fetch profile after login:", error);
-        toast.error("Login Error", { description: "Could not load user profile" });
+      } catch (error: any) {
+        const status = error?.response?.status;
+        const message =
+          error?.response?.data?.message ||
+          (status === 403
+            ? "Your account is not allowed to access profile data right now."
+            : "Could not load user profile");
+
+        console.error(
+          "[useLogin] Failed to fetch profile after login:",
+          status,
+          error?.response?.data || error?.message
+        );
+
+        if (status === 401 || status === 403) {
+          await tokenStorage.clearTokens();
+          queryClient.removeQueries({ queryKey: authKeys.currentUser() });
+          setUser(null);
+        }
+
+        toast.error("Login Failed", { description: message });
       } finally {
         // Hide loader after a short delay to allow Home screen to render
         setTimeout(() => {

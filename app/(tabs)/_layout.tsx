@@ -1,7 +1,7 @@
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/hooks/useAuth';
 import { Redirect, Tabs, useSegments } from 'expo-router';
-import { Briefcase, Home, Trophy, User, Users } from 'lucide-react-native';
+import { Briefcase, Home, Trophy, User } from 'lucide-react-native';
 import React from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -77,10 +77,10 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="referral"
+        name="agent"
         options={{
-          title: 'Referral',
-          tabBarIcon: ({ color }) => <Users size={20} color={color} />,
+          title: 'Agent',
+          tabBarIcon: ({ color }) => <Briefcase size={20} color={color} />,
         }}
       />
       
@@ -108,6 +108,12 @@ export default function TabLayout() {
         options={{
           title: 'Profile',
           tabBarIcon: ({ color }) => <User size={20} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="referral"
+        options={{
+          href: null,
         }}
       />
       {/* Hide the old 'two' tab */}

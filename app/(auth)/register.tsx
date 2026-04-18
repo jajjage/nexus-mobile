@@ -1,16 +1,20 @@
+import { useValidateAgentCode } from "@/hooks/useAgent";
 import { useRegister } from "@/hooks/useAuth";
+import { agentService } from "@/services/agent.service";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Link } from "expo-router";
-import React, { useState } from "react";
+import { Link, useLocalSearchParams } from "expo-router";
+import { Briefcase } from "lucide-react-native";
+import React, { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
-  Keyboard,
-  Platform,
-  Pressable,
-  TouchableWithoutFeedback,
+    Keyboard,
+    Platform,
+    Pressable,
+    TouchableWithoutFeedback
 } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { toast } from "sonner-native";
 import { z } from "zod";
 
 // Gluestack UI components
@@ -19,11 +23,11 @@ import { Button, ButtonSpinner, ButtonText } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Center } from "@/components/ui/center";
 import {
-  FormControl,
-  FormControlError,
-  FormControlErrorText,
-  FormControlLabel,
-  FormControlLabelText,
+    FormControl,
+    FormControlError,
+    FormControlErrorText,
+    FormControlLabel,
+    FormControlLabelText,
 } from "@/components/ui/form-control";
 import { Heading } from "@/components/ui/heading";
 import { HStack } from "@/components/ui/hstack";
@@ -51,7 +55,7 @@ const registerSchema = z
       .string()
       .min(8, "Password must be at least 8 characters"),
     confirmPassword: z.string(),
-    referralCode: z.string().optional(),
+    agentCode: z.string().optional(),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords do not match",
@@ -61,14 +65,51 @@ const registerSchema = z
 type RegisterFormData = z.infer<typeof registerSchema>;
 
 export default function RegisterScreen() {
+  const params = useLocalSearchParams<{ agentCode?: string; code?: string }>();
   const { mutate: register, isPending, errorMessage, reset } = useRegister();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [agentCodeFromUrl, setAgentCodeFromUrl] = useState<string | undefined>(undefined);
+  const [agentInfo, setAgentInfo] = useState<{ isValid: boolean; name?: string } | null>(null);
+
+  // Get agent code from deep link or URL params
+  useEffect(() => {
+    const code = (params?.agentCode || params?.code)?.toString().trim().toUpperCase();
+    
+    if (code) {
+      setAgentCodeFromUrl(code);
+    }
+  }, [params?.agentCode, params?.code]);
+  // Validate agent code if provided
+  const {
+    data: validationResult,
+    isError: isAgentValidationUnavailable,
+    isLoading: isValidating,
+  } = useValidateAgentCode(
+    agentCodeFromUrl || ""
+  );
+
+  useEffect(() => {
+    if (validationResult) {
+      setAgentInfo({
+        isValid: validationResult.valid,
+        name: validationResult.referrerName,
+      });
+      return;
+    }
+
+    if (!isValidating) {
+      setAgentInfo(null);
+    }
+  }, [validationResult, isValidating]);
 
   const {
     control,
     handleSubmit,
     formState: { errors, isValid },
+    clearErrors,
+    setError,
+    setValue,
   } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
@@ -77,20 +118,76 @@ export default function RegisterScreen() {
       phoneNumber: "",
       password: "",
       confirmPassword: "",
-      referralCode: "",
+      agentCode: agentCodeFromUrl || "",
     },
     mode: "onChange",
   });
 
-  const canSubmit = isValid && !isPending;
+  useEffect(() => {
+    if (agentCodeFromUrl) {
+      setValue("agentCode", agentCodeFromUrl);
+    }
+  }, [agentCodeFromUrl, setValue]);
 
-  const onSubmit = (data: RegisterFormData) => {
+  const hasKnownInvalidAgentCode =
+    !!agentCodeFromUrl && validationResult?.valid === false;
+  
+  const canSubmit = isValid && !isPending && !isValidating && !hasKnownInvalidAgentCode;
+
+  const onSubmit = async (data: RegisterFormData) => {
+    const normalizedAgentCode = data.agentCode?.trim().toUpperCase();
+
+    if (normalizedAgentCode) {
+      try {
+        const response = await agentService.validateAgentCode(normalizedAgentCode);
+        const validation = response.data;
+
+        if (!validation?.valid) {
+          const message = validation?.message || "Invalid agent code";
+
+          setError("agentCode", {
+            type: "validate",
+            message,
+          });
+
+          toast.error("Invalid Agent Code", {
+            description: message,
+          });
+          return;
+        }
+
+        clearErrors("agentCode");
+      } catch (error: any) {
+        if (error?.response) {
+          const message =
+            error?.response?.data?.message || "Invalid agent code";
+
+          setError("agentCode", {
+            type: "validate",
+            message,
+          });
+
+          toast.error("Invalid Agent Code", {
+            description: message,
+          });
+          return;
+        }
+
+        console.warn(
+          "[Register] Agent code validation unavailable, proceeding with signup:",
+          error?.message || error
+        );
+      }
+    } else {
+      clearErrors("agentCode");
+    }
+
     register({
       fullName: data.fullName,
       email: data.email,
       phoneNumber: data.phoneNumber,
       password: data.password,
-      referralCode: data.referralCode || undefined,
+      agentCode: normalizedAgentCode || undefined,
     });
   };
 
@@ -99,14 +196,18 @@ export default function RegisterScreen() {
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <KeyboardAwareScrollView
           enableOnAndroid={true}
-          extraScrollHeight={Platform.OS === "ios" ? 20 : 100}
+          enableAutomaticScroll={true}
+          extraHeight={Platform.OS === "ios" ? 120 : 140}
+          extraScrollHeight={Platform.OS === "ios" ? 40 : 120}
+          keyboardOpeningTime={0}
+          enableResetScrollToCoords={false}
           contentContainerStyle={{ 
             flexGrow: 1, 
             paddingHorizontal: 20, 
             paddingVertical: 24,
             paddingBottom: 40,
           }}
-          keyboardShouldPersistTaps="handled"
+          keyboardShouldPersistTaps="always"
           showsVerticalScrollIndicator={false}
         >
             {/* Logo */}
@@ -129,6 +230,35 @@ export default function RegisterScreen() {
                     Enter your information to create an account
                   </Text>
                 </VStack>
+
+                {/* Agent Info Banner */}
+                {agentCodeFromUrl && (
+                  <VStack space="sm" className="bg-primary-50 border border-primary-200 rounded-lg p-4">
+                    <HStack space="md" className="items-center">
+                      <Briefcase size={20} color="#E69E19" />
+                      <VStack space="xs" className="flex-1">
+                        {isValidating ? (
+                          <Text className="text-primary-700">Verifying agent code...</Text>
+                        ) : agentInfo?.isValid ? (
+                          <>
+                            <Text className="text-primary-700 font-semibold">Agent Code Verified!</Text>
+                            <Text className="text-primary-600 text-sm">
+                              You're signing up under agent {agentInfo.name}
+                            </Text>
+                          </>
+                        ) : validationResult?.valid === false ? (
+                          <Text className="text-error-700 text-sm">Invalid agent code</Text>
+                        ) : isAgentValidationUnavailable ? (
+                          <Text className="text-typography-600 text-sm">
+                            We couldn&apos;t verify this code right now. We&apos;ll check again before signup.
+                          </Text>
+                        ) : (
+                          <Text className="text-primary-700">Waiting to verify agent code...</Text>
+                        )}
+                      </VStack>
+                    </HStack>
+                  </VStack>
+                )}
 
                 {/* API Error Alert */}
                 {errorMessage && (
@@ -237,6 +367,42 @@ export default function RegisterScreen() {
                   )}
                 </FormControl>
 
+                {/* Agent Code Field (Optional or from deep link) */}
+                {!agentCodeFromUrl && (
+                  <FormControl isInvalid={!!errors.agentCode}>
+                    <FormControlLabel className="mb-2">
+                      <FormControlLabelText className="text-typography-700 font-medium">
+                        Agent Code (Optional)
+                      </FormControlLabelText>
+                    </FormControlLabel>
+                    <Controller
+                      control={control}
+                      name="agentCode"
+                      render={({ field: { onChange, onBlur, value } }) => (
+                        <Input variant="outline" size="xl" className="bg-background-0 rounded-xl">
+                          <InputField
+                            placeholder="E.g. AGENT-ABC123"
+                            autoCapitalize="characters"
+                            onBlur={onBlur}
+                            onChangeText={(text) => {
+                              clearErrors("agentCode");
+                              onChange(text.toUpperCase());
+                            }}
+                            value={value}
+                            className="text-typography-900"
+                            placeholderTextColor="#9CA3AF"
+                          />
+                        </Input>
+                      )}
+                    />
+                    {errors.agentCode && (
+                      <FormControlError className="mt-1">
+                        <FormControlErrorText>{errors.agentCode.message}</FormControlErrorText>
+                      </FormControlError>
+                    )}
+                  </FormControl>
+                )}
+
                 {/* Password Field */}
                 <FormControl isInvalid={!!errors.password}>
                   <FormControlLabel className="mb-2">
@@ -307,37 +473,6 @@ export default function RegisterScreen() {
                   {errors.confirmPassword && (
                     <FormControlError className="mt-1">
                       <FormControlErrorText>{errors.confirmPassword.message}</FormControlErrorText>
-                    </FormControlError>
-                  )}
-                </FormControl>
-
-                {/* Referral Code Field (Optional) */}
-                <FormControl isInvalid={!!errors.referralCode}>
-                  <FormControlLabel className="mb-2">
-                    <FormControlLabelText className="text-typography-700 font-medium">
-                      Referral Code (Optional)
-                    </FormControlLabelText>
-                  </FormControlLabel>
-                  <Controller
-                    control={control}
-                    name="referralCode"
-                    render={({ field: { onChange, onBlur, value } }) => (
-                      <Input variant="outline" size="xl" className="bg-background-0 rounded-xl">
-                        <InputField
-                          placeholder="E.g. ABC123"
-                          autoCapitalize="characters"
-                          onBlur={onBlur}
-                          onChangeText={onChange}
-                          value={value}
-                          className="text-typography-900"
-                          placeholderTextColor="#9CA3AF"
-                        />
-                      </Input>
-                    )}
-                  />
-                  {errors.referralCode && (
-                    <FormControlError className="mt-1">
-                      <FormControlErrorText>{errors.referralCode.message}</FormControlErrorText>
                     </FormControlError>
                   )}
                 </FormControl>

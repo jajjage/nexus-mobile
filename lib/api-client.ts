@@ -2,7 +2,8 @@
 import axios, { AxiosInstance, InternalAxiosRequestConfig } from "axios";
 import { tokenStorage, userStorage } from "./secure-store";
 
-const BASE_URL = process.env.EXPO_PUBLIC_AUTH_URL || "http://10.152.118.138:3000/api/v1";
+export const BASE_URL =
+  process.env.EXPO_PUBLIC_AUTH_URL || "http://10.152.118.138:3000/api/v1";
 
 /**
  * Session expiry callback - set by AuthContext
@@ -23,11 +24,19 @@ const apiClient: AxiosInstance = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
+export const publicApiClient: AxiosInstance = axios.create({
+  baseURL: BASE_URL,
+  headers: { "Content-Type": "application/json" },
+});
+
 // Request: Add Authorization header
 apiClient.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
   const token = await tokenStorage.getAccessToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
+    console.log(`[api-client] Authorization header set for ${config.method?.toUpperCase()} ${config.url}`);
+  } else {
+    console.warn(`[api-client] ⚠️ No token available for ${config.method?.toUpperCase()} ${config.url}`);
   }
   return config;
 });
@@ -51,6 +60,8 @@ apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
+    
+    console.log(`[api-client] Response error: ${error.response?.status} for ${originalRequest?.method?.toUpperCase()} ${originalRequest?.url}`);
 
     if (error.response?.status === 401 && !originalRequest._retry) {
       if (isRefreshing) {

@@ -4,7 +4,7 @@ export interface RegisterRequest {
   password: string;
   phoneNumber: string;
   fullName?: string;
-  referralCode?: string;
+  agentCode?: string;  // Support signing up under an agent
 }
 
 export interface LoginRequest {

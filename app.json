@@ -45,7 +45,9 @@
       "permissions": [
         "NOTIFICATIONS"
       ],
-      "newArchEnabled": true
+      "newArchEnabled": true,
+      "minSdkVersion": 21,
+      "targetSdkVersion": 34
     },
     "web": {
       "bundler": "metro",
