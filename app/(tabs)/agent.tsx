@@ -13,7 +13,9 @@ import {
 } from "@/hooks/useAgent";
 import { AgentCommission, AgentCustomer } from "@/types/agent.types";
 import * as Clipboard from "expo-clipboard";
+import { useRouter } from "expo-router";
 import {
+    ArrowRight,
     Banknote,
     Briefcase,
     Copy,
@@ -573,26 +575,67 @@ function CommissionsSection() {
 // ==================== Customers Section ====================
 
 function CustomersSection() {
-  const [page, setPage] = useState(1);
-  const { data: response, isLoading } = useAgentCustomers(page, 10);
+  const router = useRouter();
+  const { data: response, isLoading } = useAgentCustomers({
+    page: 1,
+    limit: 5,
+    isActive: true,
+  });
   const { colors } = useTheme();
 
   const customers = response?.data ?? [];
-  const pagination = response?.pagination;
+
+  const getLinkStatusColor = (isActive?: boolean) =>
+    isActive === false ? "#ef4444" : "#22c55e";
+
+  const formatJoinedDate = (value?: string) => {
+    if (!value) return "Join date unavailable";
+
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return "Join date unavailable";
+
+    return `Joined ${parsed.toLocaleDateString("en-NG", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    })}`;
+  };
 
   const renderItem = ({ item }: { item: AgentCustomer }) => (
     <View style={[styles.listRow, { borderBottomColor: colors.border }]}>
       <View style={styles.listInfo}>
         <Text style={[styles.listName, { color: colors.foreground }]}>
-          {item.fullName || item.email}
+          {item.customer?.fullName || item.fullName || item.customer?.email || item.email || "Customer"}
         </Text>
-        <Text style={styles.listEmail}>{item.email}</Text>
+        <Text style={styles.listEmail}>
+          {item.customer?.email || item.email || "No email available"}
+        </Text>
+        <Text style={styles.listSubtext}>
+          {item.customer?.phoneNumber || item.phoneNumber || "No phone number"}
+        </Text>
+        <Text style={styles.listSubtext}>
+          {formatJoinedDate(item.joinedAt)}
+        </Text>
       </View>
       <View style={styles.listMeta}>
-        <Text style={[styles.listAmount, { color: colors.foreground }]}>
-          ₦{item.totalSpent.toLocaleString()}
+        <View
+          style={[
+            styles.statusBadge,
+            { backgroundColor: getLinkStatusColor(item.isActive) + "20" },
+          ]}
+        >
+          <Text
+            style={[
+              styles.statusText,
+              { color: getLinkStatusColor(item.isActive) },
+            ]}
+          >
+            {item.isActive === false ? "Inactive" : "Active"}
+          </Text>
+        </View>
+        <Text style={styles.listSubtext}>
+          {item.agentCodeUsed || "No code"}
         </Text>
-        <Text style={styles.listSubtext}>{item.transactionCount} transactions</Text>
       </View>
     </View>
   );
@@ -605,9 +648,11 @@ function CustomersSection() {
   if (customers.length === 0 && !isLoading) {
     return (
       <View style={[styles.section, { paddingHorizontal: 16 }]}>
-        <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-          Your Customers
-        </Text>
+        <SectionHeader
+          title="Recent Active Customers"
+          actionLabel="View all"
+          onPress={() => router.push("/agent-customers")}
+        />
         <View style={cardStyle}>
           <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
             No customers yet. Share your agent code to acquire customers!
@@ -619,44 +664,51 @@ function CustomersSection() {
 
   return (
     <View style={[styles.section, { paddingHorizontal: 16 }]}>
-      <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-        Your Customers
-      </Text>
+      <SectionHeader
+        title="Recent Active Customers"
+        actionLabel="View all"
+        onPress={() => router.push("/agent-customers")}
+      />
       <View style={cardStyle}>
         {isLoading ? (
           <ActivityIndicator size="large" color={colors.primary} />
         ) : (
           <FlatList
             data={customers}
-            keyExtractor={(item) => item.customerId}
+            keyExtractor={(item) => item.linkId || item.customerId}
             renderItem={renderItem}
             scrollEnabled={false}
           />
         )}
-
-        {/* Pagination */}
-        {pagination && pagination.totalPages > 1 && (
-          <View style={styles.pagination}>
-            <TouchableOpacity
-              onPress={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page <= 1}
-            >
-              <Text style={{ color: colors.foreground }}>Previous</Text>
-            </TouchableOpacity>
-            <Text style={{ color: colors.textSecondary }}>
-              Page {page} of {pagination.totalPages}
-            </Text>
-            <TouchableOpacity
-              onPress={() =>
-                setPage((p) => Math.min(pagination.totalPages, p + 1))
-              }
-              disabled={page >= pagination.totalPages}
-            >
-              <Text style={{ color: colors.foreground }}>Next</Text>
-            </TouchableOpacity>
-          </View>
-        )}
       </View>
+    </View>
+  );
+}
+
+function SectionHeader({
+  title,
+  actionLabel,
+  onPress,
+}: {
+  title: string;
+  actionLabel?: string;
+  onPress?: () => void;
+}) {
+  const { colors } = useTheme();
+
+  return (
+    <View style={styles.sectionHeader}>
+      <Text style={[styles.sectionTitle, styles.sectionTitleCompact, { color: colors.foreground }]}>
+        {title}
+      </Text>
+      {actionLabel && onPress ? (
+        <TouchableOpacity style={styles.sectionAction} onPress={onPress}>
+          <Text style={[styles.sectionActionText, { color: colors.primary }]}>
+            {actionLabel}
+          </Text>
+          <ArrowRight size={16} color={colors.primary} />
+        </TouchableOpacity>
+      ) : null}
     </View>
   );
 }
@@ -824,6 +876,14 @@ const styles = StyleSheet.create({
   section: {
     marginBottom: 24,
   },
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    marginBottom: 12,
+    gap: 12,
+  },
   becomeAgentSection: {
     marginTop: 16,
   },
@@ -832,6 +892,20 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     marginBottom: 12,
     paddingHorizontal: 16,
+  },
+  sectionTitleCompact: {
+    marginBottom: 0,
+    paddingHorizontal: 0,
+    flex: 1,
+  },
+  sectionAction: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  sectionActionText: {
+    fontSize: 13,
+    fontWeight: "700",
   },
   card: {
     borderWidth: 1,

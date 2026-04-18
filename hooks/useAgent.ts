@@ -4,6 +4,7 @@ import {
     AgentAccount,
     AgentCommission,
     AgentCustomer,
+    AgentCustomersParams,
     AgentStats,
     AvailableBalance,
     PaginatedResponse,
@@ -20,8 +21,15 @@ export const agentKeys = {
   all: ["agent"] as const,
   account: () => [...agentKeys.all, "account"] as const,
   stats: () => [...agentKeys.all, "stats"] as const,
-  customers: (page: number, limit: number) =>
-    [...agentKeys.all, "customers", page, limit] as const,
+  customers: (params: AgentCustomersParams) =>
+    [
+      ...agentKeys.all,
+      "customers",
+      params.page ?? 1,
+      params.limit ?? 20,
+      params.q ?? "",
+      typeof params.isActive === "boolean" ? params.isActive : "all",
+    ] as const,
   commissions: (page: number, limit: number) =>
     [...agentKeys.all, "commissions", page, limit] as const,
   availableBalance: () => [...agentKeys.all, "available-balance"] as const,
@@ -70,11 +78,18 @@ export function useAgentStats() {
 /**
  * Get list of agent's customers with pagination
  */
-export function useAgentCustomers(page: number = 1, limit: number = 20) {
+export function useAgentCustomers(params: AgentCustomersParams = {}) {
+  const normalizedParams: AgentCustomersParams = {
+    page: params.page ?? 1,
+    limit: params.limit ?? 20,
+    q: params.q?.trim() || undefined,
+    isActive: params.isActive,
+  };
+
   return useQuery<PaginatedResponse<AgentCustomer> | undefined>({
-    queryKey: agentKeys.customers(page, limit),
+    queryKey: agentKeys.customers(normalizedParams),
     queryFn: async (): Promise<PaginatedResponse<AgentCustomer> | undefined> => {
-      const response = await agentService.getAgentCustomers(page, limit);
+      const response = await agentService.getAgentCustomers(normalizedParams);
       return response.data as PaginatedResponse<AgentCustomer>;
     },
     staleTime: 5 * 60 * 1000,

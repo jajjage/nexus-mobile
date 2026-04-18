@@ -4,6 +4,7 @@ import {
     AgentAccount,
     AgentCommission,
     AgentCustomer,
+    AgentCustomersParams,
     AgentStats,
     AvailableBalance,
     PaginatedResponse,
@@ -98,6 +99,120 @@ export function normalizeWithdrawalResponse(
     status: payload?.status ?? "pending",
     createdAt: payload?.createdAt ?? new Date().toISOString(),
     completedAt: payload?.completedAt ?? null,
+  };
+}
+
+export function normalizeAgentCustomer(payload: any): AgentCustomer {
+  const customerProfile = payload?.customer ?? payload?.profile ?? {};
+
+  return {
+    linkId: payload?.linkId ?? payload?.id ?? payload?.agentLinkId ?? "",
+    customerId:
+      payload?.customerId ??
+      customerProfile?.userId ??
+      customerProfile?.id ??
+      "",
+    agentCodeUsed:
+      payload?.agentCodeUsed ??
+      payload?.agentCode ??
+      payload?.codeUsed,
+    isActive:
+      typeof payload?.isActive === "boolean"
+        ? payload.isActive
+        : typeof payload?.linkIsActive === "boolean"
+          ? payload.linkIsActive
+          : undefined,
+    joinedAt:
+      payload?.joinedAt ??
+      payload?.customerJoinedAt ??
+      payload?.createdAt ??
+      "",
+    fullName:
+      payload?.fullName ??
+      customerProfile?.fullName ??
+      customerProfile?.name ??
+      "",
+    email:
+      payload?.email ??
+      customerProfile?.email ??
+      "",
+    phoneNumber:
+      payload?.phoneNumber ??
+      customerProfile?.phoneNumber ??
+      null,
+    isVerified:
+      typeof payload?.isVerified === "boolean"
+        ? payload.isVerified
+        : customerProfile?.isVerified,
+    isSuspended:
+      typeof payload?.isSuspended === "boolean"
+        ? payload.isSuspended
+        : customerProfile?.isSuspended,
+    profilePictureUrl:
+      payload?.profilePictureUrl ??
+      customerProfile?.profilePictureUrl ??
+      null,
+    customer: {
+      fullName: customerProfile?.fullName ?? payload?.fullName ?? null,
+      email: customerProfile?.email ?? payload?.email ?? null,
+      phoneNumber: customerProfile?.phoneNumber ?? payload?.phoneNumber ?? null,
+      isVerified:
+        typeof customerProfile?.isVerified === "boolean"
+          ? customerProfile.isVerified
+          : payload?.isVerified,
+      isSuspended:
+        typeof customerProfile?.isSuspended === "boolean"
+          ? customerProfile.isSuspended
+          : payload?.isSuspended,
+      profilePictureUrl:
+        customerProfile?.profilePictureUrl ??
+        payload?.profilePictureUrl ??
+        null,
+    },
+    totalSpent:
+      typeof payload?.totalSpent === "number" ? payload.totalSpent : undefined,
+    transactionCount:
+      typeof payload?.transactionCount === "number"
+        ? payload.transactionCount
+        : undefined,
+    lastTransactionAt: payload?.lastTransactionAt ?? null,
+  };
+}
+
+export function normalizeAgentCustomersResponse(
+  response: ApiResponse<PaginatedResponse<AgentCustomer>>
+): PaginatedResponse<AgentCustomer> {
+  const payload: any = response?.data ?? response ?? {};
+  const rawRows =
+    payload?.data ??
+    payload?.customers ??
+    payload?.rows ??
+    payload?.items ??
+    [];
+  const paginationPayload = payload?.pagination ?? payload ?? {};
+  const limit = Number(paginationPayload?.limit ?? rawRows?.length ?? 20);
+  const total = Number(
+    paginationPayload?.total ??
+      paginationPayload?.count ??
+      paginationPayload?.totalCount ??
+      rawRows?.length ??
+      0
+  );
+  const totalPages = Number(
+    paginationPayload?.totalPages ??
+      paginationPayload?.pages ??
+      (limit > 0 ? Math.ceil(total / limit) : 1) ??
+      1
+  );
+
+  return {
+    data: Array.isArray(rawRows) ? rawRows.map(normalizeAgentCustomer) : [],
+    pagination: {
+      page: Number(paginationPayload?.page ?? 1),
+      limit,
+      total,
+      totalPages,
+    },
   };
 }
 
@@ -204,15 +319,18 @@ export const agentService = {
    * GET /api/v1/dashboard/agent/customers?page=1&limit=20
    */
   getAgentCustomers: async (
-    page: number = 1,
-    limit: number = 20
+    params: AgentCustomersParams = {}
   ): Promise<ApiResponse<PaginatedResponse<AgentCustomer>>> => {
+    const { page = 1, limit = 20, q, isActive } = params;
     const response = await apiClient.get<
       ApiResponse<PaginatedResponse<AgentCustomer>>
     >("/dashboard/agent/customers", {
-      params: { page, limit },
+      params: { page, limit, q, isActive },
     });
-    return response.data;
+    return {
+      ...response.data,
+      data: normalizeAgentCustomersResponse(response.data),
+    };
   },
 
   /**

@@ -39,14 +39,35 @@ export interface AgentCommission {
 }
 
 export interface AgentCustomer {
+  linkId: string;
   customerId: string;
+  agentCodeUsed?: string;
+  isActive?: boolean;
+  joinedAt: string;
   fullName: string;
   email: string;
   phoneNumber: string | null;
-  totalSpent: number;
-  transactionCount: number;
-  joinedAt: string;
+  isVerified?: boolean;
+  isSuspended?: boolean;
+  profilePictureUrl?: string | null;
+  customer?: {
+    fullName?: string | null;
+    email?: string | null;
+    phoneNumber?: string | null;
+    isVerified?: boolean;
+    isSuspended?: boolean;
+    profilePictureUrl?: string | null;
+  };
+  totalSpent?: number;
+  transactionCount?: number;
   lastTransactionAt: string | null;
+}
+
+export interface AgentCustomersParams {
+  page?: number;
+  limit?: number;
+  q?: string;
+  isActive?: boolean;
 }
 
 export interface PaginatedResponse<T> {
