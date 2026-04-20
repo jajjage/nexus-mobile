@@ -7,10 +7,14 @@ import {
     AgentCustomersParams,
     AgentStats,
     AvailableBalance,
+    BankWithdrawalHistoryItem,
+    BankWithdrawalHistoryParams,
+    BankWithdrawalRequest,
     PaginatedResponse,
     RegenerateAgentCodeResponse,
     RegisterWithAgentCodePayload,
     ValidateAgentCodeResponse,
+    WalletWithdrawalRequest,
     WithdrawalRequest,
     WithdrawalResponse,
 } from "@/types/agent.types";
@@ -99,6 +103,65 @@ export function normalizeWithdrawalResponse(
     status: payload?.status ?? "pending",
     createdAt: payload?.createdAt ?? new Date().toISOString(),
     completedAt: payload?.completedAt ?? null,
+  };
+}
+
+export function normalizeBankWithdrawalHistoryItem(
+  payload: any
+): BankWithdrawalHistoryItem {
+  return {
+    id: payload?.id ?? payload?.withdrawalId ?? payload?.requestId ?? "",
+    amount: Number(payload?.amount ?? 0),
+    status: payload?.status ?? "pending",
+    bankName: payload?.bankName ?? "",
+    bankCode: payload?.bankCode,
+    accountName: payload?.accountName ?? "",
+    accountNumber: payload?.accountNumber ?? "",
+    narration: payload?.narration ?? null,
+    requestNotes: payload?.requestNotes ?? null,
+    adminNotes: payload?.adminNotes ?? null,
+    failureReason: payload?.failureReason ?? null,
+    requestedAt:
+      payload?.requestedAt ?? payload?.createdAt ?? new Date().toISOString(),
+    processedAt: payload?.processedAt ?? payload?.completedAt ?? null,
+  };
+}
+
+export function normalizeBankWithdrawalHistoryResponse(
+  response: ApiResponse<PaginatedResponse<BankWithdrawalHistoryItem>>
+): PaginatedResponse<BankWithdrawalHistoryItem> {
+  const payload: any = response?.data ?? response ?? {};
+  const rawRows =
+    payload?.requests ??
+    payload?.data ??
+    payload?.items ??
+    payload?.rows ??
+    [];
+  const paginationPayload = payload?.pagination ?? payload ?? {};
+  const limit = Number(paginationPayload?.limit ?? rawRows?.length ?? 20);
+  const total = Number(
+    paginationPayload?.total ??
+      paginationPayload?.count ??
+      paginationPayload?.totalCount ??
+      rawRows?.length ??
+      0
+  );
+
+  return {
+    data: Array.isArray(rawRows)
+      ? rawRows.map(normalizeBankWithdrawalHistoryItem)
+      : [],
+    pagination: {
+      page: Number(paginationPayload?.page ?? 1),
+      limit,
+      total,
+      totalPages: Number(
+        paginationPayload?.totalPages ??
+          paginationPayload?.pages ??
+          (limit > 0 ? Math.ceil(total / limit) : 1) ??
+          1
+      ),
+    },
   };
 }
 
@@ -368,16 +431,44 @@ export const agentService = {
    * POST /api/v1/dashboard/agent/withdraw
    * Body: { amount: number }
    */
-  withdrawCommission: async (
-    amount: number
+  withdrawToWallet: async (
+    payload: WalletWithdrawalRequest
   ): Promise<ApiResponse<WithdrawalResponse>> => {
     const response = await apiClient.post<ApiResponse<WithdrawalResponse>>(
       "/dashboard/agent/withdraw",
-      { amount } as WithdrawalRequest
+      payload as WithdrawalRequest
     );
     return {
       ...response.data,
-      data: normalizeWithdrawalResponse(response.data, amount),
+      data: normalizeWithdrawalResponse(response.data, payload.amount),
+    };
+  },
+
+  requestBankWithdrawal: async (
+    payload: BankWithdrawalRequest
+  ): Promise<ApiResponse<WithdrawalResponse>> => {
+    const response = await apiClient.post<ApiResponse<WithdrawalResponse>>(
+      "/dashboard/agent/withdraw",
+      payload as WithdrawalRequest
+    );
+    return {
+      ...response.data,
+      data: normalizeWithdrawalResponse(response.data, payload.amount),
+    };
+  },
+
+  getBankWithdrawals: async (
+    params: BankWithdrawalHistoryParams = {}
+  ): Promise<ApiResponse<PaginatedResponse<BankWithdrawalHistoryItem>>> => {
+    const { page = 1, limit = 20, status } = params;
+    const response = await apiClient.get<
+      ApiResponse<PaginatedResponse<BankWithdrawalHistoryItem>>
+    >("/dashboard/agent/bank-withdrawals", {
+      params: { page, limit, status },
+    });
+    return {
+      ...response.data,
+      data: normalizeBankWithdrawalHistoryResponse(response.data),
     };
   },
 

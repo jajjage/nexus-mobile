@@ -7,9 +7,13 @@ import {
     AgentCustomersParams,
     AgentStats,
     AvailableBalance,
+    BankWithdrawalHistoryItem,
+    BankWithdrawalHistoryParams,
+    BankWithdrawalRequest,
     PaginatedResponse,
     RegenerateAgentCodeResponse,
     ValidateAgentCodeResponse,
+    WalletWithdrawalRequest,
     WithdrawalResponse,
 } from "@/types/agent.types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -33,6 +37,14 @@ export const agentKeys = {
   commissions: (page: number, limit: number) =>
     [...agentKeys.all, "commissions", page, limit] as const,
   availableBalance: () => [...agentKeys.all, "available-balance"] as const,
+  bankWithdrawals: (params: BankWithdrawalHistoryParams) =>
+    [
+      ...agentKeys.all,
+      "bank-withdrawals",
+      params.page ?? 1,
+      params.limit ?? 20,
+      params.status ?? "all",
+    ] as const,
 };
 
 // ==================== Query Hooks ====================
@@ -144,6 +156,27 @@ export function useValidateAgentCode(
   });
 }
 
+export function useAgentBankWithdrawals(
+  params: BankWithdrawalHistoryParams = {}
+) {
+  const normalizedParams: BankWithdrawalHistoryParams = {
+    page: params.page ?? 1,
+    limit: params.limit ?? 20,
+    status: params.status,
+  };
+
+  return useQuery<PaginatedResponse<BankWithdrawalHistoryItem> | undefined>({
+    queryKey: agentKeys.bankWithdrawals(normalizedParams),
+    queryFn: async (): Promise<
+      PaginatedResponse<BankWithdrawalHistoryItem> | undefined
+    > => {
+      const response = await agentService.getBankWithdrawals(normalizedParams);
+      return response.data as PaginatedResponse<BankWithdrawalHistoryItem>;
+    },
+    staleTime: 60 * 1000,
+  });
+}
+
 // ==================== Mutation Hooks ====================
 
 /**
@@ -217,23 +250,45 @@ export function useRegenerateAgentCode() {
 /**
  * Withdraw commission balance
  */
-export function useWithdrawCommission() {
+export function useWithdrawToWallet() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (amount: number) => {
-      const response = await agentService.withdrawCommission(amount);
+    mutationFn: async (payload: WalletWithdrawalRequest) => {
+      const response = await agentService.withdrawToWallet(payload);
       return response.data as WithdrawalResponse;
     },
-    onSuccess: (data, amount) => {
+    onSuccess: (data, payload) => {
       queryClient.invalidateQueries({ queryKey: agentKeys.all });
       queryClient.invalidateQueries({ queryKey: ["wallet"] });
       toast.success(
-        `Withdrawal of ₦${(data?.amount ?? amount).toLocaleString()} initiated`
+        `Withdrawal of ₦${(data?.amount ?? payload.amount).toLocaleString()} sent to wallet`
       );
     },
     onError: (error: any) => {
       const message = error?.response?.data?.message || "Failed to process withdrawal";
+      toast.error(message);
+    },
+  });
+}
+
+export function useRequestBankWithdrawal() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: BankWithdrawalRequest) => {
+      const response = await agentService.requestBankWithdrawal(payload);
+      return response.data as WithdrawalResponse;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: agentKeys.all });
+      toast.success(
+        "Bank withdrawal request submitted. Your withdrawal will be processed in the next 24 hours."
+      );
+    },
+    onError: (error: any) => {
+      const message =
+        error?.response?.data?.message || "Failed to submit bank withdrawal request";
       toast.error(message);
     },
   });

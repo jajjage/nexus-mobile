@@ -86,8 +86,35 @@ export interface AvailableBalance {
   claimCount?: number;
 }
 
-export interface WithdrawalRequest {
+export type AgentWithdrawalMethod = "wallet" | "bank";
+
+export interface WalletWithdrawalRequest {
+  method: "wallet";
   amount: number;
+  specificCommissionIds?: string[];
+}
+
+export interface BankWithdrawalRequest {
+  method: "bank";
+  amount: number;
+  bankName: string;
+  bankCode?: string;
+  accountName: string;
+  accountNumber: string;
+  narration?: string;
+  requestNotes?: string;
+  specificCommissionIds?: string[];
+  metadata?: Record<string, unknown>;
+}
+
+export type WithdrawalRequest =
+  | WalletWithdrawalRequest
+  | BankWithdrawalRequest;
+
+export interface BankWithdrawalHistoryParams {
+  page?: number;
+  limit?: number;
+  status?: "pending" | "processing" | "success" | "failed";
 }
 
 export interface WithdrawalResponse {
@@ -96,6 +123,22 @@ export interface WithdrawalResponse {
   status: 'pending' | 'processing' | 'completed' | 'failed';
   createdAt: string;
   completedAt: string | null;
+}
+
+export interface BankWithdrawalHistoryItem {
+  id: string;
+  amount: number;
+  status: "pending" | "processing" | "success" | "failed";
+  bankName: string;
+  bankCode?: string;
+  accountName: string;
+  accountNumber: string;
+  narration?: string | null;
+  requestNotes?: string | null;
+  adminNotes?: string | null;
+  failureReason?: string | null;
+  requestedAt: string;
+  processedAt: string | null;
 }
 
 // Register payload with agent code (used in auth signup)

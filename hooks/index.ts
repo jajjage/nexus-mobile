@@ -3,14 +3,16 @@ export {
     agentKeys,
     useActivateAgent,
     useAgentAccount,
+    useAgentBankWithdrawals,
     useAgentCommissions,
     useAgentCustomers,
     useAgentStats,
     useAvailableAgentBalance,
     useDeactivateAgent,
+    useRequestBankWithdrawal,
     useRegenerateAgentCode,
     useValidateAgentCode,
-    useWithdrawCommission
+    useWithdrawToWallet
 } from "./useAgent";
 export { useAppState, useAppStateChange } from "./useAppState";
 export { useBiometricAuth } from "./useBiometric";
