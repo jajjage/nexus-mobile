@@ -173,7 +173,7 @@ export function useAgentBankWithdrawals(
       const response = await agentService.getBankWithdrawals(normalizedParams);
       return response.data as PaginatedResponse<BankWithdrawalHistoryItem>;
     },
-    staleTime: 60 * 1000,
+    staleTime: 0,
   });
 }
 
@@ -261,6 +261,9 @@ export function useWithdrawToWallet() {
     onSuccess: (data, payload) => {
       queryClient.invalidateQueries({ queryKey: agentKeys.all });
       queryClient.invalidateQueries({ queryKey: ["wallet"] });
+      // Refetch immediately for real-time UI update
+      queryClient.refetchQueries({ queryKey: agentKeys.bankWithdrawals({ page: 1, limit: 100, status: "pending" }) });
+      queryClient.refetchQueries({ queryKey: agentKeys.bankWithdrawals({ page: 1, limit: 100, status: "processing" }) });
       toast.success(
         `Withdrawal of ₦${(data?.amount ?? payload.amount).toLocaleString()} sent to wallet`
       );
@@ -282,6 +285,9 @@ export function useRequestBankWithdrawal() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: agentKeys.all });
+      // Refetch immediately for real-time UI update
+      queryClient.refetchQueries({ queryKey: agentKeys.bankWithdrawals({ page: 1, limit: 100, status: "pending" }) });
+      queryClient.refetchQueries({ queryKey: agentKeys.bankWithdrawals({ page: 1, limit: 100, status: "processing" }) });
       toast.success(
         "Bank withdrawal request submitted. Your withdrawal will be processed in the next 24 hours."
       );

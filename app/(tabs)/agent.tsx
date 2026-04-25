@@ -7,15 +7,15 @@ import {
 import { Skeleton } from "@/components/Skeleton";
 import { useTheme } from "@/context/ThemeContext";
 import {
-    useAgentBankWithdrawals,
     useActivateAgent,
     useAgentAccount,
+    useAgentBankWithdrawals,
     useAgentCommissions,
     useAgentCustomers,
     useAgentStats,
     useAvailableAgentBalance,
-    useRequestBankWithdrawal,
     useRegenerateAgentCode,
+    useRequestBankWithdrawal,
     useWithdrawToWallet,
 } from "@/hooks/useAgent";
 import {
@@ -29,8 +29,8 @@ import { useRouter } from "expo-router";
 import {
     ArrowRight,
     Banknote,
-    Building2,
     Briefcase,
+    Building2,
     Copy,
     RefreshCw,
     Share2,
@@ -38,7 +38,7 @@ import {
     Users,
     Wallet,
 } from "lucide-react-native";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
     ActivityIndicator,
     Alert,
@@ -375,12 +375,12 @@ function AgentStatsCards() {
 function WithdrawalSection() {
   const router = useRouter();
   const { data: balance, isLoading } = useAvailableAgentBalance();
-  const { data: pendingRequests } = useAgentBankWithdrawals({
+  const { data: pendingRequests, refetch: refetchPending } = useAgentBankWithdrawals({
     page: 1,
     limit: 100,
     status: "pending",
   });
-  const { data: processingRequests } = useAgentBankWithdrawals({
+  const { data: processingRequests, refetch: refetchProcessing } = useAgentBankWithdrawals({
     page: 1,
     limit: 100,
     status: "processing",
@@ -405,8 +405,6 @@ function WithdrawalSection() {
     requestNotes: "",
   });
 
-  if (isLoading || !balance) return null;
-
   const maxAmount = balance?.totalAvailable ?? 0;
   const pendingBankRequests = (pendingRequests?.data ?? []).filter(
     (item) => item.status === "pending"
@@ -414,10 +412,9 @@ function WithdrawalSection() {
   const processingBankRequests = (processingRequests?.data ?? []).filter(
     (item) => item.status === "processing"
   );
-  const activeBankRequests = [
-    ...pendingBankRequests,
-    ...processingBankRequests,
-  ].sort(
+  // Only count pending requests as active (blocking new withdrawals)
+  // Processing/success/failed requests don't lock the button
+  const activeBankRequests = [...pendingBankRequests].sort(
     (left, right) => {
       const leftTime = new Date(left.requestedAt).getTime() || 0;
       const rightTime = new Date(right.requestedAt).getTime() || 0;
@@ -435,6 +432,24 @@ function WithdrawalSection() {
   const withdrawableBalance = Math.max(0, maxAmount - reservedActiveAmount);
   const isSubmitting =
     isPendingWalletWithdrawal || isPendingBankWithdrawal;
+
+  // Poll pending/processing withdrawal queries while there are active requests
+  useEffect(() => {
+    if (!activeBankRequestsCount && !processingBankRequestsCount) return;
+
+    const id = setInterval(() => {
+      try {
+        refetchPending?.();
+        refetchProcessing?.();
+      } catch (err) {
+        // ignore
+      }
+    }, 5000);
+
+    return () => clearInterval(id);
+  }, [activeBankRequestsCount, processingBankRequestsCount, refetchPending, refetchProcessing]);
+
+  if (isLoading || !balance) return null;
 
   const getBankStatusColor = (status: BankWithdrawalHistoryItem["status"]) => {
     switch (status) {
