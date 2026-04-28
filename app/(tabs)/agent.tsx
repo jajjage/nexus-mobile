@@ -196,7 +196,7 @@ function AgentCodeSection({ agentCode }: { agentCode: string }) {
 
   const handleShare = async () => {
     try {
-      const inviteLink = `https://nexusdata.app/signup?agentCode=${agentCode}`;
+      const inviteLink = `https://play.google.com/store/apps/details?id=com.nexus.nexusdatasub&referrer=${encodeURIComponent(`agentCode=${agentCode}`)}`;
       await Share.share({
         message: `Join Nexus Data using my agent code: ${agentCode}\n\n${inviteLink}`,
         url: inviteLink,
@@ -205,6 +205,7 @@ function AgentCodeSection({ agentCode }: { agentCode: string }) {
       console.error("Share failed:", error);
     }
   };
+
 
   const handleRegenerate = () => {
     Alert.alert(
