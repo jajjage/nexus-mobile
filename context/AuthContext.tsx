@@ -80,10 +80,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
           }
         } catch (apiError) {
-          console.warn("[AuthContext] Failed to fetch latest profile, using cached user:", apiError);
-          // If API fails but we have storedUser, we proceed (offline mode or server error)
-          // If no storedUser and API fails, user stays null -> might redirect to login?
-          // If token was invalid, apiClient interceptor might have called markSessionAsExpired
+          console.warn("[AuthContext] Failed to fetch latest profile, forcing logout:", apiError);
+
+          // We could not confirm the session, so do not keep stale cached user data alive.
+          // This prevents the app from lingering in tabs/soft-lock when auth cannot be verified.
+          setIsSessionExpired(true);
+          setUserState(null);
+          await tokenStorage.clearTokens();
+          await userStorage.clearAll();
+          return;
         }
 
       } catch (error) {

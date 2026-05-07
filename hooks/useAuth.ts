@@ -70,15 +70,7 @@ export function useAuth() {
     },
     staleTime: 3 * 60 * 1000, // 3 minutes (access token valid for 15 min, so safe to cache 3 min)
     gcTime: 10 * 60 * 1000, // 10 minutes
-    retry: (failureCount, error) => {
-      // Don't retry on 401/403 - these are handled by api-client's refresh interceptor
-      // If we reach here with 401/403 after api-client's refresh attempt, user is logged out
-      if (error.response?.status === 401 || error.response?.status === 403) {
-        return false; // Stop retrying, user needs to log in
-      }
-      // Retry network errors up to 3 times
-      return failureCount < 3;
-    },
+    retry: false,
     enabled: hasToken === true && !isSessionExpired, // Don't fetch if session is expired
   });
 
@@ -120,15 +112,16 @@ export function useAuth() {
   useEffect(() => {
     if (query.isError) {
       const status = query.error?.response?.status;
-      if (status === 401 || status === 403) {
-        // Token invalid or expired and refresh failed
-        tokenStorage.clearTokens();
-        setUser(null);
-        setHasToken(false);
-      }
+      console.warn("[useAuth] Profile fetch failed, ending session:", status, query.error?.message);
+
+      // If we cannot verify the current session, fail closed and send the user to login.
+      tokenStorage.clearTokens();
+      setUser(null);
+      setHasToken(false);
+      queryClient.clear();
       setIsLoading(false);
     }
-  }, [query.isError, query.error]);
+  }, [query.isError, query.error, queryClient, setIsLoading, setUser]);
 
   // isAuthenticated check as per MOBILE_AUTH_STATE_GUIDE.md
   const isAuthenticated = 
