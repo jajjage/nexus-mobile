@@ -12,6 +12,15 @@
 
 import { Product } from "@/types/product.types";
 
+export function getResolvedProductPrice(product: Product): number {
+  if (typeof product.resolvedPrice === "number" && product.resolvedPrice > 0) {
+    return product.resolvedPrice;
+  }
+
+  const fallback = parseFloat(product.denomAmount || "0");
+  return fallback > 0 ? fallback : 0;
+}
+
 export interface PriceCalculation {
   faceValue: number; // What user thinks they're buying
   supplierCost: number; // What we pay supplier
@@ -42,43 +51,56 @@ export function calculateFinalPrice(
 ): PriceCalculation {
   try {
     // STEP 1: Face value (what user thinks they're buying)
-    const faceValue = parseFloat(product.denomAmount || "0");
+    // Prefer backend-resolved role price, fall back to the legacy denom amount.
+    const faceValue = getResolvedProductPrice(product);
     if (faceValue <= 0) {
       throw new Error("Invalid product denomination");
     }
 
-    // STEP 2: Get supplier cost (with fallback to face value)
+    // STEP 2: Keep supplier cost for informational purposes only.
     const supplierOffer = product.supplierOffers?.[0];
-    let supplierCost = 0;
-    
-    if (supplierOffer && supplierOffer.supplierPrice) {
-      supplierCost = parseFloat(supplierOffer.supplierPrice);
-    }
-    
-    // CRITICAL: If supplier price is 0 or missing, fall back to face value
-    // This ensures we never sell a product for ₦0
-    if (supplierCost <= 0) {
-      supplierCost = faceValue;
-    }
+    const supplierCost = supplierOffer?.supplierPrice
+      ? parseFloat(supplierOffer.supplierPrice)
+      : 0;
 
-    // STEP 3: Apply markup to supplier cost
-    // Normalize markup: if < 1, treat as decimal (0.05), else as percentage (5)
-    const normalizedMarkup = markupPercent < 1 ? markupPercent : markupPercent / 100;
-    const baseSellingPrice = supplierCost * (1 + normalizedMarkup);
+    // STEP 3: Product price is now role-based, not supplier-cost-based.
+    const baseSellingPrice = faceValue;
 
     // STEP 4: Check for offer discount
     let finalSellingPrice = baseSellingPrice;
     let hasOfferDiscount = false;
     let offerDiscount = 0;
 
-    if (product.activeOffer && product.discountedPrice !== undefined && product.discountedPrice !== null) {
-      const discountedPrice = product.discountedPrice;
-      
-      // Only apply offer if it's cheaper than base selling price
-      if (discountedPrice < baseSellingPrice) {
-        finalSellingPrice = discountedPrice;
+    if (product.activeOffer) {
+      const offer = product.activeOffer;
+      const backendDiscount = product.discountedPrice;
+
+      if (
+        backendDiscount !== undefined &&
+        backendDiscount !== null &&
+        backendDiscount < baseSellingPrice
+      ) {
+        finalSellingPrice = backendDiscount;
         hasOfferDiscount = true;
-        offerDiscount = baseSellingPrice - discountedPrice;
+        offerDiscount = baseSellingPrice - backendDiscount;
+      } else {
+        switch (offer.discountType) {
+          case "percentage":
+            finalSellingPrice = baseSellingPrice * (1 - offer.discountValue / 100);
+            hasOfferDiscount = finalSellingPrice < baseSellingPrice;
+            offerDiscount = Math.max(0, baseSellingPrice - finalSellingPrice);
+            break;
+          case "fixed_amount":
+            finalSellingPrice = Math.max(0, baseSellingPrice - offer.discountValue);
+            hasOfferDiscount = finalSellingPrice < baseSellingPrice;
+            offerDiscount = Math.max(0, baseSellingPrice - finalSellingPrice);
+            break;
+          case "fixed_price":
+            finalSellingPrice = offer.discountValue;
+            hasOfferDiscount = finalSellingPrice < baseSellingPrice;
+            offerDiscount = Math.max(0, baseSellingPrice - finalSellingPrice);
+            break;
+        }
       }
     }
 

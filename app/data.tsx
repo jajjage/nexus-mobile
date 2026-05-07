@@ -50,7 +50,10 @@ import {
   isValidNigerianPhone,
   normalizePhoneNumber,
 } from "@/lib/detectNetwork";
-import { calculateFinalPrice } from "@/lib/price-calculator";
+import {
+  calculateFinalPrice,
+  getResolvedProductPrice,
+} from "@/lib/price-calculator";
 import { Product } from "@/types/product.types";
 import { getUserFriendlyError } from "@/utils/errors";
 
@@ -218,8 +221,8 @@ export default function DataScreen() {
 
     // Sort by denomination amount (small to large)
     products = products.sort((a, b) => {
-      const aAmount = parseFloat(a.denomAmount || "0");
-      const bAmount = parseFloat(b.denomAmount || "0");
+      const aAmount = getResolvedProductPrice(a);
+      const bAmount = getResolvedProductPrice(b);
       return aAmount - bAmount;
     });
 
@@ -249,33 +252,16 @@ export default function DataScreen() {
   // Priority: discountedPrice from backend > offer calculation > base price
   const getDisplayPrice = useCallback(
     (product: Product) => {
-      // If backend provides discountedPrice, use it directly
-      // This ensures consistency with ProductCard display
-      if (product.discountedPrice !== undefined && product.discountedPrice !== null && product.discountedPrice > 0) {
-        return product.discountedPrice;
-      }
+      const priceDetails = calculateFinalPrice(
+        product,
+        false,
+        0,
+        0
+      );
 
-      const faceValue = parseFloat(product.denomAmount || "0");
-      const supplierPrice = product.supplierOffers?.[0]?.supplierPrice
-        ? parseFloat(product.supplierOffers[0].supplierPrice.toString())
-        : 0;
-
-      // Use the max of faceValue and supplierPrice, or just faceValue if supplier is 0
-      let sellingPrice = Math.max(faceValue, supplierPrice > 0 ? supplierPrice : faceValue);
-
-      // Apply discount if eligible (fallback for products without discountedPrice)
-      if (product.activeOffer && isEligibleForOffer(product)) {
-        const { discountType, discountValue } = product.activeOffer;
-        if (discountType === "percentage") {
-          sellingPrice = sellingPrice * (1 - discountValue / 100);
-        } else if (discountType === "fixed_amount") {
-          sellingPrice = sellingPrice - discountValue;
-        }
-      }
-
-      return sellingPrice;
+      return priceDetails.finalSellingPrice;
     },
-    [isEligibleForOffer]
+    []
   );
 
   // === HANDLERS ===

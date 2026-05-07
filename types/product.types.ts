@@ -22,6 +22,12 @@ export interface ActiveOffer {
   discountValue: number;
 }
 
+export interface ProductPriceTags {
+  user?: number;
+  reseller?: number;
+  api?: number;
+}
+
 /**
  * Product Category - Used to group products (e.g., "SME Data", "Gifting")
  */
@@ -57,6 +63,9 @@ export interface Product {
   // Offer fields
   discountedPrice?: number;
   activeOffer?: ActiveOffer;
+  priceTags?: ProductPriceTags;
+  resolvedPrice?: number;
+  resolvedPriceTag?: keyof ProductPriceTags | null;
 }
 
 export interface Pagination {

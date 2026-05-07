@@ -5,6 +5,7 @@
  */
 
 import { darkColors, designTokens, lightColors } from "@/constants/palette";
+import { getResolvedProductPrice } from "@/lib/price-calculator";
 import { Product } from "@/types/product.types";
 import { Check, Lock, Sparkles, Zap } from "lucide-react-native";
 import React from "react";
@@ -37,14 +38,14 @@ export function ProductCard({
   const colors = colorScheme === "dark" ? darkColors : lightColors;
 
   // === PRICING LOGIC ===
-  // 1. Base Price (supplierPrice or denomAmount)
-  const faceValue = parseFloat(product.denomAmount);
+  // 1. Base Price (backend-resolved role price, fallback to denomAmount)
+  const faceValue = getResolvedProductPrice(product);
   const supplierPrice = product.supplierOffers?.[0]?.supplierPrice
     ? parseFloat(product.supplierOffers[0].supplierPrice.toString())
-    : faceValue;
+    : 0;
 
-  // 2. Apply Markup
-  const baseSellingPrice = supplierPrice + supplierPrice * (markupPercent / 100);
+  // 2. Role-based base price is the selling price now.
+  const baseSellingPrice = faceValue;
 
   // === OFFER LOGIC ===
   const hasOffer = !!product.activeOffer;
@@ -62,12 +63,12 @@ export function ProductCard({
   if (showDiscountedPrice && product.activeOffer) {
     const offer = product.activeOffer;
 
-    // Source 1: Backend-calculated discountedPrice
-    if (product.discountedPrice) {
-      displayPrice = product.discountedPrice;
-      discountPercent = Math.round(
-        ((faceValue - displayPrice) / faceValue) * 100
-      );
+      // Source 1: Backend-calculated discountedPrice
+      if (product.discountedPrice) {
+        displayPrice = product.discountedPrice;
+        discountPercent = Math.round(
+          ((faceValue - displayPrice) / faceValue) * 100
+        );
     } else {
       // Source 2: Client-calculated based on discountType
       switch (offer.discountType) {
@@ -98,10 +99,15 @@ export function ProductCard({
   }
   
   // === SUPPLIER DISCOUNT LOGIC (When no active offer) ===
-  const hasValidSupplierDiscount = supplierPrice > 0 && supplierPrice < faceValue;
+  const hasValidSupplierDiscount =
+    supplierPrice > 0 && supplierPrice < faceValue && !product.resolvedPrice;
   
   // If no active offer, but supplier price gives a discount
-  if (!showDiscountedPrice && hasValidSupplierDiscount && baseSellingPrice < faceValue) {
+  if (
+    !showDiscountedPrice &&
+    hasValidSupplierDiscount &&
+    baseSellingPrice < faceValue
+  ) {
     hasDiscount = true;
     displayPrice = baseSellingPrice;
     discountPercent = Math.round(

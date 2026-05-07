@@ -35,6 +35,8 @@ export function useSecurityVerification(
   const startVerification = useCallback(async (): Promise<VerificationResult> => {
     setIsVerifying(true);
     setVerificationError(null);
+    // Always clear any previous PIN fallback UI before retrying biometric.
+    setShowPinPad(false);
 
     try {
       // Check if biometric is available

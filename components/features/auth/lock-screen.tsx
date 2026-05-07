@@ -4,7 +4,7 @@ import { useVerifyPasscode } from '@/hooks/usePasscode';
 import { useSecurityVerification } from '@/hooks/useSecurityVerification';
 import { Fingerprint, Lock, ScanFace } from 'lucide-react-native';
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -35,6 +35,18 @@ export const LockScreen = ({ onUnlock }: { onUnlock: () => void }) => {
       startVerification();
     }
   }, []);
+
+  const triggerBiometricUnlock = useCallback(async () => {
+    // Force a fresh biometric attempt every time the icon/button is tapped.
+    setVerificationError(null);
+    closePinPad();
+    setPasscodeInput("");
+
+    // Give the UI a beat to close any fallback pad before re-opening the system prompt.
+    setTimeout(() => {
+      startVerification();
+    }, 75);
+  }, [closePinPad, startVerification, setVerificationError]);
 
   // Get biometric icon based on platform
   const BiometricIcon = ({ size = 40 }: { size?: number }) => 
@@ -70,7 +82,7 @@ export const LockScreen = ({ onUnlock }: { onUnlock: () => void }) => {
         {/* Biometric Icon */}
         <View style={{ alignItems: 'center', marginBottom: 30 }}>
           <TouchableOpacity 
-            onPress={() => startVerification()}
+            onPress={triggerBiometricUnlock}
             style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: `rgba(230, 158, 25, 0.15)`, justifyContent: 'center', alignItems: 'center', marginBottom: 20 }}
           >
             <BiometricIcon size={40} />
@@ -84,7 +96,7 @@ export const LockScreen = ({ onUnlock }: { onUnlock: () => void }) => {
         {!showPinPad && (
           <View style={{ width: '100%', gap: 12 }}>
             <TouchableOpacity 
-              onPress={() => startVerification()}
+              onPress={triggerBiometricUnlock}
               style={{ 
                 backgroundColor: colors.primary, 
                 paddingVertical: 12, 

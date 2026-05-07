@@ -10,6 +10,7 @@ export function useBiometricAuth() {
 
     const result = await LocalAuthentication.authenticateAsync({
       promptMessage: "Authenticate to continue",
+      disableDeviceFallback: true,
       fallbackLabel: "Use PIN",
     });
 

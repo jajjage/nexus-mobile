@@ -11,7 +11,10 @@ import {
   determinePaymentMethod,
   verifyBiometricAndGetToken
 } from "@/lib/payment-flow";
-import { calculateFinalPrice, validatePurchase } from "@/lib/price-calculator";
+import {
+  calculateFinalPrice,
+  validatePurchase,
+} from "@/lib/price-calculator";
 import { Product } from "@/types/product.types";
 import { TopupRequest } from "@/types/topup.types";
 import * as Haptics from "expo-haptics";
@@ -128,7 +131,7 @@ export function useCompletePaymentFlow(
         }
 
         const topupRequest: TopupRequest = {
-          amount: parseFloat(product.denomAmount), 
+          amount: priceDetails.finalSellingPrice,
           productCode: product.productCode,
           recipientPhone: phoneNumber,
           supplierSlug: product.supplierOffers?.[0]?.supplierSlug || "",
