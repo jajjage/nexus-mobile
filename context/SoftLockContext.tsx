@@ -1,7 +1,7 @@
 import { LockScreen } from '@/components/features/auth/lock-screen';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
-import { AppState } from 'react-native';
+import { AppState, StyleSheet, View } from 'react-native';
 import { useAuthContext } from './AuthContext';
 
 // Storage keys for soft lock state
@@ -124,8 +124,14 @@ export function SoftLockProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <SoftLockContext.Provider value={{ isLocked, isEnabled, lock, unlock, setEnabled }}>
-      {children}
-      {isLocked && isEnabled && <LockScreen onUnlock={unlock} />}
+      <View style={{ flex: 1 }} collapsable={false}>
+        {children}
+      </View>
+      {isLocked && isEnabled && (
+        <View style={StyleSheet.absoluteFill} pointerEvents="box-none" collapsable={false}>
+          <LockScreen onUnlock={unlock} />
+        </View>
+      )}
     </SoftLockContext.Provider>
   );
 }

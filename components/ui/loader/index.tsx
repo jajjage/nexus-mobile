@@ -55,8 +55,8 @@ export function Loader({
   });
 
   const content = (
-    <VStack space="sm" className="items-center">
-      <View style={[styles.container, { width: sizeConfig.container, height: sizeConfig.container }]}>
+    <VStack space="sm" className="items-center" collapsable={false}>
+      <View style={[styles.container, { width: sizeConfig.container, height: sizeConfig.container }]} collapsable={false}>
         {/* Spinning arc */}
         <Animated.View
           style={[
@@ -64,6 +64,7 @@ export function Loader({
             { transform: [{ rotate }] },
             { width: sizeConfig.container, height: sizeConfig.container },
           ]}
+          collapsable={false}
         >
           <Svg width={sizeConfig.container} height={sizeConfig.container}>
             {/* Background circle (light gray) */}
@@ -89,9 +90,9 @@ export function Loader({
           </Svg>
         </Animated.View>
         
-        {/* Center logo */}
+        {/* Center logo - wrapped in a fixed container if needed, but here absolute position is fine if index is stable */}
         {showLogo && (
-          <View style={styles.logoContainer}>
+          <View style={styles.logoContainer} collapsable={false}>
             <Image
               source={require('@/assets/images/icon.png')}
               style={{ width: sizeConfig.logo, height: sizeConfig.logo }}
@@ -102,9 +103,12 @@ export function Loader({
         )}
       </View>
       
-      {text && (
-        <Text className="text-typography-500 text-sm">{text}</Text>
-      )}
+      {/* Text - wrapping in a stable container to prevent shifting indices in VStack */}
+      <View collapsable={false}>
+        {text ? (
+          <Text className="text-typography-500 text-sm">{text}</Text>
+        ) : null}
+      </View>
     </VStack>
   );
 

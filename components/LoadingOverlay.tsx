@@ -55,38 +55,38 @@ export function LoadingOverlay({
     };
   });
 
-  if (!visible) return null;
-
   // Background circle size includes extra padding so logo isn't cramped
   const containerSize = diameter + 50; 
 
   return (
-    <Modal visible={visible} transparent animationType="fade" statusBarTranslucent>
-      <View style={[styles.overlay, { backgroundColor: 'rgba(0, 0, 0, 0.7)' }]}>
-        <View style={styles.center} pointerEvents="box-none">
-          {/* Animated Container (White Circle + Pulse) */}
-          <Animated.View
-            style={[
-              styles.logoContainer,
-              animatedContainerStyle,
-              {
-                width: containerSize,
-                height: containerSize,
-                borderRadius: containerSize / 2,
-                backgroundColor: colors.card, // Match card color for the pulse circle
-              },
-            ]}
-          >
-            {/* Logo Image (Full Size) */}
-            <Image
-              source={logo}
-              resizeMode="contain"
-              style={{ width: diameter, height: diameter }}
-            />
-          </Animated.View>
+    <View collapsable={false}>
+      <Modal visible={visible} transparent animationType="fade" statusBarTranslucent>
+        <View style={[styles.overlay, { backgroundColor: 'rgba(0, 0, 0, 0.7)' }]}>
+          <View style={styles.center} pointerEvents="box-none">
+            {/* Animated Container (White Circle + Pulse) */}
+            <Animated.View
+              style={[
+                styles.logoContainer,
+                animatedContainerStyle,
+                {
+                  width: containerSize,
+                  height: containerSize,
+                  borderRadius: containerSize / 2,
+                  backgroundColor: colors.card, // Match card color for the pulse circle
+                },
+              ]}
+            >
+              {/* Logo Image (Full Size) */}
+              <Image
+                source={logo}
+                resizeMode="contain"
+                style={{ width: diameter, height: diameter }}
+              />
+            </Animated.View>
+          </View>
         </View>
-      </View>
-    </Modal>
+      </Modal>
+    </View>
   );
 }
 

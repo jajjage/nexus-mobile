@@ -52,7 +52,7 @@ export function BillPaymentScreen({ categoryType }: BillPaymentScreenProps) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const checkoutSheetRef = useRef<BottomSheet>(null);
-  const snapPoints = useMemo(() => ["72%"], []);
+  const snapPoints = useMemo(() => ["58%"], []);
 
   const isElectricity = categoryType === "electricity";
   const title = isElectricity ? "Electricity" : "Cable TV";
@@ -721,7 +721,9 @@ export function BillPaymentScreen({ categoryType }: BillPaymentScreenProps) {
         handleIndicatorStyle={{ backgroundColor: colors.border }}
         onClose={() => setLastToken(null)}
       >
-        <BottomSheetView>{renderConfirmationContent()}</BottomSheetView>
+        <BottomSheetView style={styles.sheetView}>
+          {renderConfirmationContent()}
+        </BottomSheetView>
       </BottomSheet>
 
       <PinPadModal
@@ -906,10 +908,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "800",
   },
+  sheetView: {
+    flex: 0,
+  },
   sheetContent: {
-    padding: designTokens.spacing.lg,
+    paddingHorizontal: designTokens.spacing.lg,
+    paddingTop: designTokens.spacing.md,
+    paddingBottom: designTokens.spacing.md,
     alignItems: "center",
-    gap: 14,
+    gap: 10,
   },
   sheetTitle: {
     fontSize: 22,
@@ -922,14 +929,14 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   sheetAmount: {
-    fontSize: 34,
+    fontSize: 30,
     fontWeight: "900",
     letterSpacing: 0,
   },
   detailsList: {
     width: "100%",
-    gap: 12,
-    marginTop: 4,
+    gap: 10,
+    marginTop: 2,
   },
   detailRow: {
     flexDirection: "row",
@@ -953,7 +960,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
-    marginTop: 8,
+    marginTop: 2,
   },
   primaryButtonText: {
     fontSize: 16,

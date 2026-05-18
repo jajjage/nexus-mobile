@@ -8,10 +8,15 @@ const withOptionalBiometrics = (config) => {
       androidManifest.manifest['uses-feature'] = [];
     }
 
-    // Explicitly mark biometric hardware as optional
+    // Explicitly mark common hardware features as optional
     const features = [
       { name: 'android.hardware.fingerprint', required: 'false' },
-      { name: 'android.hardware.biometrics', required: 'false' }
+      { name: 'android.hardware.biometrics', required: 'false' },
+      { name: 'android.hardware.camera', required: 'false' },
+      { name: 'android.hardware.camera.autofocus', required: 'false' },
+      { name: 'android.hardware.location', required: 'false' },
+      { name: 'android.hardware.location.gps', required: 'false' },
+      { name: 'android.hardware.location.network', required: 'false' }
     ];
 
     features.forEach(feature => {
