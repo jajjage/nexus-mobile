@@ -46,7 +46,7 @@
         "NOTIFICATIONS"
       ],
       "newArchEnabled": true,
-      "minSdkVersion": 21,
+      "minSdkVersion": 24,
       "targetSdkVersion": 34
     },
     "web": {
@@ -65,7 +65,7 @@
         "expo-build-properties",
         {
           "android": {
-            "minSdkVersion": 21,
+            "minSdkVersion": 24,
             "enableProguardInReleaseBuilds": true,
             "enableShrinkResourcesInReleaseBuilds": true,
             "extraProguardRules": "-keep class coil3.PlatformContext\n-keep class coil3.network.okhttp.OkHttpNetworkFetcher { *; }\n-keep class okhttp3.OkHttpClient { *; }\n-keep class okhttp3.Request { *; }\n-keep class okhttp3.Response { *; }\n-keep class com.google.firebase.** { *; }\n-keep class expo.modules.** { *; }\n-dontwarn coil3.**\n-dontwarn com.google.firebase.**",
