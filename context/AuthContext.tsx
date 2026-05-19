@@ -63,32 +63,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         // Prefetch latest profile from API to ensure data is fresh
-        // This keeps the global loader visible until we have the latest data
         try {
           console.log("[AuthContext] Fetching latest profile...");
           const profileResponse = await userService.getProfile();
           
           if (profileResponse?.data) {
-            // Merge with stored user or use fresh profile
-            // profileResponse.data contains the actual User object
             const freshUser = profileResponse.data as unknown as User; 
             setUserState(freshUser);
-            // Update cache
             await userStorage.setUser(freshUser);
             if (freshUser.role) {
                 await userStorage.setUserRole(freshUser.role);
             }
           }
-        } catch (apiError) {
-          console.warn("[AuthContext] Failed to fetch latest profile, forcing logout:", apiError);
+        } catch (apiError: any) {
+          console.warn("[AuthContext] Failed to fetch latest profile:", apiError?.message);
 
-          // We could not confirm the session, so do not keep stale cached user data alive.
-          // This prevents the app from lingering in tabs/soft-lock when auth cannot be verified.
-          setIsSessionExpired(true);
-          setUserState(null);
-          await tokenStorage.clearTokens();
-          await userStorage.clearAll();
-          return;
+          // ONLY force logout if the server explicitly rejected the session (401/403)
+          // If it's a network error (no response), we keep the cached user and allow the app to load.
+          const status = apiError?.response?.status;
+          if (status === 401 || status === 403) {
+            console.warn("[AuthContext] Session invalid (401/403), forcing logout");
+            setIsSessionExpired(true);
+            setUserState(null);
+            await tokenStorage.clearTokens();
+            await userStorage.clearAll();
+            return;
+          }
+          
+          console.log("[AuthContext] Network error or server down; keeping cached session.");
         }
 
       } catch (error) {
