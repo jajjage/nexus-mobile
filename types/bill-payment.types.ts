@@ -1,4 +1,4 @@
-export type BillCategoryType = "electricity" | "cable";
+export type BillCategoryType = "electricity" | "cable" | "education";
 export type BillPaymentStatus =
   | "pending"
   | "success"
@@ -47,6 +47,7 @@ export interface BillValidationRequest {
   billerCode: string;
   customerIdentifier: string;
   meterType?: "prepaid" | "postpaid";
+  variationCode?: string;
   supplierSlug?: string;
 }
 
@@ -60,6 +61,7 @@ export interface BillValidationResult {
 
 export interface BillPaymentRequest extends BillValidationRequest {
   amount: number;
+  quantity?: number;
   phone: string;
   variationCode?: string;
   subscriptionType?: "change" | "renew";

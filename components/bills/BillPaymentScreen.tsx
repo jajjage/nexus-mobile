@@ -5,6 +5,7 @@ import {
   ArrowLeft,
   CheckCircle,
   ChevronDown,
+  GraduationCap,
   RefreshCw,
   Tv,
   Zap,
@@ -55,8 +56,9 @@ export function BillPaymentScreen({ categoryType }: BillPaymentScreenProps) {
   const snapPoints = useMemo(() => ["58%"], []);
 
   const isElectricity = categoryType === "electricity";
-  const title = isElectricity ? "Electricity" : "Cable TV";
-  const Icon = isElectricity ? Zap : Tv;
+  const isEducation = categoryType === "education";
+  const title = isElectricity ? "Electricity" : isEducation ? "Exam Pins" : "Cable TV";
+  const Icon = isElectricity ? Zap : isEducation ? GraduationCap : Tv;
 
   const [selectedBillerCode, setSelectedBillerCode] = useState("");
   const [customerIdentifier, setCustomerIdentifier] = useState("");
@@ -66,11 +68,13 @@ export function BillPaymentScreen({ categoryType }: BillPaymentScreenProps) {
   const [subscriptionType, setSubscriptionType] =
     useState<SubscriptionType>("change");
   const [variationCode, setVariationCode] = useState("");
+  const [quantity, setQuantity] = useState("1");
   const [customerName, setCustomerName] = useState<string | null>(null);
   const [minimumAmount, setMinimumAmount] = useState<number | null>(null);
   const [checkoutMode, setCheckoutMode] = useState<"checkout" | "success" | "failed">(
     "checkout"
   );
+  const [isVariationPickerOpen, setIsVariationPickerOpen] = useState(false);
   const [lastTransactionId, setLastTransactionId] = useState<string | null>(null);
   const [lastErrorMessage, setLastErrorMessage] = useState<string | null>(null);
   const [lastToken, setLastToken] = useState<string | null>(null);
@@ -89,7 +93,10 @@ export function BillPaymentScreen({ categoryType }: BillPaymentScreenProps) {
     isLoading: variationsLoading,
   } = useBillVariations(
     selectedBillerCode,
-    Boolean(selectedBillerCode && !isElectricity && selectedBiller?.supportsVariations)
+    Boolean(
+      selectedBillerCode &&
+        ((isEducation || !isElectricity) && selectedBiller?.supportsVariations)
+    )
   );
   const validateCustomer = useValidateBillCustomer();
   const { processPayment, submitPIN, isLoading: isPaymentProcessing } =
@@ -99,9 +106,17 @@ export function BillPaymentScreen({ categoryType }: BillPaymentScreenProps) {
         const tokenPayload = payment.tokenPayload || {};
         const token =
           tokenPayload.token ||
+          tokenPayload.pin ||
+          tokenPayload.Pin ||
           tokenPayload.Token ||
           tokenPayload.meter_token ||
-          tokenPayload.purchased_code;
+          tokenPayload.purchased_code ||
+          (Array.isArray(tokenPayload.tokens) ? tokenPayload.tokens.join(", ") : null) ||
+          (Array.isArray(tokenPayload.cards)
+            ? tokenPayload.cards
+                .map((card: any) => `${card.Serial || card.serial}: ${card.Pin || card.pin}`)
+                .join(", ")
+            : null);
         setLastToken(token ? String(token) : null);
         setLastErrorMessage(null);
         setCheckoutMode("success");
@@ -125,17 +140,23 @@ export function BillPaymentScreen({ categoryType }: BillPaymentScreenProps) {
     setMinimumAmount(null);
     setVariationCode("");
     setAmount("");
+    setIsVariationPickerOpen(false);
   }, [selectedBillerCode, subscriptionType]);
 
   useEffect(() => {
-    if (!isElectricity && subscriptionType === "change" && variations.length > 0) {
+    if (
+      (isEducation || (!isElectricity && subscriptionType === "change")) &&
+      variations.length > 0
+    ) {
       const firstFixed = variations.find(variation => variation.amount);
       if (firstFixed) {
         setVariationCode(firstFixed.code);
-        setAmount(String(firstFixed.amount || ""));
+        const unitAmount = Number(firstFixed.amount || 0);
+        const multiplier = isEducation ? Math.max(Number(quantity) || 1, 1) : 1;
+        setAmount(String(unitAmount * multiplier || ""));
       }
     }
-  }, [isElectricity, subscriptionType, variations]);
+  }, [isEducation, isElectricity, quantity, subscriptionType, variations]);
 
   const selectedVariation = useMemo(
     () => variations.find(variation => variation.code === variationCode),
@@ -143,19 +164,31 @@ export function BillPaymentScreen({ categoryType }: BillPaymentScreenProps) {
   );
 
   const numericAmount = Number.parseFloat(amount.replace(/[^0-9.]/g, "") || "0");
+  const numericQuantity = Math.max(Number.parseInt(quantity, 10) || 1, 1);
+  const isJamb = isEducation && selectedBiller?.code === "jamb";
+  const requiresValidation = !isEducation || isJamb;
   const isAmountValid =
     numericAmount > 0 && (!minimumAmount || numericAmount >= minimumAmount);
-  const customerLabel = isElectricity ? "Meter number" : "Smartcard or IUC number";
+  const customerLabel = isElectricity
+    ? "Meter number"
+    : isEducation
+      ? "JAMB profile ID"
+      : "Smartcard or IUC number";
   const selectedBillerName = selectedBiller?.name || title;
   const canValidate =
     Boolean(selectedBillerCode && customerIdentifier.trim()) &&
-    (isElectricity || Boolean(subscriptionType));
+    (!isEducation || isJamb) &&
+    (isElectricity || isEducation || Boolean(subscriptionType));
   const canPay =
-    canValidate &&
+    (requiresValidation ? canValidate : Boolean(selectedBillerCode)) &&
     Boolean(phone.trim()) &&
     isAmountValid &&
-    Boolean(customerName || selectedBiller?.requiresValidation === false) &&
-    (isElectricity || subscriptionType === "renew" || Boolean(variationCode));
+    Boolean(!requiresValidation || customerName || selectedBiller?.requiresValidation === false) &&
+    (isElectricity ||
+      isEducation ||
+      subscriptionType === "renew" ||
+      Boolean(variationCode)) &&
+    (!isEducation || Boolean(variationCode));
 
   const runValidation = useCallback(async () => {
     if (!canValidate) return;
@@ -166,6 +199,7 @@ export function BillPaymentScreen({ categoryType }: BillPaymentScreenProps) {
         billerCode: selectedBillerCode,
         customerIdentifier: customerIdentifier.trim(),
         meterType: isElectricity ? meterType : undefined,
+        variationCode: isEducation ? variationCode : undefined,
       });
 
       if (!response.data.isValid) {
@@ -206,21 +240,27 @@ export function BillPaymentScreen({ categoryType }: BillPaymentScreenProps) {
   const buildPaymentData = useCallback(
     () => ({
       billerCode: selectedBillerCode,
-      customerIdentifier: customerIdentifier.trim(),
+      customerIdentifier: isEducation && !isJamb ? phone.trim() : customerIdentifier.trim(),
       meterType: isElectricity ? meterType : undefined,
       amount: numericAmount,
+      quantity: isEducation ? numericQuantity : undefined,
       phone: phone.trim(),
       variationCode:
-        !isElectricity && subscriptionType === "change" ? variationCode : undefined,
-      subscriptionType: isElectricity ? undefined : subscriptionType,
+        isEducation || (!isElectricity && subscriptionType === "change")
+          ? variationCode
+          : undefined,
+      subscriptionType: isElectricity || isEducation ? undefined : subscriptionType,
       idempotencyKey: `mobile-${categoryType}-${Date.now()}`,
     }),
     [
       categoryType,
       customerIdentifier,
       isElectricity,
+      isEducation,
+      isJamb,
       meterType,
       numericAmount,
+      numericQuantity,
       phone,
       selectedBillerCode,
       subscriptionType,
@@ -264,15 +304,17 @@ export function BillPaymentScreen({ categoryType }: BillPaymentScreenProps) {
   const handleVariationSelect = (variation: BillVariation) => {
     Haptics.selectionAsync();
     setVariationCode(variation.code);
+    setIsVariationPickerOpen(false);
     if (variation.amount) {
-      setAmount(String(variation.amount));
+      const multiplier = isEducation ? numericQuantity : 1;
+      setAmount(String(Number(variation.amount) * multiplier));
     }
   };
 
   const renderBillerSelector = () => (
     <View style={styles.section}>
       <Text style={[styles.label, { color: colors.textSecondary }]}>
-        {isElectricity ? "Electricity provider" : "Cable provider"}
+        {isElectricity ? "Electricity provider" : isEducation ? "Exam provider" : "Cable provider"}
       </Text>
       {billersLoading ? (
         <ActivityIndicator color={colors.primary} />
@@ -389,11 +431,21 @@ export function BillPaymentScreen({ categoryType }: BillPaymentScreenProps) {
 
         <View style={styles.detailsList}>
           <Detail label="Biller" value={selectedBillerName} />
-          <Detail label={customerLabel} value={customerIdentifier} />
-          <Detail label="Customer" value={customerName || "Verified"} />
+          {(!isEducation || isJamb) && (
+            <Detail label={customerLabel} value={customerIdentifier} />
+          )}
+          {requiresValidation && (
+            <Detail label="Customer" value={customerName || "Verified"} />
+          )}
           <Detail label="Phone" value={phone} />
-          {!isElectricity && subscriptionType === "change" && (
-            <Detail label="Bouquet" value={selectedVariation?.name || variationCode} />
+          {(isEducation || (!isElectricity && subscriptionType === "change")) && (
+            <Detail
+              label={isEducation ? "Exam type" : "Bouquet"}
+              value={selectedVariation?.name || variationCode}
+            />
+          )}
+          {isEducation && (
+            <Detail label="Quantity" value={String(numericQuantity)} />
           )}
           <Detail label="Wallet balance" value={formatMoney(walletBalance)} />
         </View>
@@ -467,7 +519,7 @@ export function BillPaymentScreen({ categoryType }: BillPaymentScreenProps) {
 
           {renderBillerSelector()}
 
-          {!isElectricity && (
+          {!isElectricity && !isEducation && (
             <View style={styles.section}>
               <Text style={[styles.label, { color: colors.textSecondary }]}>
                 Payment type
@@ -537,46 +589,50 @@ export function BillPaymentScreen({ categoryType }: BillPaymentScreenProps) {
             </View>
           )}
 
-          <View style={styles.section}>
-            <Text style={[styles.label, { color: colors.textSecondary }]}>
-              {customerLabel}
-            </Text>
-            <TextInput
-              value={customerIdentifier}
-              onChangeText={setCustomerIdentifier}
-              keyboardType="number-pad"
-              placeholder={customerLabel}
-              placeholderTextColor={colors.textTertiary}
+          {(!isEducation || isJamb) && (
+            <View style={styles.section}>
+              <Text style={[styles.label, { color: colors.textSecondary }]}>
+                {customerLabel}
+              </Text>
+              <TextInput
+                value={customerIdentifier}
+                onChangeText={setCustomerIdentifier}
+                keyboardType="number-pad"
+                placeholder={customerLabel}
+                placeholderTextColor={colors.textTertiary}
+                style={[
+                  styles.input,
+                  {
+                    color: colors.foreground,
+                    backgroundColor: colors.card,
+                    borderColor: colors.border,
+                  },
+                ]}
+              />
+            </View>
+          )}
+
+          {requiresValidation && (
+            <TouchableOpacity
+              disabled={!canValidate || validateCustomer.isPending}
+              onPress={runValidation}
               style={[
-                styles.input,
+                styles.verifyButton,
                 {
-                  color: colors.foreground,
-                  backgroundColor: colors.card,
-                  borderColor: colors.border,
+                  backgroundColor: canValidate ? `${colors.primary}18` : colors.muted,
+                  borderColor: canValidate ? colors.primary : colors.border,
                 },
               ]}
-            />
-          </View>
-
-          <TouchableOpacity
-            disabled={!canValidate || validateCustomer.isPending}
-            onPress={runValidation}
-            style={[
-              styles.verifyButton,
-              {
-                backgroundColor: canValidate ? `${colors.primary}18` : colors.muted,
-                borderColor: canValidate ? colors.primary : colors.border,
-              },
-            ]}
-          >
-            {validateCustomer.isPending ? (
-              <ActivityIndicator color={colors.primary} />
-            ) : (
-              <Text style={[styles.verifyText, { color: colors.primary }]}>
-                Verify customer
-              </Text>
-            )}
-          </TouchableOpacity>
+            >
+              {validateCustomer.isPending ? (
+                <ActivityIndicator color={colors.primary} />
+              ) : (
+                <Text style={[styles.verifyText, { color: colors.primary }]}>
+                  {isEducation ? "Verify profile" : "Verify customer"}
+                </Text>
+              )}
+            </TouchableOpacity>
+          )}
 
           {customerName && (
             <View style={[styles.verifiedCard, { backgroundColor: `${colors.success}12` }]}>
@@ -594,48 +650,95 @@ export function BillPaymentScreen({ categoryType }: BillPaymentScreenProps) {
             </View>
           )}
 
-          {!isElectricity && subscriptionType === "change" && (
+          {(isEducation || (!isElectricity && subscriptionType === "change")) && (
             <View style={styles.section}>
               <Text style={[styles.label, { color: colors.textSecondary }]}>
-                Bouquet
+                {isEducation ? "Exam type" : "Bouquet"}
               </Text>
               {variationsLoading ? (
                 <ActivityIndicator color={colors.primary} />
               ) : (
                 <View style={styles.variationList}>
-                  {variations.map(variation => {
-                    const active = variation.code === variationCode;
-                    return (
-                      <Pressable
-                        key={variation.id}
-                        onPress={() => handleVariationSelect(variation)}
-                        style={[
-                          styles.variationCard,
-                          {
-                            backgroundColor: colors.card,
-                            borderColor: active ? colors.primary : colors.border,
-                          },
-                        ]}
-                      >
-                        <View style={styles.variationTextWrap}>
-                          <Text style={[styles.variationName, { color: colors.foreground }]}>
-                            {variation.name}
-                          </Text>
-                          {variation.amount ? (
-                            <Text style={[styles.variationAmount, { color: colors.textSecondary }]}>
-                              {formatMoney(Number(variation.amount))}
+                  <Pressable
+                    onPress={() => setIsVariationPickerOpen(open => !open)}
+                    style={[
+                      styles.variationCard,
+                      {
+                        backgroundColor: colors.card,
+                        borderColor: isVariationPickerOpen ? colors.primary : colors.border,
+                      },
+                    ]}
+                  >
+                    <View style={styles.variationTextWrap}>
+                      <Text style={[styles.variationName, { color: colors.foreground }]}>
+                        {selectedVariation?.name || `Select ${isEducation ? "exam type" : "bouquet"}`}
+                      </Text>
+                      {selectedVariation?.amount ? (
+                        <Text style={[styles.variationAmount, { color: colors.textSecondary }]}>
+                          {formatMoney(Number(selectedVariation.amount))}
+                        </Text>
+                      ) : null}
+                    </View>
+                    <ChevronDown
+                      size={18}
+                      color={isVariationPickerOpen ? colors.primary : colors.textTertiary}
+                      style={{ transform: [{ rotate: isVariationPickerOpen ? "180deg" : "0deg" }] }}
+                    />
+                  </Pressable>
+
+                  {isVariationPickerOpen &&
+                    variations.map(variation => {
+                      const active = variation.code === variationCode;
+                      return (
+                        <Pressable
+                          key={variation.id}
+                          onPress={() => handleVariationSelect(variation)}
+                          style={[
+                            styles.variationOption,
+                            {
+                              backgroundColor: active ? `${colors.primary}12` : colors.card,
+                              borderColor: active ? colors.primary : colors.border,
+                            },
+                          ]}
+                        >
+                          <View style={styles.variationTextWrap}>
+                            <Text style={[styles.variationName, { color: colors.foreground }]}>
+                              {variation.name}
                             </Text>
-                          ) : null}
-                        </View>
-                        <ChevronDown
-                          size={18}
-                          color={active ? colors.primary : colors.textTertiary}
-                        />
-                      </Pressable>
-                    );
-                  })}
+                            {variation.amount ? (
+                              <Text style={[styles.variationAmount, { color: colors.textSecondary }]}>
+                                {formatMoney(Number(variation.amount))}
+                              </Text>
+                            ) : null}
+                          </View>
+                        </Pressable>
+                      );
+                    })}
                 </View>
               )}
+            </View>
+          )}
+
+          {isEducation && (
+            <View style={styles.section}>
+              <Text style={[styles.label, { color: colors.textSecondary }]}>
+                Quantity
+              </Text>
+              <TextInput
+                value={quantity}
+                onChangeText={setQuantity}
+                keyboardType="number-pad"
+                placeholder="1"
+                placeholderTextColor={colors.textTertiary}
+                style={[
+                  styles.input,
+                  {
+                    color: colors.foreground,
+                    backgroundColor: colors.card,
+                    borderColor: colors.border,
+                  },
+                ]}
+              />
             </View>
           )}
 
@@ -882,6 +985,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+  },
+  variationOption: {
+    minHeight: 58,
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 12,
+    flexDirection: "row",
+    alignItems: "center",
   },
   variationTextWrap: { flex: 1, paddingRight: 10 },
   variationName: {

@@ -159,6 +159,8 @@ function RootLayoutNav() {
                       <Stack.Screen name="notifications" options={{ headerShown: false }} />
                       <Stack.Screen name="airtime" options={{ headerShown: false }} />
                       <Stack.Screen name="data" options={{ headerShown: false }} />
+                      <Stack.Screen name="subscription" options={{ headerShown: false }} />
+                      <Stack.Screen name="pay-bills" options={{ headerShown: false }} />
                       <Stack.Screen name="more-services" options={{ headerShown: false }} />
                       <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
                     </Stack>

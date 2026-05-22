@@ -1,20 +1,37 @@
-/**
- * Pay Bills Screen - Placeholder
- * Coming soon feature
- */
-
 import { darkColors, designTokens, lightColors } from "@/constants/palette";
 import { Stack, useRouter } from "expo-router";
-import { ArrowLeft, FileText, Sparkles } from "lucide-react-native";
+import { ArrowLeft, GraduationCap, Tv, Zap } from "lucide-react-native";
 import React from "react";
 import {
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
-    useColorScheme
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  useColorScheme,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+
+const billOptions = [
+  {
+    title: "Electricity",
+    description: "Pay prepaid and postpaid meter bills.",
+    href: "/electricity",
+    icon: Zap,
+  },
+  {
+    title: "Cable TV",
+    description: "Renew or change DSTV, GOtv, and Startimes subscriptions.",
+    href: "/cable",
+    icon: Tv,
+  },
+  {
+    title: "Exam Pins",
+    description: "Buy WAEC and JAMB registration or result checker pins.",
+    href: "/education",
+    icon: GraduationCap,
+  },
+] as const;
 
 export default function PayBillsScreen() {
   const colorScheme = useColorScheme();
@@ -33,104 +50,48 @@ export default function PayBillsScreen() {
           headerStyle: { backgroundColor: colors.background },
           headerTintColor: colors.foreground,
           headerLeft: () => (
-            <TouchableOpacity
-              onPress={() => router.back()}
-              style={styles.backButton}
-            >
+            <Pressable onPress={() => router.back()} style={styles.backButton}>
               <ArrowLeft size={24} color={colors.foreground} />
-            </TouchableOpacity>
+            </Pressable>
           ),
         }}
       />
 
-      <View style={styles.content}>
-        {/* Icon */}
-        <View
-          style={[
-            styles.iconContainer,
-            { backgroundColor: `${colors.primary}20` },
-          ]}
-        >
-          <FileText size={64} color={colors.primary} strokeWidth={1.5} />
-        </View>
-
-        {/* Coming Soon Badge */}
-        <View
-          style={[
-            styles.badge,
-            { backgroundColor: `${colors.primary}15`, borderColor: colors.primary },
-          ]}
-        >
-          <Sparkles size={16} color={colors.primary} />
-          <Text style={[styles.badgeText, { color: colors.primary }]}>
-            Coming Soon
-          </Text>
-        </View>
-
-        {/* Title */}
-        <Text style={[styles.title, { color: colors.foreground }]}>
-          Pay Your Bills
-        </Text>
-
-        {/* Description */}
-        <Text style={[styles.description, { color: colors.textSecondary }]}>
-          Conveniently pay all your utility bills, subscriptions, and services in one place.
-          This feature is currently under development and will be available soon!
-        </Text>
-
-        {/* Features List */}
-        <View style={styles.featuresList}>
-          <FeatureItem
-            text="Electricity bills (EKEDC, IKEDC, AEDC, etc.)"
-            colors={colors}
-          />
-          <FeatureItem
-            text="Cable TV (DSTV, GOTV, Startimes)"
-            colors={colors}
-          />
-          <FeatureItem
-            text="Internet subscriptions"
-            colors={colors}
-          />
-          <FeatureItem
-            text="Government services and taxes"
-            colors={colors}
-          />
-        </View>
-
-        {/* Back Button */}
-        <TouchableOpacity
-          style={[styles.backHomeButton, { backgroundColor: colors.primary }]}
-          onPress={() => router.back()}
-          activeOpacity={0.8}
-        >
-          <Text
-            style={[
-              styles.backHomeText,
-              { color: colors.primaryForeground },
-            ]}
-          >
-            Back to Home
-          </Text>
-        </TouchableOpacity>
-      </View>
+      <ScrollView contentContainerStyle={styles.content}>
+        {billOptions.map(option => {
+          const Icon = option.icon;
+          return (
+            <Pressable
+              key={option.href}
+              onPress={() => router.push(option.href)}
+              style={[
+                styles.card,
+                { backgroundColor: colors.card, borderColor: colors.border },
+              ]}
+            >
+              <View
+                style={[
+                  styles.iconWrap,
+                  { backgroundColor: `${colors.primary}18` },
+                ]}
+              >
+                <Icon size={24} color={colors.primary} />
+              </View>
+              <View style={styles.cardText}>
+                <Text style={[styles.title, { color: colors.foreground }]}>
+                  {option.title}
+                </Text>
+                <Text
+                  style={[styles.description, { color: colors.textSecondary }]}
+                >
+                  {option.description}
+                </Text>
+              </View>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
     </SafeAreaView>
-  );
-}
-
-function FeatureItem({ text, colors }: { text: string; colors: any }) {
-  return (
-    <View style={styles.featureItem}>
-      <View
-        style={[
-          styles.featureBullet,
-          { backgroundColor: colors.primary },
-        ]}
-      />
-      <Text style={[styles.featureText, { color: colors.textSecondary }]}>
-        {text}
-      </Text>
-    </View>
   );
 }
 
@@ -143,74 +104,35 @@ const styles = StyleSheet.create({
     marginLeft: -designTokens.spacing.xs,
   },
   content: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: designTokens.spacing.xl,
+    padding: designTokens.spacing.lg,
+    gap: designTokens.spacing.md,
   },
-  iconContainer: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: designTokens.spacing.lg,
-  },
-  badge: {
+  card: {
+    minHeight: 104,
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: designTokens.spacing.md,
     flexDirection: "row",
     alignItems: "center",
-    gap: designTokens.spacing.xs,
-    paddingHorizontal: designTokens.spacing.md,
-    paddingVertical: designTokens.spacing.xs,
-    borderRadius: designTokens.radius.full,
-    borderWidth: 1,
-    marginBottom: designTokens.spacing.md,
+    gap: designTokens.spacing.md,
   },
-  badgeText: {
-    fontSize: designTokens.fontSize.sm,
-    fontWeight: "600",
+  iconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cardText: {
+    flex: 1,
   },
   title: {
-    fontSize: designTokens.fontSize["3xl"],
-    fontWeight: "700",
-    textAlign: "center",
-    marginBottom: designTokens.spacing.md,
+    fontSize: 17,
+    fontWeight: "800",
   },
   description: {
-    fontSize: designTokens.fontSize.base,
-    textAlign: "center",
-    lineHeight: 24,
-    marginBottom: designTokens.spacing.xl,
-  },
-  featuresList: {
-    width: "100%",
-    gap: designTokens.spacing.md,
-    marginBottom: designTokens.spacing.xl,
-  },
-  featureItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: designTokens.spacing.md,
-  },
-  featureBullet: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  featureText: {
-    flex: 1,
-    fontSize: designTokens.fontSize.sm,
-    lineHeight: 20,
-  },
-  backHomeButton: {
-    width: "100%",
-    paddingVertical: designTokens.spacing.md,
-    borderRadius: designTokens.radius.lg,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  backHomeText: {
-    fontSize: designTokens.fontSize.base,
-    fontWeight: "600",
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: 4,
   },
 });

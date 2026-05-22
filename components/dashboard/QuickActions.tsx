@@ -2,7 +2,7 @@
 // Following HOME_PAGE_GUIDE.md specifications
 import { useTheme } from "@/context/ThemeContext";
 import { useRouter } from "expo-router";
-import { Phone, Tv, Wifi, Zap } from "lucide-react-native";
+import { BadgeCheck, FileText, GraduationCap, MoreHorizontal, Phone, Tv, Wifi, Zap } from "lucide-react-native";
 import React from "react";
 import {
     Pressable,
@@ -32,6 +32,18 @@ const actions: QuickAction[] = [
     route: "/airtime",
   },
   {
+    id: "subscription",
+    label: "Subscription",
+    Icon: BadgeCheck,
+    route: "/subscription",
+  },
+  {
+    id: "bills",
+    label: "Bills",
+    Icon: FileText,
+    route: "/pay-bills",
+  },
+  {
     id: "electricity",
     label: "Electricity",
     Icon: Zap,
@@ -42,6 +54,18 @@ const actions: QuickAction[] = [
     label: "Cable TV",
     Icon: Tv,
     route: "/cable",
+  },
+  {
+    id: "education",
+    label: "Exam Pins",
+    Icon: GraduationCap,
+    route: "/education",
+  },
+  {
+    id: "more",
+    label: "More",
+    Icon: MoreHorizontal,
+    route: "/more-services",
   },
 ];
 
@@ -89,6 +113,7 @@ const styles = StyleSheet.create({
   },
   actionsCard: {
     flexDirection: "row",
+    flexWrap: "wrap",
     justifyContent: "space-between",
     borderRadius: 12,
     paddingVertical: 16,
@@ -102,9 +127,10 @@ const styles = StyleSheet.create({
   },
   actionItem: {
     alignItems: "center",
-    flex: 1,
+    width: "22%",
     gap: 8,
-    padding: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 4,
   },
   iconContainer: {
     width: 48,
