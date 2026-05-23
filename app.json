@@ -7,7 +7,7 @@
     "icon": "./assets/images/ios-dark.png",
     "scheme": "nexusdatasub",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": false,
+    "newArchEnabled": true,
     "ios": {
       "bundleIdentifier": "com.nexus.nexusdatasub",
       "googleServicesFile": "./GoogleService-Info.plist",
@@ -45,7 +45,7 @@
       "permissions": [
         "NOTIFICATIONS"
       ],
-      "newArchEnabled": false,
+      "newArchEnabled": true,
       "minSdkVersion": 24,
       "targetSdkVersion": 34
     },
