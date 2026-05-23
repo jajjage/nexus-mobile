@@ -80,6 +80,7 @@ export function ProductPurchaseScreen({
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const showCategories = productType === "data";
 
   // === STATE PER GUIDE SECTION 4 ===
   // Shared
@@ -194,10 +195,10 @@ export function ProductPurchaseScreen({
 
   // Auto-select first category from DB on load
   useEffect(() => {
-    if (!selectedCategory && categories.length > 0) {
+    if (showCategories && !selectedCategory && categories.length > 0) {
       setSelectedCategory(categories[0].slug);
     }
-  }, [categories, selectedCategory]);
+  }, [categories, selectedCategory, showCategories]);
 
   // === PRODUCT FILTERING (GUIDE SECTION 4 - FLOW 2) ===
   const filteredProducts = useMemo(() => {
@@ -219,13 +220,14 @@ export function ProductPurchaseScreen({
       }
     }
 
-    // Step 2: Filter by selected category
-      if (selectedCategory) {
-        products = products.filter(
-          (p: Product) =>
-            p.category?.slug?.toLowerCase() === (selectedCategory ?? "").toLowerCase()
-        );
-      }
+    // Step 2: Filter by selected category when this product type uses categories.
+    if (showCategories && selectedCategory) {
+      products = products.filter(
+        (p: Product) =>
+          p.category?.slug?.toLowerCase() ===
+          (selectedCategory ?? "").toLowerCase()
+      );
+    }
 
     // Step 3: Deduplication by product ID
     const seen = new Set<string>();
@@ -243,7 +245,7 @@ export function ProductPurchaseScreen({
     });
 
     return products;
-  }, [productsData, productType, selectedNetwork, selectedCategory]);
+  }, [productsData, productType, selectedNetwork, selectedCategory, showCategories]);
 
   // Get markup percent for a product
   const getMarkupPercent = useCallback(
@@ -571,12 +573,14 @@ export function ProductPurchaseScreen({
         />
 
         {/* Category Tabs */}
-        <CategoryTabs
-          categories={categories}
-          selectedCategory={selectedCategory}
-          onSelect={handleCategorySelect}
-          isLoading={categoriesLoading}
-        />
+        {showCategories && (
+          <CategoryTabs
+            categories={categories}
+            selectedCategory={selectedCategory}
+            onSelect={handleCategorySelect}
+            isLoading={categoriesLoading}
+          />
+        )}
 
         {/* Product Grid */}
         <View style={styles.flex}>

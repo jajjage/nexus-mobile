@@ -33,7 +33,7 @@ const actions: QuickAction[] = [
   },
   {
     id: "subscription",
-    label: "Subscription",
+    label: "Call Sub",
     Icon: BadgeCheck,
     route: "/subscription",
   },
