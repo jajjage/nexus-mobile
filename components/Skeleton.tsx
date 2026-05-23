@@ -37,6 +37,7 @@ export function Skeleton({
 
   return (
     <Animated.View
+      collapsable={false}
       style={[
         styles.skeleton,
         {

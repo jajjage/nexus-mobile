@@ -55,3 +55,19 @@
 -dontwarn org.bouncycastle.**
 -dontwarn org.conscrypt.**
 -dontwarn org.openjsse.**
+
+# React Native Reanimated
+-keep class com.swmansion.reanimated.** { *; }
+-dontwarn com.swmansion.reanimated.**
+
+# React Native Screens
+-keep class com.swmansion.rnscreens.** { *; }
+-dontwarn com.swmansion.rnscreens.**
+
+# React Native Gesture Handler
+-keep class com.swmansion.gesturehandler.** { *; }
+-dontwarn com.swmansion.gesturehandler.**
+
+# React Native TurboModules
+-keep class com.facebook.react.turbomodule.** { *; }
+

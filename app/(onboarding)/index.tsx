@@ -146,6 +146,7 @@ export default function OnboardingScreen() {
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.sliderViewport} {...panResponder.panHandlers}>
         <Animated.View
+          collapsable={false}
           style={[
             styles.slide,
             {

@@ -120,9 +120,11 @@ export default function RootLayout() {
   }
 
   return (
-    <ThemeProvider>
-      <RootLayoutNav />
-    </ThemeProvider>
+    <SafeAreaProvider>
+      <ThemeProvider>
+        <RootLayoutNav />
+      </ThemeProvider>
+    </SafeAreaProvider>
   );
 }
 

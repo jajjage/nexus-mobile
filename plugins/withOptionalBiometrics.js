@@ -37,8 +37,39 @@ const withOptionalBiometrics = (config) => {
       }
     });
 
+    // Add tools namespace to manifest element if missing
+    if (!androidManifest.manifest.$['xmlns:tools']) {
+      androidManifest.manifest.$['xmlns:tools'] = 'http://schemas.android.com/tools';
+    }
+
+    // Add activity override to application element
+    const mainApplication = androidManifest.manifest.application[0];
+    if (!mainApplication.activity) {
+      mainApplication.activity = [];
+    }
+
+    const activityName = 'com.google.mlkit.vision.codescanner.internal.GmsBarcodeScanningDelegateActivity';
+    const existingActivity = mainApplication.activity.find(
+      (a) => a.$['android:name'] === activityName
+    );
+
+    if (existingActivity) {
+      existingActivity.$['android:screenOrientation'] = 'fullSensor';
+      existingActivity.$['tools:replace'] = 'android:screenOrientation';
+    } else {
+      mainApplication.activity.push({
+        $: {
+          'android:name': activityName,
+          'android:screenOrientation': 'fullSensor',
+          'tools:replace': 'android:screenOrientation',
+          'android:exported': 'false'
+        }
+      });
+    }
+
     return config;
   });
 };
 
 module.exports = withOptionalBiometrics;
+
