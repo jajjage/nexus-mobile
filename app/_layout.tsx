@@ -12,6 +12,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { View } from 'react-native';
 import 'react-native-reanimated';
 import { Toaster } from 'sonner-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { darkColors, lightColors } from '@/constants/palette';
 import { AuthProvider, useAuthContext } from '@/context/AuthContext';
