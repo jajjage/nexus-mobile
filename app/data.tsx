@@ -38,6 +38,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useBiometricAuth } from "@/hooks/useBiometric";
 import { useCategories } from "@/hooks/useCategories";
 import { useCompletePaymentFlow } from "@/hooks/useCompletePaymentFlow";
+import { getAppPreferences } from "@/hooks/useAppPreferences";
 import { useProducts } from "@/hooks/useProducts";
 import { useSupplierMarkupMap } from "@/hooks/useSupplierMarkup";
 import { useTopup } from "@/hooks/useTopup";
@@ -69,6 +70,43 @@ type ProductPurchaseScreenProps = {
   processingMessage?: string;
   EmptyIcon?: React.ComponentType<{ size: number; color: string }>;
 };
+
+type ProductItemProps = {
+  item: Product;
+  isSelected: boolean;
+  onSelect: (product: Product) => void;
+  markupPercent: number;
+  isEligible: boolean;
+  isGuest: boolean;
+  cardWidth: number;
+};
+
+const MemoizedProductItem = React.memo(
+  ({
+    item,
+    isSelected,
+    onSelect,
+    markupPercent,
+    isEligible,
+    isGuest,
+    cardWidth,
+  }: ProductItemProps) => (
+    <View style={{ width: cardWidth }}>
+      <ProductCard
+        product={item}
+        isSelected={isSelected}
+        onSelect={onSelect}
+        markupPercent={markupPercent}
+        isEligibleForOffer={isEligible}
+        isGuest={isGuest}
+      />
+    </View>
+  ),
+  (prevProps, nextProps) =>
+    prevProps.isSelected === nextProps.isSelected &&
+    prevProps.item.id === nextProps.item.id &&
+    prevProps.isEligible === nextProps.isEligible
+);
 
 export function ProductPurchaseScreen({
   productType = "data",
@@ -104,6 +142,14 @@ export function ProductPurchaseScreen({
 
   // Refs
   const checkoutSheetRef = useRef<BottomSheet>(null);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   // === HOOKS ===
   const { data: productsData, isLoading: productsLoading } = useProducts({
@@ -119,6 +165,7 @@ export function ProductPurchaseScreen({
   const { authenticate, checkBiometricSupport } = useBiometricAuth();
   const { processPayment, submitPIN, reset: resetPaymentFlow, isLoading: isPaymentProcessing, currentStep: paymentStep, error: paymentError } = useCompletePaymentFlow({
     onSuccess: (transactionId) => {
+      if (!isMountedRef.current) return;
       setLastTransactionId(transactionId);
       setLastErrorMessage(null);
       setCheckoutMode("success");
@@ -126,6 +173,7 @@ export function ProductPurchaseScreen({
       checkoutSheetRef.current?.expand();
     },
     onError: (error) => {
+      if (!isMountedRef.current) return;
       setLastErrorMessage(error);
       setCheckoutMode("failed");
       // Expand sheet to show failure
@@ -362,12 +410,16 @@ export function ProductPurchaseScreen({
           markupPercent: markup,
         });
         // Wait for BottomSheet close animation (350ms) + buffer
-        setTimeout(() => setShowPinModal(true), 450);
+        setTimeout(() => {
+          if (!isMountedRef.current) return;
+          setShowPinModal(true);
+        }, 450);
       } else {
         // Handle validation errors - expand sheet to show error
         setLastErrorMessage(getUserFriendlyError(result.error || "Payment failed"));
         // Wait for Reanimated animation to finish before changing state (400ms)
         setTimeout(() => {
+          if (!isMountedRef.current) return;
           setCheckoutMode("failed");
           checkoutSheetRef.current?.expand();
         }, 400);
@@ -376,6 +428,7 @@ export function ProductPurchaseScreen({
       const errorMsg = error instanceof Error ? error.message : "Payment processing failed";
       setLastErrorMessage(getUserFriendlyError(errorMsg));
       setTimeout(() => {
+        if (!isMountedRef.current) return;
         setCheckoutMode("failed");
         checkoutSheetRef.current?.expand();
       }, 400);
@@ -423,7 +476,10 @@ export function ProductPurchaseScreen({
   // Retry after failure
   const handleRetry = useCallback(() => {
     // Wait for animation to complete before state change
-    setTimeout(() => setCheckoutMode("checkout"), 250);
+    setTimeout(() => {
+      if (!isMountedRef.current) return;
+      setCheckoutMode("checkout");
+    }, 250);
   }, []);
 
   // Close and reset
@@ -438,9 +494,10 @@ export function ProductPurchaseScreen({
       setSelectedProduct(null);
       
       // Check if user wants auto-redirect
-      const prefs = require("@/hooks/useAppPreferences").getAppPreferences();
+      const prefs = getAppPreferences();
       if (prefs.autoRedirectAfterPurchase) {
         setTimeout(() => {
+          if (!isMountedRef.current) return;
           router.push("/(tabs)");
         }, 500);
       }
@@ -484,29 +541,6 @@ export function ProductPurchaseScreen({
 
   const canProceed = isPhoneValid && selectedNetwork && selectedProduct;
 
-  // Optimize rendering with React.memo
-  const MemoizedProductItem = React.memo(
-    ({ item, isSelected, onSelect, markupPercent, isEligible, isGuest }: any) => (
-      <View style={{ width: CARD_WIDTH }}>
-        <ProductCard
-          product={item}
-          isSelected={isSelected}
-          onSelect={onSelect}
-          markupPercent={markupPercent}
-          isEligibleForOffer={isEligible}
-          isGuest={isGuest}
-        />
-      </View>
-    ),
-    (prevProps, nextProps) => {
-      return (
-        prevProps.isSelected === nextProps.isSelected &&
-        prevProps.item.id === nextProps.item.id &&
-        prevProps.isEligible === nextProps.isEligible
-      );
-    }
-  );
-
   const renderProductItem = useCallback(
     ({ item }: { item: Product }) => (
       <MemoizedProductItem
@@ -516,6 +550,7 @@ export function ProductPurchaseScreen({
         markupPercent={getMarkupPercent(item)}
         isEligible={isEligibleForOffer(item)}
         isGuest={!user}
+        cardWidth={CARD_WIDTH}
       />
     ),
     [selectedProduct, handleProductSelect, getMarkupPercent, isEligibleForOffer, user]
