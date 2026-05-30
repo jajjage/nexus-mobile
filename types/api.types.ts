@@ -36,6 +36,15 @@ export interface User {
   virtualAccountNumber?: string;
   virtualAccountBankName?: string;
   virtualAccountAccountName?: string;
+  virtualAccounts?: Array<{
+    id: string;
+    accountNumber: string;
+    bankCode?: string | null;
+    bankName?: string | null;
+    accountName?: string | null;
+    providerVaId?: string | null;
+    providerName?: string | null;
+  }>;
   balance: string;
   cashback?: {
     availableBalance: number;

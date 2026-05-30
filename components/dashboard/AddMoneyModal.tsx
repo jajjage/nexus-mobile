@@ -15,6 +15,20 @@ interface AddMoneyModalProps {
 export function AddMoneyModal({ isVisible, onClose }: AddMoneyModalProps) {
   const { user, refetch } = useAuth();
   const [copied, setCopied] = React.useState(false);
+  const virtualAccounts =
+    user?.virtualAccounts && user.virtualAccounts.length > 0
+      ? user.virtualAccounts
+      : user?.virtualAccountNumber
+        ? [
+            {
+              id: user.virtualAccountNumber,
+              accountNumber: user.virtualAccountNumber,
+              bankName: user.virtualAccountBankName,
+              accountName: user.virtualAccountAccountName,
+            },
+          ]
+        : [];
+  const hasVirtualAccount = virtualAccounts.length > 0;
 
   // Mutation to create virtual account
   const { mutate: createVirtualAccount, isPending, isError } = useMutation({
@@ -36,14 +50,14 @@ export function AddMoneyModal({ isVisible, onClose }: AddMoneyModalProps) {
 
   // Effect to trigger creation if user doesn't have an account
   useEffect(() => {
-    if (isVisible && user && !user.virtualAccountNumber && !isPending && !isError) {
+    if (isVisible && user && !hasVirtualAccount && !isPending && !isError) {
       createVirtualAccount();
     }
-  }, [isVisible, user, user?.virtualAccountNumber]);
+  }, [isVisible, user, hasVirtualAccount, isPending, isError, createVirtualAccount]);
 
-  const handleCopy = async () => {
-    if (user?.virtualAccountNumber) {
-      await Clipboard.setStringAsync(user.virtualAccountNumber);
+  const handleCopy = async (accountNumber: string) => {
+    if (accountNumber) {
+      await Clipboard.setStringAsync(accountNumber);
       setCopied(true);
       toast.success('Account number copied');
       
@@ -53,11 +67,17 @@ export function AddMoneyModal({ isVisible, onClose }: AddMoneyModalProps) {
   };
 
   const handleShare = async () => {
-    if (!user?.virtualAccountNumber) return;
+    if (!hasVirtualAccount) return;
+    const details = virtualAccounts
+      .map(
+        account =>
+          `Bank: ${account.bankName || 'Bank'}\nAccount Number: ${account.accountNumber}\nAccount Name: ${account.accountName || user.fullName}`
+      )
+      .join('\n\n');
     
     try {
       await Share.share({
-        message: `Here are my Nexus account details:\nBank: ${user.virtualAccountBankName}\nAccount Number: ${user.virtualAccountNumber}\nAccount Name: ${user.virtualAccountAccountName}`,
+        message: `Here are my Nexus account details:\n${details}`,
       });
     } catch (error) {
      toast.error('Could not share details');
@@ -84,22 +104,23 @@ export function AddMoneyModal({ isVisible, onClose }: AddMoneyModalProps) {
           </View>
 
           <View style={styles.content}>
-            {user.virtualAccountNumber ? (
+            {hasVirtualAccount ? (
               // Account Exists View
               <View style={styles.accountDetails}>
                 <Text style={styles.instruction}>
-                  Transfer money to this account to fund your wallet instantly.
+                  Transfer money to any account below to fund your wallet instantly.
                 </Text>
 
-                <View style={styles.detailCard}>
+                {virtualAccounts.map(account => (
+                  <View key={account.id || account.accountNumber} style={styles.detailCard}>
                     <View>
-                        <Text style={styles.bankName}>{user.virtualAccountBankName || 'Wema Bank'}</Text>
-                        <Text style={styles.accountName}>{user.virtualAccountAccountName || user.fullName}</Text>
+                        <Text style={styles.bankName}>{account.bankName || 'Bank'}</Text>
+                        <Text style={styles.accountName}>{account.accountName || user.fullName}</Text>
                     </View>
                   
                   <View style={styles.accountNumberContainer}>
-                    <Text style={styles.accountNumber}>{user.virtualAccountNumber}</Text>
-                    <TouchableOpacity onPress={handleCopy} style={styles.copyButton}>
+                    <Text style={styles.accountNumber}>{account.accountNumber}</Text>
+                    <TouchableOpacity onPress={() => handleCopy(account.accountNumber)} style={styles.copyButton}>
                       {copied ? (
                         <Check size={20} color="#2E7D32" />
                       ) : (
@@ -108,6 +129,7 @@ export function AddMoneyModal({ isVisible, onClose }: AddMoneyModalProps) {
                     </TouchableOpacity>
                   </View>
                 </View>
+                ))}
 
                 <View style={styles.actions}>
                   <TouchableOpacity style={styles.actionButton} onPress={handleShare}>
