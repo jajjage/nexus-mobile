@@ -1,5 +1,6 @@
 import { useValidateAgentCode } from "@/hooks/useAgent";
 import { useRegister } from "@/hooks/useAuth";
+import { installReferrerService } from "@/services/install-referrer.service";
 import { agentService } from "@/services/agent.service";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link, useLocalSearchParams } from "expo-router";
@@ -70,6 +71,7 @@ export default function RegisterScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agentCodeFromUrl, setAgentCodeFromUrl] = useState<string | undefined>(undefined);
+  const [hasEditedAgentCode, setHasEditedAgentCode] = useState(false);
   const [agentInfo, setAgentInfo] = useState<{ isValid: boolean; name?: string } | null>(null);
 
   // Get agent code from deep link or URL params
@@ -78,8 +80,26 @@ export default function RegisterScreen() {
     
     if (code) {
       setAgentCodeFromUrl(code);
+      setHasEditedAgentCode(false);
+      installReferrerService.setPendingAgentCode(code);
     }
   }, [params?.agentCode, params?.code]);
+
+  useEffect(() => {
+    if (agentCodeFromUrl || hasEditedAgentCode) return;
+
+    let isMounted = true;
+
+    installReferrerService.captureInstallReferrerOnce().then((code) => {
+      if (isMounted && code) {
+        setAgentCodeFromUrl(code.trim().toUpperCase());
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [agentCodeFromUrl, hasEditedAgentCode]);
   // Validate agent code if provided
   const {
     data: validationResult,
@@ -132,7 +152,7 @@ export default function RegisterScreen() {
   const hasKnownInvalidAgentCode =
     !!agentCodeFromUrl && validationResult?.valid === false;
   
-  const canSubmit = isValid && !isPending && !isValidating && !hasKnownInvalidAgentCode;
+  const canSubmit = isValid && !isPending && !isValidating;
 
   const onSubmit = async (data: RegisterFormData) => {
     const normalizedAgentCode = data.agentCode?.trim().toUpperCase();
@@ -368,7 +388,7 @@ export default function RegisterScreen() {
                 </FormControl>
 
                 {/* Agent Code Field (Optional or from deep link) */}
-                {!agentCodeFromUrl && (
+                {(!agentCodeFromUrl || hasKnownInvalidAgentCode) && (
                   <FormControl isInvalid={!!errors.agentCode}>
                     <FormControlLabel className="mb-2">
                       <FormControlLabelText className="text-typography-700 font-medium">
@@ -385,6 +405,9 @@ export default function RegisterScreen() {
                             autoCapitalize="characters"
                             onBlur={onBlur}
                             onChangeText={(text) => {
+                              setHasEditedAgentCode(true);
+                              setAgentCodeFromUrl(undefined);
+                              setAgentInfo(null);
                               clearErrors("agentCode");
                               onChange(text.toUpperCase());
                             }}

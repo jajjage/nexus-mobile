@@ -21,7 +21,7 @@ const SoftLockContext = createContext<SoftLockContextType | undefined>(undefined
 const LOCK_TIMEOUT = 5 * 60 * 1000; // 5 minutes
 
 export function SoftLockProvider({ children }: { children: React.ReactNode }) {
-  const { user, isLoading: isAuthLoading } = useAuthContext();
+  const { user, isLoading: isAuthLoading, isSessionExpired } = useAuthContext();
   const [isLocked, setIsLocked] = useState(false);
   const [isEnabled, setIsEnabledState] = useState(true); // Default to enabled
   const [isInitialized, setIsInitialized] = useState(false);
@@ -60,11 +60,11 @@ export function SoftLockProvider({ children }: { children: React.ReactNode }) {
     hasInitialLockCheckDone.current = true;
 
     // If user is logged in (session restored) and soft lock is enabled -> LOCK
-    if (user && isEnabled) {
+    if (user && !isSessionExpired && isEnabled) {
       console.log("[SoftLock] Cold start with user session -> Locking app");
       setIsLocked(true);
     }
-  }, [isAuthLoading, isInitialized, user, isEnabled]);
+  }, [isAuthLoading, isInitialized, user, isSessionExpired, isEnabled]);
 
   useEffect(() => {
     if (!isEnabled || !isInitialized) return;
@@ -84,7 +84,7 @@ export function SoftLockProvider({ children }: { children: React.ReactNode }) {
         if (backgroundTime.current) {
           const timeInBackground = Date.now() - backgroundTime.current;
           // Only lock if user is logged in and soft lock is enabled
-          if (timeInBackground > LOCK_TIMEOUT && user && isEnabled) {
+          if (timeInBackground > LOCK_TIMEOUT && user && !isSessionExpired && isEnabled) {
             setIsLocked(true);
             // Persist lock state
             AsyncStorage.setItem(SOFT_LOCK_STATE_KEY, 'locked').catch(console.error);
@@ -98,7 +98,7 @@ export function SoftLockProvider({ children }: { children: React.ReactNode }) {
     return () => {
       subscription.remove();
     };
-  }, [user, isEnabled, isInitialized]);
+  }, [user, isSessionExpired, isEnabled, isInitialized]);
 
   const lock = async () => {
     setIsLocked(true);
@@ -127,7 +127,7 @@ export function SoftLockProvider({ children }: { children: React.ReactNode }) {
       <View style={{ flex: 1 }} collapsable={false}>
         {children}
       </View>
-      {isLocked && isEnabled && (
+      {isLocked && isEnabled && !isSessionExpired && (
         <View style={StyleSheet.absoluteFill} pointerEvents="box-none" collapsable={false}>
           <LockScreen onUnlock={unlock} />
         </View>

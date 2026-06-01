@@ -58,9 +58,13 @@ export function LoadingOverlay({
   // Background circle size includes extra padding so logo isn't cramped
   const containerSize = diameter + 50; 
 
+  if (!visible) {
+    return null;
+  }
+
   return (
     <View collapsable={false}>
-      <Modal visible={visible} transparent animationType="fade" statusBarTranslucent hardwareAccelerated>
+      <Modal visible transparent animationType="fade" statusBarTranslucent>
         <View style={[styles.overlay, { backgroundColor: 'rgba(0, 0, 0, 0.7)' }]} collapsable={false}>
           <View style={styles.center} pointerEvents="box-none" collapsable={false}>
             {/* Animated Container (White Circle + Pulse) */}

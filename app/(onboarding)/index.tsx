@@ -89,7 +89,7 @@ export default function OnboardingScreen() {
 
   const completeOnboarding = async () => {
     await AsyncStorage.setItem(ONBOARDING_KEY, "true");
-    router.replace("/(auth)/login");
+    router.replace("/(auth)/register");
   };
 
   const handleNext = () => {

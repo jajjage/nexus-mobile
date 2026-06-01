@@ -27,6 +27,7 @@
     "cbor-x": "^1.6.0",
     "elliptic": "^6.5.6",
     "expo": "~54.0.32",
+    "expo-application": "~7.0.8",
     "expo-blur": "~15.0.8",
     "expo-build-properties": "~1.0.10",
     "expo-clipboard": "~8.0.8",

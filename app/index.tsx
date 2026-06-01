@@ -36,9 +36,9 @@ export default function Index() {
     return <Redirect href="/(onboarding)" />;
   }
 
-  // Priority 2: Not authenticated -> Go to Login
+  // Priority 2: Not authenticated -> Go to Register
   if (!isAuthenticated) {
-    return <Redirect href="/(auth)/login" />;
+    return <Redirect href="/(auth)/register" />;
   }
 
   // Priority 3: Authenticated -> Go to Dashboard

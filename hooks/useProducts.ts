@@ -13,13 +13,14 @@ export const productKeys = {
 
 export function useProducts(
   params?: ProductQueryParams,
-  options?: { staleTime?: number }
+  options?: { staleTime?: number; retry?: boolean | number }
 ) {
   return useQuery({
     queryKey: productKeys.list(params || {}),
     queryFn: () => productService.getProducts(params),
     // Use provided staleTime or default to 5 minutes
     staleTime: options?.staleTime ?? 1000 * 60 * 5,
+    retry: options?.retry,
     select: (response) => response.data, // Return just the payload (products + pagination)
   });
 }

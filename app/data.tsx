@@ -152,10 +152,20 @@ export function ProductPurchaseScreen({
   }, []);
 
   // === HOOKS ===
-  const { data: productsData, isLoading: productsLoading } = useProducts({
-    productType,
-    isActive: true,
-  });
+  const {
+    data: productsData,
+    isLoading: productsLoading,
+    isFetching: productsFetching,
+    isError: productsError,
+    error: productsLoadError,
+    refetch: refetchProducts,
+  } = useProducts(
+    {
+      productType,
+      isActive: true,
+    },
+    { retry: 1 }
+  );
   const { data: categories = [], isLoading: categoriesLoading } = useCategories();
   const markupMap = useSupplierMarkupMap();
   const { eligibleIds } = useEligibleOffers();
@@ -540,6 +550,19 @@ export function ProductPurchaseScreen({
       : null;
 
   const canProceed = isPhoneValid && selectedNetwork && selectedProduct;
+  const productsLoadErrorMessage = useMemo(() => {
+    const status = (productsLoadError as any)?.response?.status;
+
+    if (status === 401 || status === 403) {
+      return "Your session could not be verified. Please log in again.";
+    }
+
+    return getUserFriendlyError(
+      productsLoadError instanceof Error
+        ? productsLoadError.message
+        : "Please check your connection and try again."
+    );
+  }, [productsLoadError]);
 
   const renderProductItem = useCallback(
     ({ item }: { item: Product }) => (
@@ -626,6 +649,38 @@ export function ProductPurchaseScreen({
                 Loading plans...
               </Text>
             </View>
+          ) : productsError ? (
+            <View style={styles.emptyContainer}>
+              <EmptyIcon size={48} color={colors.textDisabled} />
+              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+                Unable to load plans right now
+              </Text>
+              <Text style={[styles.errorText, { color: colors.textDisabled }]}>
+                {productsLoadErrorMessage}
+              </Text>
+              <TouchableOpacity
+                style={[styles.retryButton, { backgroundColor: colors.primary }]}
+                onPress={() => refetchProducts()}
+                disabled={productsFetching}
+                activeOpacity={0.8}
+              >
+                {productsFetching ? (
+                  <ActivityIndicator
+                    size="small"
+                    color={colors.primaryForeground}
+                  />
+                ) : (
+                  <Text
+                    style={[
+                      styles.retryText,
+                      { color: colors.primaryForeground },
+                    ]}
+                  >
+                    Retry
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
           ) : filteredProducts.length === 0 ? (
             <View style={styles.emptyContainer}>
               <EmptyIcon size={48} color={colors.textDisabled} />
@@ -644,6 +699,7 @@ export function ProductPurchaseScreen({
               contentContainerStyle={styles.gridContent}
               columnWrapperStyle={styles.gridRow}
               showsVerticalScrollIndicator={false}
+              removeClippedSubviews={false}
             />
           )}
         </View>
@@ -788,7 +844,26 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: designTokens.fontSize.base,
+    fontWeight: "600",
     textAlign: "center",
+  },
+  errorText: {
+    marginHorizontal: designTokens.spacing.lg,
+    fontSize: designTokens.fontSize.sm,
+    textAlign: "center",
+    lineHeight: 20,
+  },
+  retryButton: {
+    minWidth: 120,
+    height: 44,
+    borderRadius: designTokens.radius.md,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: designTokens.spacing.lg,
+  },
+  retryText: {
+    fontSize: designTokens.fontSize.sm,
+    fontWeight: "700",
   },
   gridContent: {
     padding: designTokens.spacing.md,

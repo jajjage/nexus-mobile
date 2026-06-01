@@ -4,6 +4,7 @@ import { tokenStorage, userStorage } from "./secure-store";
 
 export const BASE_URL =
   process.env.EXPO_PUBLIC_AUTH_URL || "http://10.152.118.138:3000/api/v1";
+const API_TIMEOUT_MS = 15000;
 
 /**
  * Session expiry callback - set by AuthContext
@@ -21,11 +22,13 @@ export const clearSessionExpiredCallback = () => {
 
 const apiClient: AxiosInstance = axios.create({
   baseURL: BASE_URL,
+  timeout: API_TIMEOUT_MS,
   headers: { "Content-Type": "application/json" },
 });
 
 export const publicApiClient: AxiosInstance = axios.create({
   baseURL: BASE_URL,
+  timeout: API_TIMEOUT_MS,
   headers: { "Content-Type": "application/json" },
 });
 
@@ -83,9 +86,13 @@ apiClient.interceptors.response.use(
 
         console.log("[api-client] Attempting token refresh with endpoint:", `${BASE_URL}/mobile/auth/refresh`);
 
-        const response = await axios.post(`${BASE_URL}/mobile/auth/refresh`, {
-          refreshToken,
-        });
+        const response = await axios.post(
+          `${BASE_URL}/mobile/auth/refresh`,
+          {
+            refreshToken,
+          },
+          { timeout: API_TIMEOUT_MS }
+        );
         
         console.log("[api-client] Token refresh successful, response:", response.data);
         

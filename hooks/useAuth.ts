@@ -1,6 +1,7 @@
 import { useAuthContext } from "@/context/AuthContext";
 import { clearSessionExpiredCallback, setSessionExpiredCallback } from "@/lib/api-client";
 import { tokenStorage } from "@/lib/secure-store";
+import { installReferrerService } from "@/services/install-referrer.service";
 import { authService } from "@/services/auth.service";
 import { User } from "@/types/api.types";
 import { LoginRequest, RegisterRequest } from "@/types/auth.types";
@@ -302,6 +303,7 @@ export function useRegister() {
   const mutation = useMutation({
     mutationFn: (data: RegisterRequest) => authService.register(data),
     onSuccess: () => {
+      installReferrerService.clearPendingAgentCode();
       toast.success("Account Created! 🎉", {
         description: "Please login with your credentials",
       });

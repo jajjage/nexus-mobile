@@ -171,6 +171,7 @@ export function PlanGrid({
           keyExtractor={(item) => item.id}
           numColumns={2}
           showsVerticalScrollIndicator={false}
+          removeClippedSubviews={false}
           contentContainerStyle={styles.gridContent}
           columnWrapperStyle={styles.columnWrapper}
         />

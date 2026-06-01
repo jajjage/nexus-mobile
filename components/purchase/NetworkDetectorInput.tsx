@@ -211,6 +211,7 @@ export function NetworkDetectorInput({
             <FlatList
               data={recentNumbers}
               keyExtractor={(item) => item.id}
+              removeClippedSubviews={false}
               renderItem={({ item }) => (
                 <TouchableOpacity
                   style={[
