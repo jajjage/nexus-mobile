@@ -89,7 +89,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       } catch (error) {
         console.error("Failed to load user from storage", error);
-        setUserState(null);
       } finally {
         setIsLoading(false);
       }

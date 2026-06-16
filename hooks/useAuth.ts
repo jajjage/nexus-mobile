@@ -186,6 +186,12 @@ export function useLogin() {
       setIsLoading(true);
 
       try {
+        if ((response as any)?.user) {
+          const loginUser = (response as any).user as User;
+          setUser(loginUser);
+          queryClient.setQueryData(authKeys.currentUser(), loginUser);
+        }
+
         // Wait a moment to ensure token is persisted to SecureStore
         await new Promise(resolve => setTimeout(resolve, 100));
         
