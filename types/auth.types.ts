@@ -34,9 +34,10 @@ export interface UpdatePasswordRequest {
 
 // What we get from /mobile-auth/login and /mobile-auth/refresh
 export interface MobileAuthResponse {
-  id: string;
-  email: string;
-  role: string;
+  user?: import("./api.types").User;
+  id?: string;
+  email?: string;
+  role?: string;
   accessToken: string;
   refreshToken: string;
 }

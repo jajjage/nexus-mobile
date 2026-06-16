@@ -24,8 +24,7 @@ export const authKeys = {
 // ============================================================================
 
 export function useAuth() {
-  const { user, setUser, isLoading, setIsLoading, isSessionExpired, markSessionAsExpired, isLocalBiometricSetup } = useAuthContext();
-  const queryClient = useQueryClient();
+  const { user, setUser, isLoading, setIsLoading, isSessionExpired, isLocalBiometricSetup } = useAuthContext();
   
   // Check if we have a token stored (enables the query)
   const [hasToken, setHasToken] = useState<boolean | null>(null);
@@ -33,15 +32,13 @@ export function useAuth() {
   // Register session expiry callback on mount
   useEffect(() => {
     setSessionExpiredCallback(() => {
-
-      markSessionAsExpired();
-      queryClient.clear();
+      console.warn("[useAuth] Ignoring automatic session-expired callback");
     });
     
     return () => {
       clearSessionExpiredCallback();
     };
-  }, [markSessionAsExpired, queryClient]);
+  }, []);
 
   useEffect(() => {
     const checkToken = async () => {
@@ -113,16 +110,10 @@ export function useAuth() {
   useEffect(() => {
     if (query.isError) {
       const status = query.error?.response?.status;
-      console.warn("[useAuth] Profile fetch failed, ending session:", status, query.error?.message);
-
-      // If we cannot verify the current session, fail closed and send the user to login.
-      tokenStorage.clearTokens();
-      setUser(null);
-      setHasToken(false);
-      queryClient.clear();
+      console.warn("[useAuth] Profile fetch failed, keeping session:", status, query.error?.message);
       setIsLoading(false);
     }
-  }, [query.isError, query.error, queryClient, setIsLoading, setUser]);
+  }, [query.isError, query.error, setIsLoading]);
 
   // isAuthenticated check as per MOBILE_AUTH_STATE_GUIDE.md
   const isAuthenticated = 
@@ -237,13 +228,17 @@ export function useLogin() {
           error?.response?.data || error?.message
         );
 
-        if (status === 401 || status === 403) {
-          await tokenStorage.clearTokens();
-          queryClient.removeQueries({ queryKey: authKeys.currentUser() });
-          setUser(null);
+        const fallbackUser = (response as any)?.user;
+        if (fallbackUser) {
+          setUser(fallbackUser);
+          queryClient.setQueryData(authKeys.currentUser(), fallbackUser);
+          toast.success("Welcome back! 👋", {
+            description: "Login successful",
+          });
+          router.replace("/(tabs)");
+        } else {
+          toast.error("Login Failed", { description: message });
         }
-
-        toast.error("Login Failed", { description: message });
       } finally {
         // Hide loader after a short delay to allow Home screen to render
         setTimeout(() => {

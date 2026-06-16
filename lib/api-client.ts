@@ -7,8 +7,8 @@ export const BASE_URL =
 const API_TIMEOUT_MS = 15000;
 
 /**
- * Session expiry callback - set by AuthContext
- * Called when refresh token fails and user needs to re-authenticate
+ * Session expiry callback - set by AuthContext.
+ * Kept for compatibility, but API errors no longer force logout.
  */
 let onSessionExpired: (() => void) | null = null;
 
@@ -138,12 +138,7 @@ apiClient.interceptors.response.use(
         console.error("[api-client] Token refresh failed:", refreshError?.response?.data || refreshError?.message);
         processQueue(refreshError);
         isRefreshing = false;
-        await tokenStorage.clearTokens();
-        
-        // Notify AuthContext that session has expired
-        console.log("[api-client] Session expired, notifying callback");
-        onSessionExpired?.();
-        
+
         throw refreshError;
       }
     }

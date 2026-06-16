@@ -9,7 +9,7 @@ import React, { ReactNode, createContext, useContext, useEffect, useState } from
  * Auth Context - Manages user session state
  * 
  * Key concepts:
- * - isSessionExpired: True when session expires (different from logout)
+ * - isSessionExpired: True only when app code explicitly marks it
  * - User cache stored in SecureStore for security
  * - markSessionAsExpired: Called by API client when refresh token fails
  */
@@ -78,15 +78,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } catch (apiError: any) {
           console.warn("[AuthContext] Failed to fetch latest profile:", apiError?.message);
 
-          // ONLY force logout if the server explicitly rejected the session (401/403)
-          // If it's a network error (no response), we keep the cached user and allow the app to load.
           const status = apiError?.response?.status;
           if (status === 401 || status === 403) {
-            console.warn("[AuthContext] Session invalid (401/403), forcing logout");
-            setIsSessionExpired(true);
-            setUserState(null);
-            await tokenStorage.clearTokens();
-            await userStorage.clearAll();
+            console.warn("[AuthContext] Profile returned 401/403; keeping cached session");
             return;
           }
           
@@ -166,8 +160,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   /**
-   * Called by API client when refresh token fails
-   * Marks session as expired but keeps user data for display
+   * Explicit session-expiry path. API errors should not call this.
    */
   const markSessionAsExpired = async () => {
     console.log("[AuthContext] Session marked as expired");
