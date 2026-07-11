@@ -166,7 +166,7 @@ export async function buildWebAuthnAssertion(
     const result = await Passkey.get({
       challenge: challenge,
       rpId: rpId,
-      allowCredentials: allowCredentials, // Pass the filter to OS
+      allowCredentials: allowCredentials as any, // react-native-passkey accepts the WebAuthn descriptor shape at runtime.
       userVerification: "required",
       timeout: 60000,
     });

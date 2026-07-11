@@ -71,7 +71,7 @@ export function AddMoneyModal({ isVisible, onClose }: AddMoneyModalProps) {
     const details = virtualAccounts
       .map(
         account =>
-          `Bank: ${account.bankName || 'Bank'}\nAccount Number: ${account.accountNumber}\nAccount Name: ${account.accountName || user.fullName}`
+          `Bank: ${account.bankName || 'Bank'}\nAccount Number: ${account.accountNumber}\nAccount Name: ${account.accountName || user?.fullName || 'Nexus user'}`
       )
       .join('\n\n');
     
