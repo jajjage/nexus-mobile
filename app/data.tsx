@@ -166,7 +166,7 @@ export function ProductPurchaseScreen({
     },
     { retry: 1 }
   );
-  const { data: categories = [], isLoading: categoriesLoading } = useCategories();
+  const { data: categories = [], isLoading: categoriesLoading } = useCategories(productType);
   const markupMap = useSupplierMarkupMap();
   const { eligibleIds } = useEligibleOffers();
   const { mutateAsync: topup, isPending: isTopupPending } = useTopup();

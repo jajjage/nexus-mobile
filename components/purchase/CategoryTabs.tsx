@@ -1,6 +1,6 @@
 /**
- * CategoryTabs - Horizontal scrollable category filter tabs
- * Per mobile-airtime-data-guide.md Section 3.C
+ * CategoryTabs - Compact wrapped category selector
+ * Per mobile-airtime-data-guide & user-activity-and-mobile-catalog-experience spec
  */
 
 import { darkColors, designTokens, lightColors } from "@/constants/palette";
@@ -9,13 +9,17 @@ import * as Haptics from "expo-haptics";
 import React from "react";
 import {
   ActivityIndicator,
-  ScrollView,
+  Dimensions,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
   useColorScheme,
 } from "react-native";
+
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const HORIZONTAL_PADDING = designTokens.spacing.md * 2; // 16 * 2 = 32
+const GAP = designTokens.spacing.sm; // 8
 
 interface CategoryTabsProps {
   categories: ProductCategory[];
@@ -33,12 +37,13 @@ export function CategoryTabs({
   const colorScheme = useColorScheme();
   const colors = colorScheme === "dark" ? darkColors : lightColors;
 
-  // Sort categories by priority (if exists)
-  const sortedCategories = [...categories].sort(
-    (a, b) => (a.priority || 0) - (b.priority || 0)
-  );
+  // Sort categories by priority first, then name
+  const sortedCategories = [...categories].sort((a, b) => {
+    const priorityDiff = (a.priority || 0) - (b.priority || 0);
+    if (priorityDiff !== 0) return priorityDiff;
+    return a.name.localeCompare(b.name);
+  });
 
-  // Map categories from DB only (no hardcoded "All")
   const allTabs = sortedCategories.map((cat) => ({
     slug: cat.slug,
     name: cat.name,
@@ -58,13 +63,20 @@ export function CategoryTabs({
     );
   }
 
+  if (allTabs.length === 0) {
+    return null; // Graceful empty state without breaking layout
+  }
+
+  // Calculate dynamic width for 3-column layout on 4+ items vs flex-equal for 1-3 items
+  const count = allTabs.length;
+  const isThreeColumnLayout = count >= 4;
+  const itemWidth = isThreeColumnLayout
+    ? (SCREEN_WIDTH - HORIZONTAL_PADDING - GAP * 2) / 3
+    : undefined;
+
   return (
     <View style={styles.container}>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
+      <View style={styles.wrapContainer}>
         {allTabs.map((tab) => {
           const isActive = selectedCategory === tab.slug;
 
@@ -73,8 +85,10 @@ export function CategoryTabs({
               key={tab.id}
               style={[
                 styles.tab,
+                isThreeColumnLayout
+                  ? { width: itemWidth }
+                  : { flex: 1, minWidth: 90 },
                 {
-                  // Per guide: Active = bg-primary text-primary-foreground (pill)
                   backgroundColor: isActive ? colors.primary : "transparent",
                   borderColor: isActive ? colors.primary : colors.border,
                 },
@@ -84,6 +98,8 @@ export function CategoryTabs({
               activeOpacity={0.7}
             >
               <Text
+                numberOfLines={1}
+                ellipsizeMode="tail"
                 style={[
                   styles.tabText,
                   {
@@ -99,13 +115,14 @@ export function CategoryTabs({
             </TouchableOpacity>
           );
         })}
-      </ScrollView>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
+    paddingHorizontal: designTokens.spacing.md,
     marginBottom: designTokens.spacing.md,
   },
   loadingContainer: {
@@ -113,18 +130,20 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  scrollContent: {
-    paddingHorizontal: designTokens.spacing.md,
-    gap: designTokens.spacing.sm,
+  wrapContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: GAP,
   },
   tab: {
     paddingVertical: designTokens.spacing.sm,
-    paddingHorizontal: designTokens.spacing.lg,
+    paddingHorizontal: designTokens.spacing.sm,
     borderRadius: designTokens.radius.full,
     borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
   },
   activeTab: {
-    // Shadow for pill effect
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -134,6 +153,7 @@ const styles = StyleSheet.create({
   tabText: {
     fontSize: designTokens.fontSize.sm,
     fontWeight: "500",
+    textAlign: "center",
   },
   activeTabText: {
     fontWeight: "600",

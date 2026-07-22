@@ -42,9 +42,11 @@ export const categoryService = {
    * Get all categories (public)
    * GET /categories
    */
-  getAll: async (): Promise<ProductCategory[]> => {
+  getAll: async (productType?: string): Promise<ProductCategory[]> => {
     const response =
-      await apiClient.get<ApiResponse<ProductCategory[]>>("/categories");
+      await apiClient.get<ApiResponse<ProductCategory[]>>("/categories", {
+        params: productType ? { productType } : undefined,
+      });
     // Handle both array and { categories: [...] } response shapes
     const data = response.data.data;
     if (Array.isArray(data)) {
