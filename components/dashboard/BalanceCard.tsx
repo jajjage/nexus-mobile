@@ -1,7 +1,7 @@
 // components/dashboard/BalanceCard.tsx
 import { useTheme } from "@/context/ThemeContext";
 import * as Clipboard from "expo-clipboard";
-import { Copy, Eye, EyeOff, Plus } from "lucide-react-native";
+import { Copy, Eye, EyeOff } from "lucide-react-native";
 import React from "react";
 import {
   Pressable,
@@ -63,37 +63,43 @@ export function BalanceCard({
         </Pressable>
 
         {/* Right: Add Money Button */}
-        <Pressable style={styles.addMoneyButton} onPress={onAddMoney}>
-          <Plus size={14} color="#FFFBF5" />
-          <Text style={styles.addMoneyText}>Add Money</Text>
-        </Pressable>
+        {/* {onAddMoney && (
+          <Pressable style={styles.addMoneyButton} onPress={onAddMoney}>
+            <Plus size={14} color="#FFFBF5" />
+            <Text style={styles.addMoneyText}>Add Money</Text>
+          </Pressable>
+        )} */}
       </View>
 
-      {/* Balance Amount & Virtual Account Row */}
+      {/* Balance Amount */}
       <View style={styles.contentRow}>
         <View style={styles.balanceContainer}>
           <Text style={styles.balanceAmount}>
             {isBalanceVisible ? `₦${formatCurrency(balance)}` : "*****"}
           </Text>
         </View>
-
-        {/* Virtual Account Number Display */}
-        {Boolean(virtualAccountNumber) && (
-          <Pressable
-            style={styles.virtualAccountRow}
-            onPress={handleCopyVirtualAccount}
-            hitSlop={6}
-          >
-            <Text style={styles.virtualAccountText}>
-              {virtualAccountBankName ? `${virtualAccountBankName} ` : "VA "}
-              <Text style={styles.virtualAccountNumberText}>
-                {virtualAccountNumber}
-              </Text>
-            </Text>
-            <Copy size={13} color="rgba(255,251,245,0.9)" />
-          </Pressable>
-        )}
       </View>
+
+      {/* Prominent Dedicated Virtual Account Banner for Instant Funding */}
+      {Boolean(virtualAccountNumber) && (
+        <Pressable
+          style={styles.prominentVaContainer}
+          onPress={handleCopyVirtualAccount}
+        >
+          <View style={styles.vaInfoLeft}>
+            <Text style={styles.vaHeaderLabel}>DEPOSIT ACCOUNT</Text>
+            <Text style={styles.vaBankAndNumberText}>
+              {virtualAccountBankName ? `${virtualAccountBankName} • ` : ""}
+              <Text style={styles.vaNumberHighlight}>{virtualAccountNumber}</Text>
+            </Text>
+          </View>
+
+          <View style={styles.copyBadge}>
+            <Copy size={14} color="#FFFFFF" />
+            <Text style={styles.copyBadgeText}>Copy</Text>
+          </View>
+        </Pressable>
+      )}
     </View>
   );
 }
@@ -103,10 +109,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 16,
     marginHorizontal: 16,
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    borderBottomLeftRadius: 0,
-    borderBottomRightRadius: 0,
+    borderRadius: 16,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.1,
@@ -134,14 +137,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "rgba(255, 255, 255, 0.2)",
-    height: 36,
-    paddingHorizontal: 12,
+    height: 32,
+    paddingHorizontal: 10,
     borderRadius: 9999,
-    gap: 6,
+    gap: 4,
   },
   addMoneyText: {
     color: "#FFFBF5",
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "600",
   },
   contentRow: {
@@ -149,6 +152,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "flex-end",
     marginTop: 4,
+    marginBottom: 12,
   },
   balanceContainer: {
     position: "relative",
@@ -158,27 +162,53 @@ const styles = StyleSheet.create({
   },
   balanceAmount: {
     color: "#FFFFFF",
-    fontSize: 24,
-    fontWeight: "700",
+    fontSize: 28,
+    fontWeight: "800",
   },
-  virtualAccountRow: {
+  prominentVaContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(0, 0, 0, 0.15)",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    gap: 6,
+    justifyContent: "space-between",
+    backgroundColor: "rgba(0, 0, 0, 0.25)",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.15)",
   },
-  virtualAccountText: {
-    color: "rgba(255,251,245,0.85)",
-    fontSize: 11,
-    fontWeight: "400",
+  vaInfoLeft: {
+    flex: 1,
   },
-  virtualAccountNumberText: {
+  vaHeaderLabel: {
+    color: "rgba(255, 251, 245, 0.7)",
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 0.8,
+    marginBottom: 2,
+  },
+  vaBankAndNumberText: {
+    color: "rgba(255, 255, 255, 0.9)",
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  vaNumberHighlight: {
+    color: "#FFFFFF",
+    fontSize: 15,
+    fontWeight: "800",
+    letterSpacing: 0.5,
+  },
+  copyBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    gap: 4,
+  },
+  copyBadgeText: {
     color: "#FFFFFF",
     fontSize: 12,
-    fontWeight: "600",
-    letterSpacing: 0.3,
+    fontWeight: "700",
   },
 });

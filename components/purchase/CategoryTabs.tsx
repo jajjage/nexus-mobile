@@ -67,12 +67,9 @@ export function CategoryTabs({
     return null; // Graceful empty state without breaking layout
   }
 
-  // Calculate dynamic width for 3-column layout on 4+ items vs flex-equal for 1-3 items
-  const count = allTabs.length;
-  const isThreeColumnLayout = count >= 4;
-  const itemWidth = isThreeColumnLayout
-    ? (SCREEN_WIDTH - HORIZONTAL_PADDING - GAP * 2) / 3
-    : undefined;
+  // Calculate width for 3 items per row (3 columns)
+  const usableWidth = SCREEN_WIDTH - HORIZONTAL_PADDING;
+  const itemWidth = Math.floor((usableWidth - GAP * 2) / 3 - 1);
 
   return (
     <View style={styles.container}>
@@ -85,9 +82,7 @@ export function CategoryTabs({
               key={tab.id}
               style={[
                 styles.tab,
-                isThreeColumnLayout
-                  ? { width: itemWidth }
-                  : { flex: 1, minWidth: 90 },
+                { width: itemWidth },
                 {
                   backgroundColor: isActive ? colors.primary : "transparent",
                   borderColor: isActive ? colors.primary : colors.border,

@@ -55,7 +55,7 @@ import {
   calculateFinalPrice,
   getResolvedProductPrice,
 } from "@/lib/price-calculator";
-import { Product } from "@/types/product.types";
+import { Product, ProductCategory } from "@/types/product.types";
 import { getUserFriendlyError } from "@/utils/errors";
 
 const { width } = Dimensions.get("window");
@@ -163,6 +163,8 @@ export function ProductPurchaseScreen({
     {
       productType,
       isActive: true,
+      perPage: 100,
+      limit: 100,
     },
     { retry: 1 }
   );
@@ -251,30 +253,82 @@ export function ProductPurchaseScreen({
     }
   }, [networks, selectedNetwork]);
 
-  // Auto-select first category from DB on load
+  // === CATEGORY FILTERING BY SELECTED NETWORK & PRODUCT AVAILABILITY ===
+  // Only show a category tab if there is at least 1 active product for the currently selected network
+  const visibleCategories = useMemo(() => {
+    if (!categories.length) return [];
+    if (!productsData?.products?.length) return categories;
+
+    // Filter products for current productType and selectedNetwork
+    const productsForNetwork = productsData.products.filter((p: Product) => {
+      if (p.productType?.toLowerCase() !== productType?.toLowerCase()) return false;
+      if (p.isActive === false) return false;
+
+      if (selectedNetwork) {
+        const pOpName = p.operator?.name?.toLowerCase() || "";
+        const opSlug = selectedNetwork.toLowerCase();
+
+        let matches = false;
+        if (opSlug === "9mobile") {
+          matches = pOpName.includes("9mobile") || pOpName.includes("etisalat");
+        } else {
+          matches = pOpName.includes(opSlug);
+        }
+        if (!matches) return false;
+      }
+      return true;
+    });
+
+    // Gather set of categories that have products for this network
+    const activeCategoryIdentifiers = new Set<string>();
+    productsForNetwork.forEach((p: Product) => {
+      if (p.category?.slug) activeCategoryIdentifiers.add(p.category.slug.toLowerCase());
+      if (p.category?.name) activeCategoryIdentifiers.add(p.category.name.toLowerCase());
+      if (p.categoryId) activeCategoryIdentifiers.add(p.categoryId.toLowerCase());
+    });
+
+    // Filter DB categories to ONLY those present in activeCategoryIdentifiers for this network
+    const filtered = categories.filter((c: ProductCategory) =>
+      activeCategoryIdentifiers.has(c.slug.toLowerCase()) ||
+      activeCategoryIdentifiers.has(c.name.toLowerCase()) ||
+      activeCategoryIdentifiers.has(c.id.toLowerCase())
+    );
+
+    return filtered.length > 0 ? filtered : categories;
+  }, [categories, productsData, productType, selectedNetwork]);
+
+  // Auto-select first valid category when visibleCategories or selectedNetwork changes
   useEffect(() => {
-    if (showCategories && !selectedCategory && categories.length > 0) {
-      setSelectedCategory(categories[0].slug);
+    if (showCategories && visibleCategories.length > 0) {
+      const isCurrentValid = visibleCategories.some(
+        (c) =>
+          c.slug.toLowerCase() === selectedCategory?.toLowerCase() ||
+          c.id.toLowerCase() === selectedCategory?.toLowerCase()
+      );
+      if (!selectedCategory || !isCurrentValid) {
+        setSelectedCategory(visibleCategories[0].slug);
+      }
     }
-  }, [categories, selectedCategory, showCategories]);
+  }, [visibleCategories, selectedCategory, showCategories]);
 
   // === PRODUCT FILTERING (GUIDE SECTION 4 - FLOW 2) ===
   const filteredProducts = useMemo(() => {
     if (!productsData?.products) return [];
 
     let products = productsData.products.filter(
-      (product: Product) => product.productType === productType
+      (product: Product) => product.productType?.toLowerCase() === productType?.toLowerCase()
     );
 
     // Step 1: Filter by selected network
     if (selectedNetwork) {
-      // Find the specific operator name for this network from our derived list
       const operatorInfo = networks.find(n => n.slug === selectedNetwork);
-      
       if (operatorInfo) {
-        products = products.filter((p: Product) =>
-          p.operator?.name === operatorInfo.name
-        );
+        products = products.filter((p: Product) => {
+          const pOpName = p.operator?.name?.toLowerCase() || "";
+          const opName = operatorInfo.name?.toLowerCase() || "";
+          const opSlug = operatorInfo.slug?.toLowerCase() || "";
+          return pOpName.includes(opSlug) || opName.includes(pOpName) || pOpName === opName;
+        });
       }
     }
 
@@ -282,8 +336,8 @@ export function ProductPurchaseScreen({
     if (showCategories && selectedCategory) {
       products = products.filter(
         (p: Product) =>
-          p.category?.slug?.toLowerCase() ===
-          (selectedCategory ?? "").toLowerCase()
+          p.category?.slug?.toLowerCase() === selectedCategory.toLowerCase() ||
+          p.categoryId === selectedCategory
       );
     }
 
@@ -633,7 +687,7 @@ export function ProductPurchaseScreen({
         {/* Category Tabs */}
         {showCategories && (
           <CategoryTabs
-            categories={categories}
+            categories={visibleCategories}
             selectedCategory={selectedCategory}
             onSelect={handleCategorySelect}
             isLoading={categoriesLoading}

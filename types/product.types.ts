@@ -82,6 +82,8 @@ export interface ProductsResponseData {
 
 export interface ProductQueryParams {
   page?: number;
+  perPage?: number;
+  limit?: number;
   productType?: string;
   operatorId?: string;
   search?: string;
