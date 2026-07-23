@@ -1,7 +1,7 @@
 // components/dashboard/BalanceCard.tsx
 import { useTheme } from "@/context/ThemeContext";
 import * as Clipboard from "expo-clipboard";
-import { Copy, Eye, EyeOff } from "lucide-react-native";
+import { Copy, Eye, EyeOff, Plus } from "lucide-react-native";
 import React from "react";
 import {
   Pressable,
@@ -63,12 +63,12 @@ export function BalanceCard({
         </Pressable>
 
         {/* Right: Add Money Button */}
-        {/* {onAddMoney && (
+        {onAddMoney && (
           <Pressable style={styles.addMoneyButton} onPress={onAddMoney}>
             <Plus size={14} color="#FFFBF5" />
             <Text style={styles.addMoneyText}>Add Money</Text>
           </Pressable>
-        )} */}
+        )}
       </View>
 
       {/* Balance Amount */}
