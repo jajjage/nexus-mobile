@@ -11,9 +11,14 @@ import {
     UserProfileCard
 } from "@/components/dashboard";
 import { AddMoneyModal } from "@/components/dashboard/AddMoneyModal";
+import { DashboardAnnouncementModal } from "@/components/dashboard/DashboardAnnouncementModal";
 import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/hooks/useAuth";
 import { useBalanceVisibility } from "@/hooks/useBalanceVisibility";
+import {
+  useDashboardAnnouncement,
+  useMarkAnnouncementViewed,
+} from "@/hooks/useDashboardAnnouncement";
 import { useUnreadNotificationCount } from "@/hooks/useUnreadNotificationCount";
 import { useRecentTransactions } from "@/hooks/useWallet";
 import { useWalletBalance } from "@/hooks/useWalletBalance";
@@ -23,7 +28,7 @@ import {
     isDataTransaction,
 } from "@/lib/transactionUtils";
 import { useRouter } from "expo-router";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { RefreshControl, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -38,9 +43,17 @@ export default function HomeScreen() {
   const { balance, refetch: refetchBalance } = useWalletBalance();
   const { data: transactions = [], refetch: refetchTransactions } = useRecentTransactions();
   const { count: unreadNotificationCount, refetch: refetchNotifications } = useUnreadNotificationCount();
+  const {
+    data: dashboardAnnouncement,
+    error: dashboardAnnouncementError,
+    isFetching: isFetchingAnnouncement,
+    refetch: refetchAnnouncement,
+  } = useDashboardAnnouncement();
+  const markAnnouncementViewed = useMarkAnnouncementViewed();
 
   const [refreshing, setRefreshing] = useState(false);
   const [showAddMoney, setShowAddMoney] = useState(false);
+  const [dismissedAnnouncementId, setDismissedAnnouncementId] = useState<string | null>(null);
 
   // Generate initials from user name
   const getInitials = (name: string) => {
@@ -66,11 +79,53 @@ export default function HomeScreen() {
         refetchTransactions(),
         refetchUser(),
         refetchNotifications(),
+        refetchAnnouncement(),
       ]);
     } finally {
       setRefreshing(false);
     }
-  }, []);
+  }, [
+    refetchBalance,
+    refetchTransactions,
+    refetchUser,
+    refetchNotifications,
+    refetchAnnouncement,
+  ]);
+
+  const showAnnouncement =
+    !!dashboardAnnouncement &&
+    dashboardAnnouncement.id !== dismissedAnnouncementId;
+
+  useEffect(() => {
+    console.log("[DEBUG-announcement] dashboard query state", {
+      isFetchingAnnouncement,
+      hasAnnouncement: !!dashboardAnnouncement,
+      announcementId: dashboardAnnouncement?.id,
+      title: dashboardAnnouncement?.title,
+      dismissedAnnouncementId,
+      showAnnouncement,
+      error:
+        dashboardAnnouncementError instanceof Error
+          ? dashboardAnnouncementError.message
+          : dashboardAnnouncementError,
+    });
+  }, [
+    dashboardAnnouncement,
+    dashboardAnnouncementError,
+    dismissedAnnouncementId,
+    isFetchingAnnouncement,
+    showAnnouncement,
+  ]);
+
+  const dismissAnnouncement = () => {
+    if (!dashboardAnnouncement) return;
+    console.log(
+      "[DEBUG-announcement] dismissing announcement",
+      dashboardAnnouncement.id
+    );
+    setDismissedAnnouncementId(dashboardAnnouncement.id);
+    markAnnouncementViewed.mutate(dashboardAnnouncement.id);
+  };
 
   return (
     <View style={[styles.container, { paddingTop: insets.top, backgroundColor: isDark ? colors.background : "#EFF1F2" }]}>
@@ -167,6 +222,12 @@ export default function HomeScreen() {
       <AddMoneyModal 
         isVisible={showAddMoney} 
         onClose={() => setShowAddMoney(false)} 
+      />
+
+      <DashboardAnnouncementModal
+        visible={showAnnouncement}
+        announcement={dashboardAnnouncement || null}
+        onDismiss={dismissAnnouncement}
       />
     </View>
   );
