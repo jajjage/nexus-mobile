@@ -41,7 +41,9 @@ export function usePushNotifications() {
       }
     };
 
-    setup();
+    setup().catch((error) => {
+      console.warn('[usePushNotifications] Startup setup failed:', error);
+    });
 
     // Listen for notifications received while app is foreground
     notificationListener.current = NotificationService.addNotificationReceivedListener(
@@ -75,7 +77,9 @@ export function usePushNotifications() {
 
      const subscription = AppState.addEventListener('change', (nextAppState) => {
        if (nextAppState === 'active' && user) {
-         NotificationService.syncToken();
+          void NotificationService.syncToken().catch((error) => {
+            console.warn('[usePushNotifications] Resume token sync failed:', error);
+          });
        }
      });
 

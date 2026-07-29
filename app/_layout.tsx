@@ -73,7 +73,9 @@ export const unstable_settings = {
 };
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
-SplashScreen.preventAutoHideAsync();
+void SplashScreen.preventAutoHideAsync().catch((error) => {
+  console.warn('[SplashScreen] Failed to prevent auto hide:', error);
+});
 
 // Create query client
 const queryClient = new QueryClient({
@@ -97,12 +99,16 @@ function AppInitializer() {
   useEffect(() => {
     if (!isLoading) {
       // Hide the native splash screen only when auth loading is complete
-      SplashScreen.hideAsync();
+      void SplashScreen.hideAsync().catch((error) => {
+        console.warn('[SplashScreen] Failed to hide after auth load:', error);
+      });
     }
   }, [isLoading]);
 
   useEffect(() => {
-    installReferrerService.captureInstallReferrerOnce();
+    void installReferrerService.captureInstallReferrerOnce().catch((error) => {
+      console.warn('[InstallReferrer] Startup capture failed:', error);
+    });
   }, []);
   
   return <LoadingOverlay visible={isLoading} />;
@@ -119,7 +125,23 @@ export default function RootLayout() {
     if (error) throw error;
   }, [error]);
 
-  // Removed early SplashScreen.hideAsync here - moved to AppInitializer
+  useEffect(() => {
+    if (loaded) {
+      void SplashScreen.hideAsync().catch((hideError) => {
+        console.warn('[SplashScreen] Failed to hide after fonts load:', hideError);
+      });
+    }
+  }, [loaded]);
+
+  useEffect(() => {
+    const fallback = setTimeout(() => {
+      void SplashScreen.hideAsync().catch((hideError) => {
+        console.warn('[SplashScreen] Failed to hide from fallback:', hideError);
+      });
+    }, 4000);
+
+    return () => clearTimeout(fallback);
+  }, []);
 
   if (!loaded) {
     return null;
@@ -141,7 +163,11 @@ function RootLayoutNav() {
   // This prevents white flashes during navigation transitions
   useEffect(() => {
     const setRootBackground = async () => {
-      await SystemUI.setBackgroundColorAsync(colors.background);
+      try {
+        await SystemUI.setBackgroundColorAsync(colors.background);
+      } catch (error) {
+        console.warn('[SystemUI] Failed to set root background:', error);
+      }
     };
     setRootBackground();
   }, [colors.background]);

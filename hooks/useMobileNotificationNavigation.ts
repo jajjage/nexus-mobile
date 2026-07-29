@@ -28,11 +28,15 @@ export function useMobileNotificationNavigation() {
 
   useEffect(() => {
     // 1. Handle notification that OPENED the app (Cold Start)
-    Notifications.getLastNotificationResponseAsync().then((response) => {
-      if (response) {
-        handleNotificationResponse(response);
-      }
-    });
+    Notifications.getLastNotificationResponseAsync()
+      .then((response) => {
+        if (response) {
+          handleNotificationResponse(response);
+        }
+      })
+      .catch((error) => {
+        console.warn('[useMobileNotificationNavigation] Failed to read launch notification:', error);
+      });
 
     // 2. Listen for interactions while app is running (Foreground/Background)
     const subscription = Notifications.addNotificationResponseReceivedListener(handleNotificationResponse);
