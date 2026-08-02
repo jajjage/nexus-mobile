@@ -7,6 +7,7 @@ import { useAuthContext } from './AuthContext';
 // Storage keys for soft lock state
 const SOFT_LOCK_ENABLED_KEY = "soft_lock_enabled";
 const SOFT_LOCK_STATE_KEY = "soft_lock_state";
+const LAST_ACTIVE_TIME_KEY = "soft_lock_last_active_time";
 
 interface SoftLockContextType {
   isLocked: boolean;
@@ -18,7 +19,7 @@ interface SoftLockContextType {
 
 const SoftLockContext = createContext<SoftLockContextType | undefined>(undefined);
 
-const LOCK_TIMEOUT = 5 * 60 * 1000; // 5 minutes
+const LOCK_TIMEOUT = 5 * 60 * 1000; // 5 minutes inactivity timeout
 
 export function SoftLockProvider({ children }: { children: React.ReactNode }) {
   const { user, isLoading: isAuthLoading, isSessionExpired } = useAuthContext();
@@ -34,12 +35,24 @@ export function SoftLockProvider({ children }: { children: React.ReactNode }) {
     const init = async () => {
       try {
         const enabledValue = await AsyncStorage.getItem(SOFT_LOCK_ENABLED_KEY);
-        // We don't check SOFT_LOCK_STATE_KEY anymore for initial lock, 
-        // because we force lock on cold start if logged in.
-        
-        // If no value stored, default to enabled
         const enabled = enabledValue === null ? true : enabledValue === 'true';
         setIsEnabledState(enabled);
+
+        // Check if explicit lock state or elapsed inactivity time requires lock
+        if (enabled) {
+          const lockState = await AsyncStorage.getItem(SOFT_LOCK_STATE_KEY);
+          const lastActiveStr = await AsyncStorage.getItem(LAST_ACTIVE_TIME_KEY);
+          
+          if (lockState === 'locked') {
+            setIsLocked(true);
+          } else if (lastActiveStr) {
+            const lastActive = parseInt(lastActiveStr, 10);
+            if (!isNaN(lastActive) && Date.now() - lastActive > LOCK_TIMEOUT) {
+              setIsLocked(true);
+              await AsyncStorage.setItem(SOFT_LOCK_STATE_KEY, 'locked');
+            }
+          }
+        }
       } catch (e) {
         console.error('[SoftLock] Failed to initialize from storage', e);
       } finally {
@@ -49,33 +62,25 @@ export function SoftLockProvider({ children }: { children: React.ReactNode }) {
     init();
   }, []);
 
-  // Handle Cold Start Locking
+  // Handle Cold Start Locking (only if timeout expired or explicitly locked)
   useEffect(() => {
-    // Wait until both Auth and SoftLock are initialized
     if (isAuthLoading || !isInitialized) return;
-    
-    // Only run this check once per app launch
     if (hasInitialLockCheckDone.current) return;
-    
     hasInitialLockCheckDone.current = true;
-
-    // If user is logged in (session restored) and soft lock is enabled -> LOCK
-    if (user && !isSessionExpired && isEnabled) {
-      console.log("[SoftLock] Cold start with user session -> Locking app");
-      setIsLocked(true);
-    }
-  }, [isAuthLoading, isInitialized, user, isSessionExpired, isEnabled]);
+  }, [isAuthLoading, isInitialized]);
 
   useEffect(() => {
     if (!isEnabled || !isInitialized) return;
 
-    const subscription = AppState.addEventListener('change', nextAppState => {
+    const subscription = AppState.addEventListener('change', async (nextAppState) => {
       if (
         appState.current.match(/active/) &&
         nextAppState.match(/inactive|background/)
       ) {
-        // App going to background
-        backgroundTime.current = Date.now();
+        // App going to background -> record timestamp
+        const now = Date.now();
+        backgroundTime.current = now;
+        await AsyncStorage.setItem(LAST_ACTIVE_TIME_KEY, now.toString()).catch(console.error);
       } else if (
         appState.current.match(/inactive|background/) &&
         nextAppState === 'active'
@@ -83,11 +88,10 @@ export function SoftLockProvider({ children }: { children: React.ReactNode }) {
         // App coming to foreground
         if (backgroundTime.current) {
           const timeInBackground = Date.now() - backgroundTime.current;
-          // Only lock if user is logged in and soft lock is enabled
+          // Only lock if background time exceeds timeout, user is logged in, and soft lock enabled
           if (timeInBackground > LOCK_TIMEOUT && user && !isSessionExpired && isEnabled) {
             setIsLocked(true);
-            // Persist lock state
-            AsyncStorage.setItem(SOFT_LOCK_STATE_KEY, 'locked').catch(console.error);
+            await AsyncStorage.setItem(SOFT_LOCK_STATE_KEY, 'locked').catch(console.error);
           }
         }
       }
@@ -109,6 +113,7 @@ export function SoftLockProvider({ children }: { children: React.ReactNode }) {
     setIsLocked(false);
     backgroundTime.current = null;
     await AsyncStorage.removeItem(SOFT_LOCK_STATE_KEY);
+    await AsyncStorage.setItem(LAST_ACTIVE_TIME_KEY, Date.now().toString());
   };
 
   const setEnabled = async (enabled: boolean) => {

@@ -1,4 +1,5 @@
 // app/(onboarding)/_layout.tsx
+import { lightColors } from "@/constants/palette";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Redirect, Stack } from "expo-router";
 import { useEffect, useState } from "react";
@@ -21,8 +22,8 @@ export default function OnboardingLayout() {
 
   if (isLoading) {
     return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <ActivityIndicator size="large" />
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: lightColors.background }}>
+        <ActivityIndicator size="large" color={lightColors.primary} />
       </View>
     );
   }

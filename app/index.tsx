@@ -1,3 +1,4 @@
+import { lightColors } from "@/constants/palette";
 import { useAuth } from "@/hooks/useAuth";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Redirect } from "expo-router";
@@ -25,7 +26,7 @@ export default function Index() {
 
   if (isLoading || onboardingComplete === null) {
     return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: lightColors.background }}>
         <ActivityIndicator size="large" color="#E69E19" />
       </View>
     );

@@ -13,3 +13,33 @@ index e1ff013..24b7026 100644
          } else {
              Log.w("[RNScreens]", "Reference stored in NativeProxy for tag $screenTag no longer points to valid object.")
          }
+diff --git a/node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenStack.kt b/node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenStack.kt
+index 9894cd4..b6d0f30 100644
+--- a/node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenStack.kt
++++ b/node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenStack.kt
+@@ -3,6 +3,7 @@ package com.swmansion.rnscreens
+ import android.content.Context
+ import android.graphics.Canvas
+ import android.os.Build
++import android.util.Log
+ import android.view.View
+ import com.facebook.react.bridge.ReactContext
+ import com.facebook.react.uimanager.UIManagerHelper
+@@ -351,7 +352,16 @@ class ScreenStack(
+     private fun performDraw(op: DrawingOp) {
+         // Canvas parameter can not be null here https://developer.android.com/reference/android/view/ViewGroup#drawChild(android.graphics.Canvas,%20android.view.View,%20long)
+         // So if we are passing null here, we would crash anyway
+-        super.drawChild(op.canvas!!, op.child, op.drawingTime)
++        try {
++            super.drawChild(op.canvas!!, op.child, op.drawingTime)
++        } catch (e: IndexOutOfBoundsException) {
++            // During screen transitions, the children drawing order can become
++            // stale if a child view is removed between computing the order and
++            // executing the draw pass. This is a known race condition on Android
++            // (getChildDrawingOrder returns an invalid index). The view tree will
++            // be consistent on the next frame, so we safely skip this draw.
++            Log.w(TAG, "Skipped draw due to stale children drawing order during transition", e)
++        }
+     }
+ 
+     // Can't use `drawingOpPool.removeLast` here due to issues with static name resolution in Android SDK 35+.

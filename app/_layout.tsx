@@ -7,7 +7,7 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import * as SystemUI from 'expo-system-ui';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { View } from 'react-native';
 import 'react-native-reanimated';
@@ -119,31 +119,37 @@ export default function RootLayout() {
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
     ...FontAwesome.font,
   });
+  const [fontLoadTimedOut, setFontLoadTimedOut] = useState(false);
+  const fontsReady = loaded || fontLoadTimedOut || !!error;
 
   // Expo Router uses Error Boundaries to catch errors in the navigation tree.
   useEffect(() => {
-    if (error) throw error;
+    if (error) {
+      console.warn('[Fonts] Failed to load custom fonts; continuing with system fonts:', error);
+    }
   }, [error]);
 
   useEffect(() => {
-    if (loaded) {
+    if (fontsReady) {
       void SplashScreen.hideAsync().catch((hideError) => {
-        console.warn('[SplashScreen] Failed to hide after fonts load:', hideError);
+        console.warn('[SplashScreen] Failed to hide after fonts are ready:', hideError);
       });
     }
-  }, [loaded]);
+  }, [fontsReady]);
 
   useEffect(() => {
+    // Safety fallback timer to hide splash screen if auth load hangs
     const fallback = setTimeout(() => {
+      setFontLoadTimedOut(true);
       void SplashScreen.hideAsync().catch((hideError) => {
         console.warn('[SplashScreen] Failed to hide from fallback:', hideError);
       });
-    }, 4000);
+    }, 5000);
 
     return () => clearTimeout(fallback);
   }, []);
 
-  if (!loaded) {
+  if (!fontsReady) {
     return null;
   }
 
@@ -173,17 +179,17 @@ function RootLayoutNav() {
   }, [colors.background]);
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.background }}>
       <GluestackUIProvider mode={isDark ? 'dark' : 'light'}>
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
             <SoftLockProvider>
-              <View style={{ flex: 1 }} collapsable={false}>
+              <View style={{ flex: 1, backgroundColor: colors.background }} collapsable={false}>
                 <AppInitializer />
                 <StatusBar style={isDark ? 'light' : 'dark'} />
                 <NavThemeProvider value={isDark ? NexusDarkTheme : NexusLightTheme}>
-                  <View style={{ flex: 1 }} collapsable={false}>
-                    <Stack screenOptions={{ animation: 'slide_from_right' }}>
+                  <View style={{ flex: 1, backgroundColor: colors.background }} collapsable={false}>
+                    <Stack screenOptions={{ animation: 'slide_from_right', contentStyle: { backgroundColor: colors.background } }}>
                       <Stack.Screen name="index" options={{ headerShown: false }} />
                       <Stack.Screen name="(setup)" options={{ headerShown: false }} />
                       <Stack.Screen name="(onboarding)" options={{ headerShown: false }} />
@@ -209,4 +215,3 @@ function RootLayoutNav() {
     </GestureHandlerRootView>
   );
 }
-

@@ -1,6 +1,6 @@
 import { useTheme } from "@/context/ThemeContext";
 import React, { useEffect } from "react";
-import { Image, ImageRequireSource, Modal, StyleSheet, View } from "react-native";
+import { Image, ImageRequireSource, StyleSheet, View } from "react-native";
 import Animated, {
     Easing,
     cancelAnimation,
@@ -25,7 +25,7 @@ interface LoadingLogoProps {
 /**
  * Pulsing logo loader.
  * - Shows the logo inside a white circular pulsing container.
- * - The logo remains full size ("diameter") while the white background provides ample spacing.
+ * - Rendered as an absolute overlay to prevent iOS Modal presentation issues on app launch.
  */
 export function LoadingOverlay({
   visible,
@@ -63,54 +63,46 @@ export function LoadingOverlay({
   }
 
   return (
-    <View collapsable={false}>
-      <Modal visible transparent animationType="fade" statusBarTranslucent>
-        <View style={[styles.overlay, { backgroundColor: 'rgba(0, 0, 0, 0.7)' }]} collapsable={false}>
-          <View style={styles.center} pointerEvents="box-none" collapsable={false}>
-            {/* Animated Container (White Circle + Pulse) */}
-            <Animated.View
-              collapsable={false}
-              style={[
-                styles.logoContainer,
-                animatedContainerStyle,
-                {
-                  width: containerSize,
-                  height: containerSize,
-                  borderRadius: containerSize / 2,
-                  backgroundColor: colors.card, // Match card color for the pulse circle
-                },
-              ]}
-            >
-              {/* Logo Image (Full Size) */}
-              <Image
-                source={logo}
-                resizeMode="contain"
-                style={{ width: diameter, height: diameter }}
-              />
-            </Animated.View>
-          </View>
-        </View>
-      </Modal>
+    <View style={[StyleSheet.absoluteFill, styles.overlay, { backgroundColor: colors.background, zIndex: 999999 }]} collapsable={false}>
+      <View style={styles.center} pointerEvents="box-none" collapsable={false}>
+        {/* Animated Container (White Circle + Pulse) */}
+        <Animated.View
+          collapsable={false}
+          style={[
+            styles.logoContainer,
+            animatedContainerStyle,
+            {
+              width: containerSize,
+              height: containerSize,
+              borderRadius: containerSize / 2,
+              backgroundColor: colors.card,
+            },
+          ]}
+        >
+          {/* Logo Image (Full Size) */}
+          <Image
+            source={logo}
+            resizeMode="contain"
+            style={{ width: diameter, height: diameter }}
+          />
+        </Animated.View>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   overlay: {
-    flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    // Background color set dynamically via style prop
   },
   center: {
     justifyContent: "center",
     alignItems: "center",
   },
   logoContainer: {
-    // Background color set dynamically via style prop
     justifyContent: "center",
     alignItems: "center",
-    // Optional: Add shadow if desired for depth
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,

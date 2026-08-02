@@ -1,23 +1,24 @@
 // app/(onboarding)/index.tsx
 import { lightColors } from "@/constants/palette";
+import { triggerHaptic } from "@/utils/haptics";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-    Animated,
-    Image,
-    PanResponder,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    useWindowDimensions,
-    View,
+  Animated,
+  Image,
+  PanResponder,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  useWindowDimensions,
+  View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const ONBOARDING_KEY = "@nexus_onboarding_complete";
-const SWIPE_THRESHOLD = 60;
+const SWIPE_THRESHOLD = 30;
 
 interface SlideData {
   id: string;
@@ -31,22 +32,19 @@ const slides: SlideData[] = [
     id: "1",
     image: require("@/assets/images/onboarding-connectivity.png"),
     title: "Stay Connected",
-    description:
-      "Buy data bundles and airtime instantly for any network.",
+    description: "Buy data bundles and airtime instantly for any network.",
   },
   {
     id: "2",
     image: require("@/assets/images/onboarding-utilities.png"),
     title: "Pay Bills Easily",
-    description:
-      "Settle electricity (KEDCO) and other utility bills in seconds.",
+    description: "Settle electricity (KEDCO) and other utility bills in seconds.",
   },
   {
     id: "3",
     image: require("@/assets/images/onboarding-speed.png"),
     title: "Fast & Secure",
-    description:
-      "Enjoy lightning-fast transactions with bank-level security.",
+    description: "Enjoy lightning-fast transactions with bank-level security.",
   },
 ];
 
@@ -54,23 +52,24 @@ export default function OnboardingScreen() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const [currentIndex, setCurrentIndex] = useState(0);
+  
   const contentOpacity = useRef(new Animated.Value(1)).current;
   const contentTranslateX = useRef(new Animated.Value(0)).current;
   const animationDirectionRef = useRef<1 | -1>(1);
 
   const animateSlideContent = () => {
-    contentOpacity.setValue(0);
-    contentTranslateX.setValue(animationDirectionRef.current * 28);
+    contentOpacity.setValue(0.2);
+    contentTranslateX.setValue(animationDirectionRef.current * 24);
 
     Animated.parallel([
       Animated.timing(contentOpacity, {
         toValue: 1,
-        duration: 220,
+        duration: 180,
         useNativeDriver: true,
       }),
       Animated.timing(contentTranslateX, {
         toValue: 0,
-        duration: 220,
+        duration: 180,
         useNativeDriver: true,
       }),
     ]).start();
@@ -83,16 +82,19 @@ export default function OnboardingScreen() {
   const goToIndex = (index: number) => {
     const boundedIndex = Math.max(0, Math.min(index, slides.length - 1));
     if (boundedIndex !== currentIndex) {
+      triggerHaptic.impact();
       setCurrentIndex(boundedIndex);
     }
   };
 
   const completeOnboarding = async () => {
+    triggerHaptic.notification();
     await AsyncStorage.setItem(ONBOARDING_KEY, "true");
     router.replace("/(auth)/register");
   };
 
   const handleNext = () => {
+    triggerHaptic.impact();
     if (currentIndex < slides.length - 1) {
       animationDirectionRef.current = 1;
       goToIndex(currentIndex + 1);
@@ -102,6 +104,7 @@ export default function OnboardingScreen() {
   };
 
   const handleSkip = () => {
+    triggerHaptic.impact();
     completeOnboarding();
   };
 
@@ -110,7 +113,7 @@ export default function OnboardingScreen() {
       PanResponder.create({
         onMoveShouldSetPanResponder: (_, gestureState) =>
           Math.abs(gestureState.dx) > Math.abs(gestureState.dy) &&
-          Math.abs(gestureState.dx) > 10,
+          Math.abs(gestureState.dx) > 8,
         onPanResponderRelease: (_, gestureState) => {
           if (gestureState.dx <= -SWIPE_THRESHOLD && currentIndex < slides.length - 1) {
             animationDirectionRef.current = 1;
@@ -144,6 +147,13 @@ export default function OnboardingScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
+      {/* Hidden pre-loader so all images decode in memory instantly */}
+      <View style={styles.preloadContainer} pointerEvents="none">
+        {slides.map((slide) => (
+          <Image key={slide.id} source={slide.image} style={styles.preloadImage} />
+        ))}
+      </View>
+
       <View style={styles.sliderViewport} {...panResponder.panHandlers}>
         <Animated.View
           collapsable={false}
@@ -175,11 +185,12 @@ export default function OnboardingScreen() {
         </Animated.View>
       </View>
 
-      <View style={[styles.bottomNav, { paddingBottom: insets.bottom + 20 }]}>
+      <View style={[styles.bottomNav, { paddingBottom: Math.max(insets.bottom + 20, 36) }]}>
         <TouchableOpacity
           onPress={handleSkip}
           style={styles.skipButton}
           activeOpacity={0.7}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
         >
           <Text style={styles.skipText}>Skip</Text>
         </TouchableOpacity>
@@ -189,12 +200,13 @@ export default function OnboardingScreen() {
         <TouchableOpacity
           onPress={handleNext}
           style={styles.nextButton}
-          activeOpacity={0.85}
+          activeOpacity={0.75}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
         >
           <FontAwesome
             name="arrow-right"
-            size={20}
-            color={lightColors.primaryForeground}
+            size={22}
+            color="#FFFFFF"
           />
         </TouchableOpacity>
       </View>
@@ -206,6 +218,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: lightColors.background,
+  },
+  preloadContainer: {
+    position: "absolute",
+    width: 0,
+    height: 0,
+    opacity: 0,
+    overflow: "hidden",
+  },
+  preloadImage: {
+    width: 1,
+    height: 1,
   },
   sliderViewport: {
     flex: 1,
@@ -270,7 +293,6 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   dot: {
-    width: 8,
     height: 8,
     borderRadius: 4,
   },
@@ -280,6 +302,7 @@ const styles = StyleSheet.create({
   },
   dotInactive: {
     backgroundColor: lightColors.border,
+    width: 8,
   },
   nextButton: {
     width: 56,
@@ -289,5 +312,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     elevation: 4,
+    shadowColor: lightColors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
   },
 });

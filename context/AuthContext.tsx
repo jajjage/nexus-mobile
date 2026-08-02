@@ -36,28 +36,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Load user from SecureStore on mount
   // CRITICAL: Also verify tokens exist - if tokens are missing, don't restore user
   useEffect(() => {
+    let isMounted = true;
+    
+    // Safety fallback: Ensure isLoading is never true for more than 4 seconds
+    const safetyTimer = setTimeout(() => {
+      if (isMounted) {
+        console.warn("[AuthContext] Load user safety timeout triggered, forcing isLoading to false");
+        setIsLoading(false);
+      }
+    }, 4000);
+
     const loadUser = async () => {
       try {
         // Check if tokens exist first
-        const accessToken = await tokenStorage.getAccessToken();
-        const refreshToken = await tokenStorage.getRefreshToken();
+        const accessToken = await tokenStorage.getAccessToken().catch(() => null);
+        const refreshToken = await tokenStorage.getRefreshToken().catch(() => null);
         
         // If no tokens, don't restore user (they're logged out)
         if (!accessToken && !refreshToken) {
           console.log("[AuthContext] No tokens found, user is logged out");
-          await userStorage.clearAll();
-          setUserState(null);
-          setIsLoading(false);
+          await userStorage.clearAll().catch(() => {});
+          if (isMounted) {
+            setUserState(null);
+          }
           return;
         }
 
         // Check local biometric setup state
-        const bioSetup = await AsyncStorage.getItem('biometric_setup_completed');
-        setIsLocalBiometricSetup(bioSetup === 'true');
+        const bioSetup = await AsyncStorage.getItem('biometric_setup_completed').catch(() => null);
+        if (isMounted) {
+          setIsLocalBiometricSetup(bioSetup === 'true');
+        }
 
         // Tokens exist, restore user from SecureStore for immediate display
-        const storedUser = await userStorage.getUser<User>();
-        if (storedUser) {
+        const storedUser = await userStorage.getUser<User>().catch(() => null);
+        if (storedUser && isMounted) {
           console.log("[AuthContext] Restored user from SecureStore:", storedUser.userId);
           setUserState(storedUser);
         }
@@ -67,33 +80,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.log("[AuthContext] Fetching latest profile...");
           const profileResponse = await userService.getProfile();
           
-          if (profileResponse?.data) {
+          if (profileResponse?.data && isMounted) {
             const freshUser = profileResponse.data as unknown as User; 
             setUserState(freshUser);
-            await userStorage.setUser(freshUser);
+            await userStorage.setUser(freshUser).catch(() => {});
             if (freshUser.role) {
-                await userStorage.setUserRole(freshUser.role);
+                await userStorage.setUserRole(freshUser.role).catch(() => {});
             }
           }
         } catch (apiError: any) {
           console.warn("[AuthContext] Failed to fetch latest profile:", apiError?.message);
-
-          const status = apiError?.response?.status;
-          if (status === 401 || status === 403) {
-            console.warn("[AuthContext] Profile returned 401/403; keeping cached session");
-            return;
-          }
-          
-          console.log("[AuthContext] Network error or server down; keeping cached session.");
         }
 
       } catch (error) {
         console.error("Failed to load user from storage", error);
       } finally {
-        setIsLoading(false);
+        clearTimeout(safetyTimer);
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     };
+
     loadUser();
+
+    return () => {
+      isMounted = false;
+      clearTimeout(safetyTimer);
+    };
   }, []);
 
   // Wrapper to save to SecureStore when setting user
@@ -117,19 +131,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         await userStorage.clearAll();
         await tokenStorage.clearTokens();
-        // Don't clear biometric_setup_completed here?
-        // Actually, if user logs out, we should probably force setup again for new user?
-        // But biometric enrollment is device-wide usually.
-        // If a NEW user logs in, they might need setup.
-        // Let's assume biometric setup is per-login-session roughly?
-        // Actually, biometric_enrolled is device-specific.
-        // If user A enrolls, then logs out. User B logs in.
-        // User B shouldn't be auto-enrolled.
-        // So we should probably clear biometric_setup_completed on logout IF we want multi-user safety.
-        // But for now, let's keep it simple. If I clear it, they have to setup every time they login.
-        // Wait, typical flow: Login -> Setup -> Done.
-        // If I logout and login again, I am already setup.
-        // So DO NOT clear it on logout.
       } catch (e) {
         console.error("Failed to clear auth data", e);
       }
