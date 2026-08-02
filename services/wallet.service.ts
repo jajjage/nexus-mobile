@@ -1,10 +1,38 @@
 import apiClient from "@/lib/api-client";
 import {
     GetTransactionsParams,
+    Transaction,
     TransactionResponse,
     TransactionsListResponse,
     WalletResponse,
 } from "@/types/wallet.types";
+
+const normalizeTransactionsResponse = (payload: any): TransactionsListResponse => {
+  const wrapper = payload?.data && (payload.data.transactions || payload.data.items || payload.data.results)
+    ? payload
+    : { ...payload, data: payload?.data?.data || payload?.data || payload };
+  const data = wrapper.data || {};
+  const transactions = (data.transactions || data.items || data.results || []) as Transaction[];
+  const pagination = data.pagination || data.meta || {};
+  const page = Number(pagination.page || data.page || 1);
+  const limit = Number(pagination.limit || data.limit || transactions.length || 20);
+  const total = Number(pagination.total || data.total || transactions.length);
+  const totalPages = Number(pagination.totalPages || data.totalPages || Math.max(1, Math.ceil(total / Math.max(limit, 1))));
+
+  return {
+    success: payload?.success ?? true,
+    message: payload?.message || "Transactions retrieved successfully",
+    data: {
+      transactions,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+      },
+    },
+  };
+};
 
 export const walletService = {
   // Get user wallet
@@ -43,7 +71,7 @@ export const walletService = {
       "/user/wallet/transactions",
       { params: cleanParams }
     );
-    return response.data;
+    return normalizeTransactionsResponse(response.data);
   },
 
   // Get single transaction by ID

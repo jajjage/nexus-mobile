@@ -6,17 +6,12 @@ import { TopupRequest, TopupResponse } from "@/types/topup.types";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AxiosError } from "axios";
 import { toast } from "sonner-native";
+import { walletKeys } from "./useWallet";
 
 // Query keys for auth and transactions
 const authKeys = {
   all: ["auth"] as const,
   currentUser: () => [...authKeys.all, "current-user"] as const,
-};
-
-const transactionKeys = {
-  all: ["transactions"] as const,
-  lists: () => [...transactionKeys.all, "list"] as const,
-  detail: (id: string) => [...transactionKeys.all, "detail", id] as const,
 };
 
 // Context type for optimistic updates
@@ -115,7 +110,7 @@ export function useTopup() {
     onSettled: () => {
       console.log("[useTopup] Settled - invalidating user and transaction queries");
       queryClient.invalidateQueries({ queryKey: authKeys.currentUser() });
-      queryClient.invalidateQueries({ queryKey: transactionKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: walletKeys.transactions.all() });
     },
   });
 }

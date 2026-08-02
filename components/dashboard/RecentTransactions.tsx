@@ -1,6 +1,7 @@
 // components/dashboard/RecentTransactions.tsx
 // Updated to connect visually with BalanceCard above
 import { useTheme } from "@/context/ThemeContext";
+import { formatNumber } from "@/lib/format";
 import { BlurView } from "expo-blur";
 import { useRouter } from "expo-router";
 import { ArrowDown, ArrowUp, CreditCard, Wifi } from "lucide-react-native";
@@ -51,10 +52,7 @@ export function RecentTransactions({ transactions, onSeeMore, isBalanceVisible, 
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-NG", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(Math.abs(amount));
+    return formatNumber(amount, 2);
   };
 
   const getStatusColor = (status: string) => {

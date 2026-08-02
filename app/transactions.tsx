@@ -9,6 +9,7 @@ import {
   getTransactionTitle,
   isDataTransaction,
 } from "@/lib/transactionUtils";
+import { formatNumber, formatShortDate } from "@/lib/format";
 import { GetTransactionsParams, Transaction } from "@/types/wallet.types";
 import { useRouter } from "expo-router";
 import {
@@ -140,19 +141,11 @@ export default function TransactionsScreen() {
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-NG", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(Math.abs(amount));
+    return formatNumber(amount, 2);
   };
 
   const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString("en-NG", {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-    });
+    return formatShortDate(dateStr);
   };
 
   const renderTransaction = ({ item }: { item: Transaction }) => {

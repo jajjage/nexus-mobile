@@ -6,6 +6,7 @@
 
 import { Transaction } from "@/types/wallet.types";
 import { NETWORK_PROVIDERS, NetworkProvider } from "./detectNetwork";
+import { formatCurrency as formatSafeCurrency, formatLongDateTime, formatNumber } from "./format";
 
 // ============= Status Configuration =============
 
@@ -237,7 +238,7 @@ export function getTransactionTitle(transaction: Transaction): string {
       // Airtime: Show "OPERATOR ₦amount Airtime"
       const operator = transaction.related?.operatorCode?.toUpperCase() || "Unknown";
       const denom = transaction.denomAmount
-        ? `₦${transaction.denomAmount.toLocaleString()}`
+        ? `₦${formatNumber(transaction.denomAmount)}`
         : "";
       return `${operator} ${denom} Airtime`.trim();
     }
@@ -296,13 +297,7 @@ export function formatTransactionDate(date: Date | string | undefined): string {
       return "Invalid Date";
     }
 
-    return dateObj.toLocaleString("en-NG", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    return formatLongDateTime(dateObj);
   } catch (error) {
     return "Invalid Date";
   }
@@ -312,10 +307,7 @@ export function formatTransactionDate(date: Date | string | undefined): string {
  * Format currency amount
  */
 export function formatCurrency(amount: number): string {
-  return `₦${Math.abs(amount).toLocaleString("en-NG", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
+  return formatSafeCurrency(amount);
 }
 
 /**
@@ -358,7 +350,7 @@ export function getFormattedAmount(transaction: Transaction): string {
       // Airtime: Show "MTN ₦100 Airtime" format
       const operator = transaction.related?.operatorCode?.toUpperCase() || "Unknown";
       const denom = transaction.denomAmount
-        ? `₦${transaction.denomAmount.toLocaleString()}`
+        ? `₦${formatNumber(transaction.denomAmount)}`
         : "";
       return `${operator} ${denom} Airtime`.trim();
     }

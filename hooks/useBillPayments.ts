@@ -16,6 +16,7 @@ import { AxiosError } from "axios";
 import * as Haptics from "expo-haptics";
 import { toast } from "sonner-native";
 import { useCallback, useState } from "react";
+import { walletKeys } from "./useWallet";
 
 export const billPaymentKeys = {
   all: ["bill-payments"] as const,
@@ -30,11 +31,6 @@ export const billPaymentKeys = {
 const authKeys = {
   all: ["auth"] as const,
   currentUser: () => [...authKeys.all, "current-user"] as const,
-};
-
-const transactionKeys = {
-  all: ["transactions"] as const,
-  lists: () => [...transactionKeys.all, "list"] as const,
 };
 
 export function useBillCategories() {
@@ -97,7 +93,7 @@ export function usePayBill() {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: authKeys.currentUser() });
-      queryClient.invalidateQueries({ queryKey: transactionKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: walletKeys.transactions.all() });
     },
   });
 }
