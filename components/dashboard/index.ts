@@ -7,4 +7,7 @@ export { QuickActions } from "./QuickActions";
 export { RecentTransactions } from "./RecentTransactions";
 export { ResellerBanner } from "./ResellerBanner";
 export { UserProfileCard } from "./UserProfileCard";
+export { DashboardAnnouncementBanner } from "./DashboardAnnouncementBanner";
+export { DashboardAnnouncementModal } from "./DashboardAnnouncementModal";
+
 

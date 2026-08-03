@@ -12,6 +12,7 @@ export function useDashboardAnnouncement() {
     },
     staleTime: 0,
     refetchOnMount: "always",
+    refetchInterval: 60_000,
   });
 }
 

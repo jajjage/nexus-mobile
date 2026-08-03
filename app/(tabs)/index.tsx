@@ -1,7 +1,8 @@
-// app/(tabs)/index.tsx
-// Updated layout to properly connect BalanceCard and RecentTransactions
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
     BalanceCard,
+    DashboardAnnouncementBanner,
+    DashboardAnnouncementModal,
     HeaderBar,
     NotificationBanner,
     PromoBanner,
@@ -11,7 +12,6 @@ import {
     UserProfileCard
 } from "@/components/dashboard";
 import { AddMoneyModal } from "@/components/dashboard/AddMoneyModal";
-import { DashboardAnnouncementModal } from "@/components/dashboard/DashboardAnnouncementModal";
 import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/hooks/useAuth";
 import { useBalanceVisibility } from "@/hooks/useBalanceVisibility";
@@ -31,6 +31,8 @@ import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import { RefreshControl, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+const ANNOUNCEMENT_MODAL_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
@@ -53,7 +55,9 @@ export default function HomeScreen() {
 
   const [refreshing, setRefreshing] = useState(false);
   const [showAddMoney, setShowAddMoney] = useState(false);
-  const [dismissedAnnouncementId, setDismissedAnnouncementId] = useState<string | null>(null);
+  const [isModalVisible, setIsModalVisible] = useState(false);
+
+  const userId = user?.userId || "guest";
 
   // Generate initials from user name
   const getInitials = (name: string) => {
@@ -68,7 +72,43 @@ export default function HomeScreen() {
   const fullName = user?.fullName || "User";
   const userInitials = getInitials(fullName);
   const phoneNumber = user?.phoneNumber || "08000000000";
-  // const balance is now from the hook
+
+  // 1. Auto-show modal once per 24 hours for each announcement
+  useEffect(() => {
+    if (!dashboardAnnouncement || !userId) {
+      setIsModalVisible(false);
+      return;
+    }
+
+    let isMounted = true;
+    const checkSchedule = async () => {
+      const storageKey = `@announcement-modal:${userId}:${dashboardAnnouncement.id}`;
+      const lastShownAt = await AsyncStorage.getItem(storageKey);
+      const elapsed = lastShownAt ? Date.now() - Number(lastShownAt) : Infinity;
+
+      if (
+        isMounted &&
+        (!lastShownAt || Number.isNaN(elapsed) || elapsed >= ANNOUNCEMENT_MODAL_INTERVAL)
+      ) {
+        setIsModalVisible(true);
+      }
+    };
+
+    void checkSchedule();
+    return () => {
+      isMounted = false;
+    };
+  }, [dashboardAnnouncement?.id, userId]);
+
+  // 2. Dismiss modal and log timestamp
+  const handleDismissModal = useCallback(() => {
+    setIsModalVisible(false);
+    if (!dashboardAnnouncement || !userId) return;
+
+    const storageKey = `@announcement-modal:${userId}:${dashboardAnnouncement.id}`;
+    void AsyncStorage.setItem(storageKey, String(Date.now()));
+    markAnnouncementViewed.mutate(dashboardAnnouncement.id);
+  }, [dashboardAnnouncement, userId, markAnnouncementViewed]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -91,41 +131,6 @@ export default function HomeScreen() {
     refetchNotifications,
     refetchAnnouncement,
   ]);
-
-  const showAnnouncement =
-    !!dashboardAnnouncement &&
-    dashboardAnnouncement.id !== dismissedAnnouncementId;
-
-  useEffect(() => {
-    console.log("[DEBUG-announcement] dashboard query state", {
-      isFetchingAnnouncement,
-      hasAnnouncement: !!dashboardAnnouncement,
-      announcementId: dashboardAnnouncement?.id,
-      title: dashboardAnnouncement?.title,
-      dismissedAnnouncementId,
-      showAnnouncement,
-      error:
-        dashboardAnnouncementError instanceof Error
-          ? dashboardAnnouncementError.message
-          : dashboardAnnouncementError,
-    });
-  }, [
-    dashboardAnnouncement,
-    dashboardAnnouncementError,
-    dismissedAnnouncementId,
-    isFetchingAnnouncement,
-    showAnnouncement,
-  ]);
-
-  const dismissAnnouncement = () => {
-    if (!dashboardAnnouncement) return;
-    console.log(
-      "[DEBUG-announcement] dismissing announcement",
-      dashboardAnnouncement.id
-    );
-    setDismissedAnnouncementId(dashboardAnnouncement.id);
-    markAnnouncementViewed.mutate(dashboardAnnouncement.id);
-  };
 
   return (
     <View style={[styles.container, { paddingTop: insets.top, backgroundColor: isDark ? colors.background : "#EFF1F2" }]}>
@@ -150,16 +155,23 @@ export default function HomeScreen() {
           onNotificationsPress={() => router.push('/notifications')}
           notificationCount={unreadNotificationCount}
         />
-        
+
         {/* Notification Banner (Updates/Important) */}
         <NotificationBanner />
 
-        {/* User Profile with Logo */}
-        <UserProfileCard
-          initials={userInitials}
-          fullName={fullName}
-          phoneNumber={phoneNumber}
-        />
+        {/* User Profile or Active Announcement Ticker Banner */}
+        {dashboardAnnouncement ? (
+          <DashboardAnnouncementBanner
+            announcement={dashboardAnnouncement}
+            onPress={() => setIsModalVisible(true)}
+          />
+        ) : (
+          <UserProfileCard
+            initials={userInitials}
+            fullName={fullName}
+            phoneNumber={phoneNumber}
+          />
+        )}
 
         {/* Balance Card + Transaction History (connected) */}
         <View style={styles.balanceSection}>
@@ -225,9 +237,9 @@ export default function HomeScreen() {
       />
 
       <DashboardAnnouncementModal
-        visible={showAnnouncement}
+        visible={isModalVisible}
         announcement={dashboardAnnouncement || null}
-        onDismiss={dismissAnnouncement}
+        onDismiss={handleDismissModal}
       />
     </View>
   );
