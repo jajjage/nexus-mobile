@@ -2,12 +2,12 @@ import { useTheme } from "@/context/ThemeContext";
 import React, { useEffect } from "react";
 import { Image, ImageRequireSource, StyleSheet, View } from "react-native";
 import Animated, {
-    Easing,
-    cancelAnimation,
-    useAnimatedStyle,
-    useSharedValue,
-    withRepeat,
-    withTiming,
+  Easing,
+  cancelAnimation,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming,
 } from "react-native-reanimated";
 
 interface LoadingLogoProps {
@@ -18,21 +18,22 @@ interface LoadingLogoProps {
   logo?: ImageRequireSource;
   /** optional message - IGNORED in this version */
   message?: string | null;
-  /** dim background - IGNORED in this version */
+  /** dim background - defaults to true so underlying screen content stays visible */
   dimBackground?: boolean;
 }
 
 /**
  * Pulsing logo loader.
  * - Shows the logo inside a white circular pulsing container.
- * - Rendered as an absolute overlay to prevent iOS Modal presentation issues on app launch.
+ * - Rendered with a translucent backdrop so the underlying screen (e.g. Data Plans grid) remains visible.
  */
 export function LoadingOverlay({
   visible,
   diameter = 80,
   logo = require("@/assets/images/logo-3.png"),
+  dimBackground = true,
 }: LoadingLogoProps) {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const scale = useSharedValue(1);
 
   useEffect(() => {
@@ -56,14 +57,28 @@ export function LoadingOverlay({
   });
 
   // Background circle size includes extra padding so logo isn't cramped
-  const containerSize = diameter + 50; 
+  const containerSize = diameter + 50;
 
   if (!visible) {
     return null;
   }
 
+  // Translucent backdrop allows the underlying screen (Data Plans list) to stay visible
+  const backdropColor = dimBackground
+    ? isDark
+      ? "rgba(0, 0, 0, 0.65)"
+      : "rgba(0, 0, 0, 0.4)"
+    : colors.background;
+
   return (
-    <View style={[StyleSheet.absoluteFill, styles.overlay, { backgroundColor: colors.background, zIndex: 999999 }]} collapsable={false}>
+    <View
+      style={[
+        StyleSheet.absoluteFill,
+        styles.overlay,
+        { backgroundColor: backdropColor, zIndex: 999999 },
+      ]}
+      collapsable={false}
+    >
       <View style={styles.center} pointerEvents="box-none" collapsable={false}>
         {/* Animated Container (White Circle + Pulse) */}
         <Animated.View
