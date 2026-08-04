@@ -219,6 +219,7 @@ export function useCompletePaymentFlow(
     isProcessing,
     currentStep,
     error,
-    isLoading: isProcessing || topupMutation.isPending,
+    isLoading:
+      (isProcessing && currentStep === "transaction") || topupMutation.isPending,
   };
 }
