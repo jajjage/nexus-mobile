@@ -12,6 +12,7 @@ import {
   ActivityIndicator,
   Dimensions,
   FlatList,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
@@ -432,6 +433,7 @@ export function ProductPurchaseScreen({
   // Proceed to checkout
   const handleProceedToCheckout = useCallback(() => {
     if (!isPhoneValid || !selectedNetwork || !selectedProduct) return;
+    Keyboard.dismiss();
     Haptics.selectionAsync();
     setCheckoutMode("checkout");
     checkoutSheetRef.current?.expand();
@@ -442,6 +444,7 @@ export function ProductPurchaseScreen({
     if (!selectedProduct || !normalizedPhone) return;
 
     try {
+      Keyboard.dismiss();
       // Close the checkout sheet immediately - loading overlay will show instead
       // This prevents the checkout modal from showing during payment processing
       checkoutSheetRef.current?.close();

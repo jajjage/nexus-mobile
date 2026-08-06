@@ -1,6 +1,6 @@
 import { useTheme } from "@/context/ThemeContext";
 import React, { useEffect } from "react";
-import { Image, ImageRequireSource, StyleSheet, View } from "react-native";
+import { Image, ImageRequireSource, Keyboard, Modal, StyleSheet, View } from "react-native";
 import Animated, {
   Easing,
   cancelAnimation,
@@ -25,7 +25,8 @@ interface LoadingLogoProps {
 /**
  * Pulsing logo loader.
  * - Shows the logo inside a white circular pulsing container.
- * - Rendered with a translucent backdrop so the underlying screen (e.g. Data Plans grid) remains visible.
+ * - Rendered inside a transparent full-screen Modal to cover the complete window (including status bar and top navigation header).
+ * - Automatically dismisses the soft keyboard when visible.
  */
 export function LoadingOverlay({
   visible,
@@ -38,6 +39,9 @@ export function LoadingOverlay({
 
   useEffect(() => {
     if (visible) {
+      // Immediately dismiss keyboard when loader opens
+      Keyboard.dismiss();
+
       // Pulse animation: 1 -> 1.2 -> 1
       scale.value = withRepeat(
         withTiming(1.2, { duration: 800, easing: Easing.inOut(Easing.ease) }),
@@ -71,43 +75,44 @@ export function LoadingOverlay({
     : colors.background;
 
   return (
-    <View
-      style={[
-        StyleSheet.absoluteFill,
-        styles.overlay,
-        { backgroundColor: backdropColor, zIndex: 999999 },
-      ]}
-      collapsable={false}
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      statusBarTranslucent
+      onRequestClose={() => {}}
     >
-      <View style={styles.center} pointerEvents="box-none" collapsable={false}>
-        {/* Animated Container (White Circle + Pulse) */}
-        <Animated.View
-          collapsable={false}
-          style={[
-            styles.logoContainer,
-            animatedContainerStyle,
-            {
-              width: containerSize,
-              height: containerSize,
-              borderRadius: containerSize / 2,
-              backgroundColor: colors.card,
-            },
-          ]}
-        >
-          {/* Logo Image (Full Size) */}
-          <Image
-            source={logo}
-            resizeMode="contain"
-            style={{ width: diameter, height: diameter }}
-          />
-        </Animated.View>
+      <View style={[styles.overlay, { backgroundColor: backdropColor }]}>
+        <View style={styles.center} pointerEvents="box-none">
+          {/* Animated Container (White Circle + Pulse) */}
+          <Animated.View
+            style={[
+              styles.logoContainer,
+              animatedContainerStyle,
+              {
+                width: containerSize,
+                height: containerSize,
+                borderRadius: containerSize / 2,
+                backgroundColor: colors.card,
+              },
+            ]}
+          >
+            {/* Logo Image (Full Size) */}
+            <Image
+              source={logo}
+              resizeMode="contain"
+              style={{ width: diameter, height: diameter }}
+            />
+          </Animated.View>
+        </View>
       </View>
-    </View>
+    </Modal>
   );
 }
 
 const styles = StyleSheet.create({
   overlay: {
+    flex: 1,
     justifyContent: "center",
     alignItems: "center",
   },
