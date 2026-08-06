@@ -23,8 +23,8 @@ import { useMobileNotificationNavigation } from '@/hooks/useMobileNotificationNa
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { installReferrerService } from '@/services/install-referrer.service';
 
-
 import { LoadingOverlay } from '@/components/LoadingOverlay';
+import { RootAppVersionGuard } from '@/components/modals';
 import { GluestackUIProvider } from '@/components/ui/gluestack-ui-provider';
 import '../global.css';
 
@@ -182,34 +182,36 @@ function RootLayoutNav() {
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.background }}>
       <GluestackUIProvider mode={isDark ? 'dark' : 'light'}>
         <QueryClientProvider client={queryClient}>
-          <AuthProvider>
-            <SoftLockProvider>
-              <View style={{ flex: 1, backgroundColor: colors.background }} collapsable={false}>
-                <AppInitializer />
-                <StatusBar style={isDark ? 'light' : 'dark'} />
-                <NavThemeProvider value={isDark ? NexusDarkTheme : NexusLightTheme}>
-                  <View style={{ flex: 1, backgroundColor: colors.background }} collapsable={false}>
-                    <Stack screenOptions={{ animation: 'slide_from_right', contentStyle: { backgroundColor: colors.background } }}>
-                      <Stack.Screen name="index" options={{ headerShown: false }} />
-                      <Stack.Screen name="(setup)" options={{ headerShown: false }} />
-                      <Stack.Screen name="(onboarding)" options={{ headerShown: false }} />
-                      <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-                      <Stack.Screen name="(tabs)" options={{ headerShown: false, animation: 'none' }} />
-                      <Stack.Screen name="transactions" options={{ headerShown: false }} />
-                      <Stack.Screen name="notifications" options={{ headerShown: false }} />
-                      <Stack.Screen name="airtime" options={{ headerShown: false }} />
-                      <Stack.Screen name="data" options={{ headerShown: false }} />
-                      <Stack.Screen name="subscription" options={{ headerShown: false }} />
-                      <Stack.Screen name="pay-bills" options={{ headerShown: false }} />
-                      <Stack.Screen name="more-services" options={{ headerShown: false }} />
-                      <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-                    </Stack>
-                    <Toaster />
-                  </View>
-                </NavThemeProvider>
-              </View>
-            </SoftLockProvider>
-          </AuthProvider>
+          <RootAppVersionGuard>
+            <AuthProvider>
+              <SoftLockProvider>
+                <View style={{ flex: 1, backgroundColor: colors.background }} collapsable={false}>
+                  <AppInitializer />
+                  <StatusBar style={isDark ? 'light' : 'dark'} />
+                  <NavThemeProvider value={isDark ? NexusDarkTheme : NexusLightTheme}>
+                    <View style={{ flex: 1, backgroundColor: colors.background }} collapsable={false}>
+                      <Stack screenOptions={{ animation: 'slide_from_right', contentStyle: { backgroundColor: colors.background } }}>
+                        <Stack.Screen name="index" options={{ headerShown: false }} />
+                        <Stack.Screen name="(setup)" options={{ headerShown: false }} />
+                        <Stack.Screen name="(onboarding)" options={{ headerShown: false }} />
+                        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+                        <Stack.Screen name="(tabs)" options={{ headerShown: false, animation: 'none' }} />
+                        <Stack.Screen name="transactions" options={{ headerShown: false }} />
+                        <Stack.Screen name="notifications" options={{ headerShown: false }} />
+                        <Stack.Screen name="airtime" options={{ headerShown: false }} />
+                        <Stack.Screen name="data" options={{ headerShown: false }} />
+                        <Stack.Screen name="subscription" options={{ headerShown: false }} />
+                        <Stack.Screen name="pay-bills" options={{ headerShown: false }} />
+                        <Stack.Screen name="more-services" options={{ headerShown: false }} />
+                        <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+                      </Stack>
+                      <Toaster />
+                    </View>
+                  </NavThemeProvider>
+                </View>
+              </SoftLockProvider>
+            </AuthProvider>
+          </RootAppVersionGuard>
         </QueryClientProvider>
       </GluestackUIProvider>
     </GestureHandlerRootView>
