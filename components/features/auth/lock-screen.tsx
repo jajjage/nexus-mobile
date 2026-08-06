@@ -315,76 +315,78 @@ export const LockScreen: React.FC<LockScreenProps> = ({ onUnlock }) => {
               {/* Mode 2: 6-Digit Passcode Screen */}
               {activeMode === 'passcode' && (
                 <View style={styles.modeSection}>
-                  {/* 6 Digit Box Display */}
+                  {/* 6 Digit Box Display & Hidden Overlay Input */}
                   <Pressable
                     onPress={() => passcodeRef.current?.focus()}
-                    style={styles.boxesRow}
+                    style={styles.pinContainer}
                   >
-                    {digitsArray.map((_, idx) => {
-                      const char = passcode[idx];
-                      const isFocused = passcode.length === idx;
+                    <View style={styles.boxesRow}>
+                      {digitsArray.map((_, idx) => {
+                        const char = passcode[idx];
+                        const isFocused = passcode.length === idx;
 
-                      return (
-                        <View
-                          key={idx}
-                          style={[
-                            styles.digitBox,
-                            {
-                              backgroundColor: colors.inputBackground,
-                              borderColor: isFocused
-                                ? colors.primary
-                                : char
-                                ? colors.primary
-                                : colors.border,
-                            },
-                            isFocused && [
-                              styles.digitBoxFocused,
+                        return (
+                          <View
+                            key={idx}
+                            style={[
+                              styles.digitBox,
                               {
-                                backgroundColor: isDark
-                                  ? 'rgba(99, 184, 247, 0.1)'
-                                  : 'rgba(15, 59, 130, 0.04)',
-                                shadowColor: colors.primary,
+                                backgroundColor: colors.inputBackground,
+                                borderColor: isFocused
+                                  ? colors.primary
+                                  : char
+                                  ? colors.primary
+                                  : colors.border,
                               },
-                            ],
-                          ]}
-                        >
-                          {char ? (
-                            showPasscode ? (
-                              <Text style={[styles.digitText, { color: colors.foreground }]}>
-                                {char}
-                              </Text>
-                            ) : (
-                              <View
-                                style={[
-                                  styles.secureDot,
-                                  { backgroundColor: colors.foreground },
-                                ]}
-                              />
-                            )
-                          ) : null}
-                        </View>
-                      );
-                    })}
-                  </Pressable>
+                              isFocused && [
+                                styles.digitBoxFocused,
+                                {
+                                  backgroundColor: isDark
+                                    ? 'rgba(99, 184, 247, 0.1)'
+                                    : 'rgba(15, 59, 130, 0.04)',
+                                  shadowColor: colors.primary,
+                                },
+                              ],
+                            ]}
+                          >
+                            {char ? (
+                              showPasscode ? (
+                                <Text style={[styles.digitText, { color: colors.foreground }]}>
+                                  {char}
+                                </Text>
+                              ) : (
+                                <View
+                                  style={[
+                                    styles.secureDot,
+                                    { backgroundColor: colors.foreground },
+                                  ]}
+                                />
+                              )
+                            ) : null}
+                          </View>
+                        );
+                      })}
+                    </View>
 
-                  {/* Hidden TextInput for Native Numeric Keypad */}
-                  <TextInput
-                    ref={passcodeRef}
-                    style={styles.hiddenInput}
-                    keyboardType="number-pad"
-                    maxLength={PASSCODE_LENGTH}
-                    value={passcode}
-                    onChangeText={(text) => {
-                      const cleaned = text.replace(/[^0-9]/g, '');
-                      setPasscode(cleaned);
-                      setVerificationError(null);
-                    }}
-                    editable={!isVerifyingPasscode}
-                    autoFocus={true}
-                    caretHidden={true}
-                    onSubmitEditing={handlePasscodeSubmit}
-                    returnKeyType="done"
-                  />
+                    {/* Hidden TextInput overlay spanning full box area */}
+                    <TextInput
+                      ref={passcodeRef}
+                      style={styles.hiddenInput}
+                      keyboardType="number-pad"
+                      maxLength={PASSCODE_LENGTH}
+                      value={passcode}
+                      onChangeText={(text) => {
+                        const cleaned = text.replace(/[^0-9]/g, '');
+                        setPasscode(cleaned);
+                        setVerificationError(null);
+                      }}
+                      editable={!isVerifyingPasscode}
+                      autoFocus={true}
+                      caretHidden={true}
+                      onSubmitEditing={handlePasscodeSubmit}
+                      returnKeyType="done"
+                    />
+                  </Pressable>
 
                   {/* Show/Hide Passcode Toggle */}
                   <View style={styles.toggleRow}>
@@ -632,11 +634,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
+  pinContainer: {
+    width: '100%',
+    alignItems: 'center',
+    marginBottom: 16,
+    position: 'relative',
+  },
   boxesRow: {
     flexDirection: 'row',
     gap: 8,
     justifyContent: 'center',
-    marginBottom: 16,
     width: '100%',
   },
   digitBox: {
@@ -665,9 +672,11 @@ const styles = StyleSheet.create({
   },
   hiddenInput: {
     position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     opacity: 0,
-    width: 1,
-    height: 1,
   },
   toggleRow: {
     marginBottom: 20,
