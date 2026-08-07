@@ -182,6 +182,7 @@ export default function HomeScreen() {
             onToggleBalance={toggleBalanceVisibility}
             virtualAccountNumber={user?.virtualAccountNumber || user?.virtualAccounts?.[0]?.accountNumber}
             virtualAccountBankName={user?.virtualAccountBankName || user?.virtualAccounts?.[0]?.bankName || undefined}
+            virtualAccountName={user?.virtualAccountAccountName || user?.virtualAccounts?.[0]?.accountName || user?.fullName}
           />
           <RecentTransactions
             transactions={transactions.slice(0, 2).map(tx => {

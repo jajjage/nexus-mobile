@@ -18,6 +18,7 @@ interface BalanceCardProps {
   onToggleBalance: () => void;
   virtualAccountNumber?: string;
   virtualAccountBankName?: string;
+  virtualAccountName?: string;
 }
 
 export function BalanceCard({
@@ -27,6 +28,7 @@ export function BalanceCard({
   onToggleBalance,
   virtualAccountNumber,
   virtualAccountBankName,
+  virtualAccountName,
 }: BalanceCardProps) {
   const { colors } = useTheme();
 
@@ -88,10 +90,15 @@ export function BalanceCard({
         >
           <View style={styles.vaInfoLeft}>
             <Text style={styles.vaHeaderLabel}>DEPOSIT ACCOUNT</Text>
-            <Text style={styles.vaBankAndNumberText}>
+            <Text style={styles.vaBankAndNumberText} numberOfLines={1}>
               {virtualAccountBankName ? `${virtualAccountBankName} • ` : ""}
               <Text style={styles.vaNumberHighlight}>{virtualAccountNumber}</Text>
             </Text>
+            {Boolean(virtualAccountName) && (
+              <Text style={styles.vaAccountNameText} numberOfLines={1}>
+                {virtualAccountName}
+              </Text>
+            )}
           </View>
 
           <View style={styles.copyBadge}>
@@ -196,6 +203,12 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "800",
     letterSpacing: 0.5,
+  },
+  vaAccountNameText: {
+    color: "rgba(255, 255, 255, 0.85)",
+    fontSize: 12,
+    fontWeight: "500",
+    marginTop: 2,
   },
   copyBadge: {
     flexDirection: "row",
