@@ -12,6 +12,7 @@ import {
   View,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "@/context/ThemeContext";
 import { AppVersionInfo } from "@/types/app-version.types";
 import { Check, Layers, PieChart } from "lucide-react-native";
@@ -38,6 +39,7 @@ export function AppUpgradeModal({
   onUpgrade,
 }: AppUpgradeModalProps) {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
 
   // Staggered entrance animations — each element fades + slides in sequentially
   const graphicAnim = useRef(new Animated.Value(0)).current;
@@ -160,7 +162,10 @@ export function AppUpgradeModal({
           {/* Main Scrollable Content */}
           <ScrollView
             style={styles.scrollContainer}
-            contentContainerStyle={styles.scrollContent}
+            contentContainerStyle={[
+              styles.scrollContent,
+              { paddingTop: Math.max(insets.top, Platform.OS === "android" ? 24 : 0) + 12 },
+            ]}
             showsVerticalScrollIndicator={false}
             bounces={false}
           >
@@ -263,7 +268,11 @@ export function AppUpgradeModal({
 
           {/* Fixed Bottom Action Bar — Emil: buttons must feel responsive */}
           <Animated.View
-            style={[styles.fixedBottomBar, createStaggerStyle(buttonsAnim)]}
+            style={[
+              styles.fixedBottomBar,
+              { paddingBottom: Math.max(insets.bottom, Platform.OS === "ios" ? 20 : 16) },
+              createStaggerStyle(buttonsAnim),
+            ]}
           >
             {!isMandatory ? (
               /* Optional Update: Skip on Left, Upgrade Now on Right */

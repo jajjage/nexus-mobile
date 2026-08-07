@@ -10,8 +10,9 @@ interface RootAppVersionGuardProps {
 export function RootAppVersionGuard({ children }: RootAppVersionGuardProps) {
   const versionCheck = useAppVersionCheck();
 
-  // If a mandatory update is required, block rendering of children (including Auth/SoftLock/Dashboard)
-  if (versionCheck.visible && versionCheck.isMandatory) {
+  // Whenever an app update screen is visible (mandatory or optional), block rendering of children
+  // so SoftLock and Biometrics do not trigger or mount until the update screen is skipped/dismissed
+  if (versionCheck.visible) {
     return (
       <View style={styles.blockContainer}>
         <AppUpgradeModal
@@ -25,20 +26,7 @@ export function RootAppVersionGuard({ children }: RootAppVersionGuardProps) {
     );
   }
 
-  return (
-    <View style={styles.flexContainer}>
-      {children}
-      {versionCheck.visible && !versionCheck.isMandatory && (
-        <AppUpgradeModal
-          visible={versionCheck.visible}
-          isMandatory={false}
-          versionInfo={versionCheck.versionInfo}
-          onSkip={versionCheck.handleSkip}
-          onUpgrade={versionCheck.handleUpgrade}
-        />
-      )}
-    </View>
-  );
+  return <View style={styles.flexContainer}>{children}</View>;
 }
 
 const styles = StyleSheet.create({
