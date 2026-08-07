@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { Linking, Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Constants from "expo-constants";
@@ -7,7 +7,7 @@ import { appVersionService } from "@/services/app-version.service";
 import { AppVersionInfo, VersionCheckState } from "@/types/app-version.types";
 import { isVersionLower } from "@/utils/version-comparator";
 
-const SKIPPED_VERSION_KEY = "@nexus_skipped_app_version";
+const SKIPPED_VERSION_KEY = "@nexus_skipped_app_version"; // Legacy — cleared on startup
 const CACHED_VERSION_KEY = "@nexus_cached_app_version_data";
 
 export function useAppVersionCheck() {
@@ -24,6 +24,9 @@ export function useAppVersionCheck() {
     versionInfo: null,
     currentVersion,
   });
+
+  // Session-only skip — dismissed modal comes back on next app launch
+  const sessionSkippedRef = useRef<string | null>(null);
 
   console.log("[DEBUG-appVersion] Initial hook state with currentVersion:", currentVersion);
 
@@ -60,21 +63,16 @@ export function useAppVersionCheck() {
           versionInfo: info,
         }));
       } else {
-        try {
-          const skipped = await AsyncStorage.getItem(SKIPPED_VERSION_KEY);
-          console.log("[DEBUG-appVersion] Skipped version in storage:", skipped);
-          if (skipped === info.latestVersion) {
-            console.log(`[DEBUG-appVersion] Version ${info.latestVersion} was previously skipped by user`);
-            setState((prev) => ({
-              ...prev,
-              visible: false,
-              isMandatory: false,
-              versionInfo: info,
-            }));
-            return;
-          }
-        } catch (e) {
-          console.warn("[DEBUG-appVersion] Reading skipped version error", e);
+        // Session-only skip check — uses in-memory ref, not persisted storage
+        if (sessionSkippedRef.current === info.latestVersion) {
+          console.log(`[DEBUG-appVersion] Version ${info.latestVersion} was skipped this session`);
+          setState((prev) => ({
+            ...prev,
+            visible: false,
+            isMandatory: false,
+            versionInfo: info,
+          }));
+          return;
         }
 
         console.log("[DEBUG-appVersion] OPTIONAL update available! Showing upgrade modal");
@@ -93,41 +91,58 @@ export function useAppVersionCheck() {
     let mounted = true;
 
     async function initializeVersionCheck() {
-      console.log("[DEBUG-appVersion] Starting initializeVersionCheck...");
+      console.log("[DEBUG-appVersion] === Starting initializeVersionCheck ===");
 
       // 1. Read device client cache for zero latency startup
       try {
         const cachedRaw = await AsyncStorage.getItem(CACHED_VERSION_KEY);
+        console.log("[DEBUG-appVersion] Client cache raw:", cachedRaw ? "FOUND" : "EMPTY");
         if (cachedRaw && mounted) {
           const cachedInfo: AppVersionInfo = JSON.parse(cachedRaw);
-          console.log("[DEBUG-appVersion] Found client cached version data:", cachedInfo);
+          console.log("[DEBUG-appVersion] Cached version data:", JSON.stringify(cachedInfo));
           await evaluateVersionState(cachedInfo, "client-cache");
         }
       } catch (e) {
         console.warn("[DEBUG-appVersion] Reading local version cache error", e);
       }
 
-      // 2. Fetch fresh version data in background
+      // 2. Clear any legacy persisted skip (from old AsyncStorage-based skip)
+      try {
+        await AsyncStorage.removeItem(SKIPPED_VERSION_KEY);
+        console.log("[DEBUG-appVersion] Cleared legacy skipped version from storage");
+      } catch (e) {
+        // Ignore — just cleanup
+      }
+
+      // 3. Fetch fresh version data from backend
+      console.log("[DEBUG-appVersion] About to call appVersionService.getAppVersion()...");
       const res = await appVersionService.getAppVersion();
+      console.log("[DEBUG-appVersion] API response:", JSON.stringify(res));
       if (!mounted) return;
 
       if (!res.success || !res.data) {
-        console.log("[DEBUG-appVersion] API response unsuccessful or data null", res);
+        console.log("[DEBUG-appVersion] API response unsuccessful or data null — aborting", {
+          success: res.success,
+          message: res.message,
+          hasData: !!res.data,
+        });
         return;
       }
 
       const freshInfo = res.data;
-      console.log("[DEBUG-appVersion] Fresh backend version payload:", freshInfo);
+      console.log("[DEBUG-appVersion] Fresh backend version payload:", JSON.stringify(freshInfo));
 
-      // 3. Cache fresh version payload on client
+      // 4. Cache fresh version payload on client
       try {
         await AsyncStorage.setItem(CACHED_VERSION_KEY, JSON.stringify(freshInfo));
+        console.log("[DEBUG-appVersion] Cached fresh payload to device storage");
       } catch (e) {
         console.warn("[DEBUG-appVersion] Storing version cache error", e);
       }
 
-      // 4. Re-evaluate with fresh backend payload
+      // 5. Re-evaluate with fresh backend payload
       if (mounted) {
+        console.log("[DEBUG-appVersion] About to evaluate fresh data...");
         await evaluateVersionState(freshInfo, "network-fresh");
       }
     }
@@ -139,18 +154,12 @@ export function useAppVersionCheck() {
     };
   }, [evaluateVersionState]);
 
-  const handleSkip = async () => {
+  const handleSkip = () => {
     if (state.isMandatory || !state.versionInfo) return;
 
     console.log("[DEBUG-appVersion] User clicked Skip for version:", state.versionInfo.latestVersion);
-    try {
-      await AsyncStorage.setItem(
-        SKIPPED_VERSION_KEY,
-        state.versionInfo.latestVersion
-      );
-    } catch (e) {
-      console.warn("[DEBUG-appVersion] Storing skipped version error", e);
-    }
+    // Session-only: store in ref, not AsyncStorage — modal reappears on next app launch
+    sessionSkippedRef.current = state.versionInfo.latestVersion;
 
     setState((prev) => ({ ...prev, visible: false }));
   };

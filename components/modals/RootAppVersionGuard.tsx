@@ -47,6 +47,6 @@ const styles = StyleSheet.create({
   },
   blockContainer: {
     flex: 1,
-    backgroundColor: "#182125",
+    backgroundColor: "#FFFFFF",
   },
 });
