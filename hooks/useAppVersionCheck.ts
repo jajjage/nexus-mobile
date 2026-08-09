@@ -23,6 +23,7 @@ export function useAppVersionCheck() {
     isMandatory: false,
     versionInfo: null,
     currentVersion,
+    isChecked: false,
   });
 
   // Session-only skip — dismissed modal comes back on next app launch
@@ -90,11 +91,19 @@ export function useAppVersionCheck() {
   useEffect(() => {
     let mounted = true;
 
+    // Safety fallback timer to ensure isChecked becomes true even if network hangs
+    const safetyTimer = setTimeout(() => {
+      if (mounted) {
+        console.log("[DEBUG-appVersion] Safety fallback timer fired; marking version check completed");
+        setState((prev) => ({ ...prev, isChecked: true }));
+      }
+    }, 3500);
+
     async function initializeVersionCheck() {
       console.log("[DEBUG-appVersion] === Starting initializeVersionCheck ===");
 
-      // 1. Read device client cache for zero latency startup
       try {
+        // 1. Read device client cache for zero latency startup
         const cachedRaw = await AsyncStorage.getItem(CACHED_VERSION_KEY);
         console.log("[DEBUG-appVersion] Client cache raw:", cachedRaw ? "FOUND" : "EMPTY");
         if (cachedRaw && mounted) {
@@ -102,48 +111,43 @@ export function useAppVersionCheck() {
           console.log("[DEBUG-appVersion] Cached version data:", JSON.stringify(cachedInfo));
           await evaluateVersionState(cachedInfo, "client-cache");
         }
+
+        // 2. Clear any legacy persisted skip (from old AsyncStorage-based skip)
+        await AsyncStorage.removeItem(SKIPPED_VERSION_KEY).catch(() => {});
+
+        // 3. Fetch fresh version data from backend
+        console.log("[DEBUG-appVersion] About to call appVersionService.getAppVersion()...");
+        const res = await appVersionService.getAppVersion();
+        console.log("[DEBUG-appVersion] API response:", JSON.stringify(res));
+        if (!mounted) return;
+
+        if (!res.success || !res.data) {
+          console.log("[DEBUG-appVersion] API response unsuccessful or data null — aborting", {
+            success: res.success,
+            message: res.message,
+            hasData: !!res.data,
+          });
+          return;
+        }
+
+        const freshInfo = res.data;
+        console.log("[DEBUG-appVersion] Fresh backend version payload:", JSON.stringify(freshInfo));
+
+        // 4. Cache fresh version payload on client
+        await AsyncStorage.setItem(CACHED_VERSION_KEY, JSON.stringify(freshInfo)).catch(() => {});
+
+        // 5. Re-evaluate with fresh backend payload
+        if (mounted) {
+          console.log("[DEBUG-appVersion] About to evaluate fresh data...");
+          await evaluateVersionState(freshInfo, "network-fresh");
+        }
       } catch (e) {
-        console.warn("[DEBUG-appVersion] Reading local version cache error", e);
-      }
-
-      // 2. Clear any legacy persisted skip (from old AsyncStorage-based skip)
-      try {
-        await AsyncStorage.removeItem(SKIPPED_VERSION_KEY);
-        console.log("[DEBUG-appVersion] Cleared legacy skipped version from storage");
-      } catch (e) {
-        // Ignore — just cleanup
-      }
-
-      // 3. Fetch fresh version data from backend
-      console.log("[DEBUG-appVersion] About to call appVersionService.getAppVersion()...");
-      const res = await appVersionService.getAppVersion();
-      console.log("[DEBUG-appVersion] API response:", JSON.stringify(res));
-      if (!mounted) return;
-
-      if (!res.success || !res.data) {
-        console.log("[DEBUG-appVersion] API response unsuccessful or data null — aborting", {
-          success: res.success,
-          message: res.message,
-          hasData: !!res.data,
-        });
-        return;
-      }
-
-      const freshInfo = res.data;
-      console.log("[DEBUG-appVersion] Fresh backend version payload:", JSON.stringify(freshInfo));
-
-      // 4. Cache fresh version payload on client
-      try {
-        await AsyncStorage.setItem(CACHED_VERSION_KEY, JSON.stringify(freshInfo));
-        console.log("[DEBUG-appVersion] Cached fresh payload to device storage");
-      } catch (e) {
-        console.warn("[DEBUG-appVersion] Storing version cache error", e);
-      }
-
-      // 5. Re-evaluate with fresh backend payload
-      if (mounted) {
-        console.log("[DEBUG-appVersion] About to evaluate fresh data...");
-        await evaluateVersionState(freshInfo, "network-fresh");
+        console.warn("[DEBUG-appVersion] Error during version check", e);
+      } finally {
+        if (mounted) {
+          clearTimeout(safetyTimer);
+          setState((prev) => ({ ...prev, isChecked: true }));
+        }
       }
     }
 
@@ -151,6 +155,7 @@ export function useAppVersionCheck() {
 
     return () => {
       mounted = false;
+      clearTimeout(safetyTimer);
     };
   }, [evaluateVersionState]);
 
@@ -207,6 +212,7 @@ export function useAppVersionCheck() {
     isMandatory: state.isMandatory,
     versionInfo: state.versionInfo,
     currentVersion: state.currentVersion,
+    isChecked: state.isChecked,
     handleSkip,
     handleUpgrade,
     invalidateClientCache,

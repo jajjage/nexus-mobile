@@ -14,4 +14,5 @@ export interface VersionCheckState {
   isMandatory: boolean;
   versionInfo: AppVersionInfo | null;
   currentVersion: string;
+  isChecked: boolean;
 }

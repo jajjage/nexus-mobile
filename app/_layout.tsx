@@ -88,22 +88,12 @@ const queryClient = new QueryClient({
 });
 
 // Helper component to initialize app-wide logic that depends on providers
-// Also handles the global loading overlay and Splash Screen hiding
 function AppInitializer() {
   usePushNotifications();
   useMobileNotificationNavigation();
   useAppRating();
   
   const { isLoading } = useAuthContext();
-
-  useEffect(() => {
-    if (!isLoading) {
-      // Hide the native splash screen only when auth loading is complete
-      void SplashScreen.hideAsync().catch((error) => {
-        console.warn('[SplashScreen] Failed to hide after auth load:', error);
-      });
-    }
-  }, [isLoading]);
 
   useEffect(() => {
     void installReferrerService.captureInstallReferrerOnce().catch((error) => {
@@ -130,15 +120,7 @@ export default function RootLayout() {
   }, [error]);
 
   useEffect(() => {
-    if (fontsReady) {
-      void SplashScreen.hideAsync().catch((hideError) => {
-        console.warn('[SplashScreen] Failed to hide after fonts are ready:', hideError);
-      });
-    }
-  }, [fontsReady]);
-
-  useEffect(() => {
-    // Safety fallback timer to hide splash screen if auth load hangs
+    // Global safety fallback timer to hide splash screen if version check or auth hangs
     const fallback = setTimeout(() => {
       setFontLoadTimedOut(true);
       void SplashScreen.hideAsync().catch((hideError) => {
