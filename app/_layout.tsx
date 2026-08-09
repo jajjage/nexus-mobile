@@ -164,8 +164,8 @@ function RootLayoutNav() {
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.background }}>
       <GluestackUIProvider mode={isDark ? 'dark' : 'light'}>
         <QueryClientProvider client={queryClient}>
-          <RootAppVersionGuard>
-            <AuthProvider>
+          <AuthProvider>
+            <RootAppVersionGuard>
               <SoftLockProvider>
                 <View style={{ flex: 1, backgroundColor: colors.background }} collapsable={false}>
                   <AppInitializer />
@@ -192,8 +192,8 @@ function RootLayoutNav() {
                   </NavThemeProvider>
                 </View>
               </SoftLockProvider>
-            </AuthProvider>
-          </RootAppVersionGuard>
+            </RootAppVersionGuard>
+          </AuthProvider>
         </QueryClientProvider>
       </GluestackUIProvider>
     </GestureHandlerRootView>

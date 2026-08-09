@@ -73,6 +73,9 @@ let cachedPreferences: AppPreferences = DEFAULT_PREFERENCES;
 
 export async function initializePreferences() {
   try {
+    if (typeof window === "undefined" && typeof globalThis !== "undefined" && !("window" in globalThis)) {
+      return;
+    }
     const stored = await AsyncStorage.getItem(PREFERENCES_KEY);
     if (stored) {
       cachedPreferences = { ...DEFAULT_PREFERENCES, ...JSON.parse(stored) };
@@ -86,5 +89,5 @@ export function getAppPreferences(): AppPreferences {
   return cachedPreferences;
 }
 
-// Initialize preferences cache on app start
-initializePreferences();
+// Initialize preferences cache on app start (catch any SSR/unhandled rejections)
+void initializePreferences().catch(() => {});
