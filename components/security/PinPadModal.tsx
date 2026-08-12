@@ -163,12 +163,13 @@ export function PinPadModal({
       onRequestClose={handleClose}
       statusBarTranslucent
     >
-      <View style={styles.overlay}>
+      <View style={styles.overlay} collapsable={false}>
         {/* Backdrop - tapping here closes modal */}
         <Pressable style={StyleSheet.absoluteFill} onPress={handleClose} />
 
         {/* Modal content */}
         <View
+          collapsable={false}
           style={[styles.container, { backgroundColor: colors.background }]}
         >
           {/* Header */}

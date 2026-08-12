@@ -40,8 +40,9 @@ export function DashboardAnnouncementModal({
       statusBarTranslucent
       onRequestClose={onDismiss}
     >
-      <View style={styles.overlay}>
+      <View style={styles.overlay} collapsable={false}>
         <View
+          collapsable={false}
           style={[
             styles.card,
             { backgroundColor: isDark ? colors.card : "#FFFFFF" },

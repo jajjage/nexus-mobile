@@ -29,7 +29,7 @@ import {
 } from "@/lib/transactionUtils";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
-import { RefreshControl, ScrollView, StyleSheet, View } from "react-native";
+import { InteractionManager, RefreshControl, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const ANNOUNCEMENT_MODAL_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours
@@ -74,6 +74,7 @@ export default function HomeScreen() {
   const phoneNumber = user?.phoneNumber || "08000000000";
 
   // 1. Auto-show modal once per 24 hours for each announcement
+  // Defer modal display until after navigation screen transitions complete to prevent Android dispatchGetDisplayList crashes
   useEffect(() => {
     if (!dashboardAnnouncement || !userId) {
       setIsModalVisible(false);
@@ -90,7 +91,11 @@ export default function HomeScreen() {
         isMounted &&
         (!lastShownAt || Number.isNaN(elapsed) || elapsed >= ANNOUNCEMENT_MODAL_INTERVAL)
       ) {
-        setIsModalVisible(true);
+        InteractionManager.runAfterInteractions(() => {
+          if (isMounted) {
+            setIsModalVisible(true);
+          }
+        });
       }
     };
 

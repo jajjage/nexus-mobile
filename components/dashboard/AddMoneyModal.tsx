@@ -93,8 +93,8 @@ export function AddMoneyModal({ isVisible, onClose }: AddMoneyModalProps) {
       visible={isVisible}
       onRequestClose={onClose}
     >
-      <View style={styles.overlay}>
-        <View style={styles.modalParams}>
+      <View style={styles.overlay} collapsable={false}>
+        <View style={styles.modalParams} collapsable={false}>
           {/* Header */}
           <View style={styles.header}>
             <Text style={styles.title}>Add Money</Text>

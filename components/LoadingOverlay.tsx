@@ -82,8 +82,8 @@ export function LoadingOverlay({
       statusBarTranslucent
       onRequestClose={() => {}}
     >
-      <View style={[styles.overlay, { backgroundColor: backdropColor }]}>
-        <View style={styles.center} pointerEvents="box-none">
+      <View style={[styles.overlay, { backgroundColor: backdropColor }]} collapsable={false}>
+        <View style={styles.center} pointerEvents="box-none" collapsable={false}>
           {/* Animated Container (White Circle + Pulse) */}
           <Animated.View
             style={[

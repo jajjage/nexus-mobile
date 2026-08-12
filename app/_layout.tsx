@@ -119,14 +119,20 @@ export default function RootLayout() {
     }
   }, [error]);
 
+  // Hide splash screen as soon as fonts and root resources are ready
   useEffect(() => {
-    // Global safety fallback timer to hide splash screen if version check or auth hangs
+    if (fontsReady) {
+      void SplashScreen.hideAsync().catch((hideError) => {
+        console.warn('[SplashScreen] Failed to hide splash screen:', hideError);
+      });
+    }
+  }, [fontsReady]);
+
+  useEffect(() => {
+    // Global safety fallback timer to force font ready state if font loading hangs
     const fallback = setTimeout(() => {
       setFontLoadTimedOut(true);
-      void SplashScreen.hideAsync().catch((hideError) => {
-        console.warn('[SplashScreen] Failed to hide from fallback:', hideError);
-      });
-    }, 5000);
+    }, 3000);
 
     return () => clearTimeout(fallback);
   }, []);
