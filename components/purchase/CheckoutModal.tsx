@@ -481,6 +481,8 @@ export const CheckoutModal = forwardRef<BottomSheet, CheckoutModalProps>(
           index={-1}
           snapPoints={snapPoints}
           enablePanDownToClose={true}
+          enableDynamicSizing={false}
+          animateOnMount={false}
           onClose={onClose}
           backgroundStyle={{
             backgroundColor: colors.card,

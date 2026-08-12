@@ -75,6 +75,17 @@ export default function AirtimeScreen() {
   const [useCashback, setUseCashback] = useState(false);
 
   const checkoutSheetRef = useRef<BottomSheet>(null);
+  const isMountedRef = useRef(true);
+
+  // Cleanup: close BottomSheet before unmount to prevent Android
+  // NullPointerException in ViewGroup.dispatchGetDisplayList()
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      checkoutSheetRef.current?.close();
+    };
+  }, []);
 
   // === HOOKS ===
   const { data: productsData } = useProducts({
@@ -91,16 +102,16 @@ export default function AirtimeScreen() {
   // Payment Flow Hook
   const { processPayment, submitPIN, isLoading: isPaymentProcessing } = useCompletePaymentFlow({
     onSuccess: (transactionId) => {
+      if (!isMountedRef.current) return;
       setLastTransactionId(transactionId);
       setLastErrorMessage(null);
       setCheckoutMode("success");
-      // Expand sheet directly to show success (sheet is already closed from handleConfirmPayment)
       checkoutSheetRef.current?.expand();
     },
     onError: (error) => {
+      if (!isMountedRef.current) return;
       setLastErrorMessage(error);
       setCheckoutMode("failed");
-      // Expand sheet to show failure
       checkoutSheetRef.current?.expand();
     },
   });
@@ -299,7 +310,12 @@ export default function AirtimeScreen() {
       // setPhoneNumber(""); // Keep phone number for convenience
       const prefs = require("@/hooks/useAppPreferences").getAppPreferences();
       if (prefs.autoRedirectAfterPurchase) {
-        setTimeout(() => router.push("/(tabs)"), 500);
+        setTimeout(() => {
+          if (!isMountedRef.current) return;
+          // Use replace instead of push to remove the airtime screen from the
+          // navigation stack, preventing orphaned native views
+          router.replace("/(tabs)");
+        }, 400);
       }
     }
   }, [checkoutMode, router]);
@@ -341,7 +357,18 @@ export default function AirtimeScreen() {
           headerStyle: { backgroundColor: colors.background },
           headerTintColor: colors.foreground,
           headerLeft: () => (
-            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <TouchableOpacity
+              onPress={() => {
+                // Close bottom sheet first to prevent Android view hierarchy crash
+                checkoutSheetRef.current?.close();
+                setTimeout(() => {
+                  if (isMountedRef.current) {
+                    router.back();
+                  }
+                }, 350);
+              }}
+              style={styles.backButton}
+            >
               <ArrowLeft size={24} color={colors.foreground} />
             </TouchableOpacity>
           ),

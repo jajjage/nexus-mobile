@@ -63,7 +63,10 @@ export function PinPadModal({
         triggerHaptic.notification();
         setTimeout(() => {
           onSubmit(newPin);
-          onClose(); // Close modal immediately as requested
+          // Don't call onClose() here — let the parent control the modal
+          // lifecycle. The parent closes via setShowPinModal(false) after
+          // the async payment flow completes, preventing race conditions
+          // where the screen unmounts mid-payment.
         }, 100);
       }
     },

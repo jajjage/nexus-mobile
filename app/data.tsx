@@ -149,6 +149,11 @@ export function ProductPurchaseScreen({
     isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
+      // Imperatively close the bottom sheet before unmount to prevent
+      // Android NullPointerException in ViewGroup.dispatchGetDisplayList().
+      // The native BottomSheet view must not be mid-animation when
+      // the screen is removed from the view hierarchy.
+      checkoutSheetRef.current?.close();
     };
   }, []);
 
@@ -565,8 +570,10 @@ export function ProductPurchaseScreen({
       if (prefs.autoRedirectAfterPurchase) {
         setTimeout(() => {
           if (!isMountedRef.current) return;
-          router.push("/(tabs)");
-        }, 500);
+          // Use replace instead of push to remove the data screen from the
+          // navigation stack, preventing orphaned native views
+          router.replace("/(tabs)");
+        }, 400);
       }
     }
   }, [checkoutMode, router]);
@@ -646,7 +653,16 @@ export function ProductPurchaseScreen({
           headerTintColor: colors.foreground,
           headerLeft: () => (
             <TouchableOpacity
-              onPress={() => router.back()}
+              onPress={() => {
+                // Close bottom sheet first to prevent Android view hierarchy crash
+                checkoutSheetRef.current?.close();
+                // Give BottomSheet animation time to finish (~300ms)
+                setTimeout(() => {
+                  if (isMountedRef.current) {
+                    router.back();
+                  }
+                }, 350);
+              }}
               style={styles.backButton}
             >
               <ArrowLeft size={24} color={colors.foreground} />
