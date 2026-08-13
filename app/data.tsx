@@ -40,6 +40,7 @@ import { useBiometricAuth } from "@/hooks/useBiometric";
 import { useCategories } from "@/hooks/useCategories";
 import { useCompletePaymentFlow } from "@/hooks/useCompletePaymentFlow";
 import { getAppPreferences } from "@/hooks/useAppPreferences";
+import { useNetworkAutoDetectionPreference } from "@/hooks/useNetworkAutoDetectionPreference";
 import { useProducts } from "@/hooks/useProducts";
 import { useSupplierMarkupMap } from "@/hooks/useSupplierMarkup";
 import { useTopup } from "@/hooks/useTopup";
@@ -126,7 +127,6 @@ export function ProductPurchaseScreen({
   const [phoneNumber, setPhoneNumber] = useState("");
   const [selectedNetwork, setSelectedNetwork] = useState<NetworkProvider | null>(null);
   const [detectedNetwork, setDetectedNetwork] = useState<NetworkProvider | null>(null);
-  const [networkMismatch, setNetworkMismatch] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
@@ -180,6 +180,8 @@ export function ProductPurchaseScreen({
   const { mutateAsync: topup, isPending: isTopupPending } = useTopup();
   const { balance: walletBalance } = useWalletBalance();
   const { user } = useAuth();
+  const { isAutoDetectionEnabled, setIsAutoDetectionEnabled } =
+    useNetworkAutoDetectionPreference();
   const { authenticate, checkBiometricSupport } = useBiometricAuth();
   const { processPayment, submitPIN, reset: resetPaymentFlow, isLoading: isPaymentProcessing, currentStep: paymentStep, error: paymentError } = useCompletePaymentFlow({
     onSuccess: (transactionId) => {
@@ -202,15 +204,6 @@ export function ProductPurchaseScreen({
   const cashbackBalance = user?.cashback?.availableBalance || 0;
   const normalizedPhone = normalizePhoneNumber(phoneNumber);
   const isPhoneValid = isValidNigerianPhone(normalizedPhone);
-
-  // === NETWORK MISMATCH DETECTION ===
-  useEffect(() => {
-    if (detectedNetwork && selectedNetwork && detectedNetwork !== selectedNetwork) {
-      setNetworkMismatch(true);
-    } else {
-      setNetworkMismatch(false);
-    }
-  }, [detectedNetwork, selectedNetwork]);
 
   // Derive unique networks from products
   const networks = useMemo(() => {
@@ -405,7 +398,7 @@ export function ProductPurchaseScreen({
     (network: NetworkProvider | null) => {
       setDetectedNetwork(network); // Updates state
 
-      if (network) {
+      if (isAutoDetectionEnabled && network) {
         // Smart Switch: If detected network exists in our available networks list, select it
         const isAvailable = networks.some(n => n.slug === network);
         if (isAvailable && selectedNetwork !== network) {
@@ -415,7 +408,7 @@ export function ProductPurchaseScreen({
         }
       }
     },
-    [networks, selectedNetwork]
+    [isAutoDetectionEnabled, networks, selectedNetwork]
   );
 
   const handleNetworkSelect = useCallback((network: NetworkProvider) => {
@@ -684,15 +677,9 @@ export function ProductPurchaseScreen({
             value={phoneNumber}
             onChangeText={setPhoneNumber}
             onNetworkDetected={handleNetworkDetected}
+            autoDetectEnabled={isAutoDetectionEnabled}
+            onAutoDetectChange={setIsAutoDetectionEnabled}
           />
-
-          {/* Network Mismatch Warning */}
-          {networkMismatch && (
-            <Text style={[styles.warningText, { color: colors.warning }]}>
-              ⚠️ Phone number belongs to {detectedNetwork?.toUpperCase()}, but{" "}
-              {selectedNetwork?.toUpperCase()} is selected
-            </Text>
-          )}
         </View>
 
         {/* Network Selector */}
@@ -700,7 +687,7 @@ export function ProductPurchaseScreen({
           networks={networks}
           selectedNetwork={selectedNetwork}
           onSelect={handleNetworkSelect}
-          detectedNetwork={detectedNetwork}
+          detectedNetwork={isAutoDetectionEnabled ? detectedNetwork : null}
         />
 
         {/* Category Tabs */}
@@ -894,10 +881,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: designTokens.spacing.md,
     marginTop: designTokens.spacing.lg,
     marginBottom: designTokens.spacing.sm,
-  },
-  warningText: {
-    fontSize: designTokens.fontSize.sm,
-    marginTop: designTokens.spacing.xs,
   },
   loadingContainer: {
     flex: 1,

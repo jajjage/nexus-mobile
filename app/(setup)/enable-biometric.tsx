@@ -66,6 +66,10 @@ export default function EnableBiometricScreen() {
         updateUser({ hasBiometric: true });
         
         // Save to local storage as well for quick reference
+        const userId = user?.userId;
+        if (userId) {
+          await AsyncStorage.setItem(`biometric_setup_completed_${userId}`, 'true');
+        }
         await AsyncStorage.setItem('biometric_enrolled', 'true');
         await AsyncStorage.setItem('biometric_setup_completed', 'true');
         setIsLocalBiometricSetup(true);
@@ -100,6 +104,10 @@ export default function EnableBiometricScreen() {
       
       // Mark biometric as skipped (don't show again)
       updateUser({ hasBiometric: true }); // Set to true so we don't ask again
+      const userId = user?.userId;
+      if (userId) {
+        await AsyncStorage.setItem(`biometric_setup_completed_${userId}`, 'true');
+      }
       await AsyncStorage.setItem('biometric_setup_completed', 'true');
       await AsyncStorage.setItem('biometric_skipped', 'true');
       setIsLocalBiometricSetup(true);

@@ -120,8 +120,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await userStorage.setUser(newUser);
         await userStorage.setUserRole(newUser.role);
         
-        // Check local biometric setup again on login
-        const bioSetup = await AsyncStorage.getItem('biometric_setup_completed');
+        // Check local biometric setup state (user-scoped)
+        const activeUserId = newUser.userId;
+        const bioSetup = activeUserId
+          ? await AsyncStorage.getItem(`biometric_setup_completed_${activeUserId}`)
+          : await AsyncStorage.getItem('biometric_setup_completed');
         setIsLocalBiometricSetup(bioSetup === 'true');
       } catch (e) {
         console.error("Failed to save user to SecureStore", e);

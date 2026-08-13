@@ -38,6 +38,7 @@ import { designTokens } from "@/constants/palette";
 import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/hooks/useAuth";
 import { useCompletePaymentFlow } from "@/hooks/useCompletePaymentFlow";
+import { useNetworkAutoDetectionPreference } from "@/hooks/useNetworkAutoDetectionPreference";
 import { useProducts } from "@/hooks/useProducts";
 import { useSupplierMarkupMap } from "@/hooks/useSupplierMarkup";
 import { useTopup } from "@/hooks/useTopup";
@@ -63,7 +64,6 @@ export default function AirtimeScreen() {
   const [amount, setAmount] = useState("");
   const [selectedNetwork, setSelectedNetwork] = useState<NetworkProvider | null>(null);
   const [detectedNetwork, setDetectedNetwork] = useState<NetworkProvider | null>(null);
-  const [networkMismatch, setNetworkMismatch] = useState(false);
   
   // Modals & Flows
   const [checkoutMode, setCheckoutMode] = useState<CheckoutMode>("checkout");
@@ -95,6 +95,8 @@ export default function AirtimeScreen() {
   const markupMap = useSupplierMarkupMap();
   const { balance: walletBalance } = useWalletBalance();
   const { user } = useAuth();
+  const { isAutoDetectionEnabled, setIsAutoDetectionEnabled } =
+    useNetworkAutoDetectionPreference();
   
   // Mutation state
   const { isPending: isTopupPending } = useTopup();
@@ -162,14 +164,6 @@ export default function AirtimeScreen() {
   }, [productsData]);
 
   useEffect(() => {
-    if (detectedNetwork && selectedNetwork && detectedNetwork !== selectedNetwork) {
-      setNetworkMismatch(true);
-    } else {
-      setNetworkMismatch(false);
-    }
-  }, [detectedNetwork, selectedNetwork]);
-
-  useEffect(() => {
     if (!selectedNetwork && networks.length > 0) {
       setSelectedNetwork(networks[0].slug);
     }
@@ -195,14 +189,14 @@ export default function AirtimeScreen() {
   // === HANDLERS ===
   const handleNetworkDetected = useCallback((network: NetworkProvider | null) => {
     setDetectedNetwork(network);
-    if (network) {
+    if (isAutoDetectionEnabled && network) {
       const isAvailable = networks.some(n => n.slug === network);
       if (isAvailable && selectedNetwork !== network) {
         setSelectedNetwork(network);
         Haptics.selectionAsync();
       }
     }
-  }, [networks, selectedNetwork]);
+  }, [isAutoDetectionEnabled, networks, selectedNetwork]);
 
   const handleNetworkSelect = useCallback((network: NetworkProvider) => {
     Haptics.selectionAsync();
@@ -389,12 +383,9 @@ export default function AirtimeScreen() {
               onChangeText={setPhoneNumber}
               onNetworkDetected={handleNetworkDetected}
               placeholder="0803 000 0000"
+              autoDetectEnabled={isAutoDetectionEnabled}
+              onAutoDetectChange={setIsAutoDetectionEnabled}
             />
-            {networkMismatch && (
-              <Text style={[styles.warningText, { color: colors.warning }]}>
-                ⚠️ Phone number belongs to {detectedNetwork?.toUpperCase()}, but {selectedNetwork?.toUpperCase()} is selected
-              </Text>
-            )}
           </View>
 
           {/* Network Selector */}
@@ -402,7 +393,7 @@ export default function AirtimeScreen() {
             networks={networks}
             selectedNetwork={selectedNetwork}
             onSelect={handleNetworkSelect}
-            detectedNetwork={detectedNetwork}
+            detectedNetwork={isAutoDetectionEnabled ? detectedNetwork : null}
           />
 
           {/* Amount Section */}
@@ -527,7 +518,6 @@ const styles = StyleSheet.create({
   scrollContent: { paddingVertical: designTokens.spacing.md },
   section: { paddingHorizontal: designTokens.spacing.md, marginBottom: designTokens.spacing.lg },
   sectionTitle: { fontSize: designTokens.fontSize.base, fontWeight: "600", marginBottom: designTokens.spacing.sm },
-  warningText: { fontSize: designTokens.fontSize.sm, marginTop: designTokens.spacing.xs },
   
   amountInputContainer: {
     flexDirection: "row",

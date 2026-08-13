@@ -12,17 +12,21 @@ export default function SetupIndex() {
   const [localBiometricCompleted, setLocalBiometricCompleted] = useState(false);
 
   // Check local storage for biometric setup completion
-  // This is a fallback in case backend doesn't persist hasBiometric
+  // User-scoped to ensure biometric setup screen is shown for each account/session
   useEffect(() => {
     const checkLocalBiometric = async () => {
       try {
-        const completed = await AsyncStorage.getItem('biometric_setup_completed');
+        const userId = user?.userId;
+        const userBioKey = userId ? `biometric_setup_completed_${userId}` : 'biometric_setup_completed';
+        const completed = await AsyncStorage.getItem(userBioKey);
         if (completed === 'true') {
           setLocalBiometricCompleted(true);
           // Also sync to user state if not already set
           if (user && !user.hasBiometric) {
             updateUser({ hasBiometric: true });
           }
+        } else {
+          setLocalBiometricCompleted(false);
         }
       } catch (e) {
         console.error('[SetupIndex] Error checking local biometric state:', e);

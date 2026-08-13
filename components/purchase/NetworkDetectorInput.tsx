@@ -21,6 +21,7 @@ import {
     Modal,
     Pressable,
     StyleSheet,
+    Switch,
     Text,
     TextInput,
     TouchableOpacity,
@@ -35,6 +36,8 @@ interface NetworkDetectorInputProps {
   placeholder?: string;
   recentNumbers?: RecentNumber[];
   disabled?: boolean;
+  autoDetectEnabled?: boolean;
+  onAutoDetectChange?: (enabled: boolean) => void;
 }
 
 export function NetworkDetectorInput({
@@ -44,6 +47,8 @@ export function NetworkDetectorInput({
   placeholder = "Enter phone number",
   recentNumbers: propRecentNumbers,
   disabled = false,
+  autoDetectEnabled = true,
+  onAutoDetectChange,
 }: NetworkDetectorInputProps) {
   const colorScheme = useColorScheme();
   const colors = colorScheme === "dark" ? darkColors : lightColors;
@@ -79,11 +84,14 @@ export function NetworkDetectorInput({
 
       onChangeText(cleaned);
 
-      // Detect network on every keystroke
-      const detected = detectNetworkProvider(cleaned);
-      onNetworkDetected(detected);
+      if (autoDetectEnabled) {
+        const detected = detectNetworkProvider(cleaned);
+        onNetworkDetected(detected);
+      } else {
+        onNetworkDetected(null);
+      }
     },
-    [onChangeText, onNetworkDetected]
+    [autoDetectEnabled, onChangeText, onNetworkDetected]
   );
 
   // Handle clear button
@@ -104,7 +112,7 @@ export function NetworkDetectorInput({
   );
 
   // Get network logo if detected
-  const detectedNetwork = detectNetworkProvider(value);
+  const detectedNetwork = autoDetectEnabled ? detectNetworkProvider(value) : null;
   const networkInfo = detectedNetwork ? NETWORK_PROVIDERS[detectedNetwork] : null;
 
   const isValid = value.length === 0 || isValidNigerianPhone(value);
@@ -186,6 +194,26 @@ export function NetworkDetectorInput({
         <Text style={[styles.errorText, { color: colors.destructive }]}>
           Enter a valid 11-digit Nigerian number
         </Text>
+      )}
+
+      {onAutoDetectChange && (
+        <View style={[styles.autoDetectRow, { borderColor: colors.border }]}>
+          <View style={styles.autoDetectTextGroup}>
+            <Text style={[styles.autoDetectTitle, { color: colors.foreground }]}>
+              Auto-detect network
+            </Text>
+            <Text style={[styles.autoDetectDescription, { color: colors.textSecondary }]}>
+              Turn off for ported numbers and choose the network manually.
+            </Text>
+          </View>
+          <Switch
+            value={autoDetectEnabled}
+            onValueChange={onAutoDetectChange}
+            trackColor={{ false: colors.border, true: colors.primary }}
+            thumbColor={autoDetectEnabled ? colors.card : colors.textSecondary}
+            disabled={disabled}
+          />
+        </View>
       )}
 
       {/* Recent Numbers Modal */}
@@ -298,6 +326,27 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: designTokens.fontSize.xs,
     marginTop: designTokens.spacing.xs,
+  },
+  autoDetectRow: {
+    marginTop: designTokens.spacing.sm,
+    paddingTop: designTokens.spacing.sm,
+    borderTopWidth: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: designTokens.spacing.md,
+  },
+  autoDetectTextGroup: {
+    flex: 1,
+  },
+  autoDetectTitle: {
+    fontSize: designTokens.fontSize.sm,
+    fontWeight: "600",
+  },
+  autoDetectDescription: {
+    fontSize: designTokens.fontSize.xs,
+    marginTop: 2,
+    lineHeight: 16,
   },
   modalOverlay: {
     flex: 1,
