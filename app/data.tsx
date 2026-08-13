@@ -30,6 +30,7 @@ import {
   CheckoutMode,
   NetworkDetectorInput,
   NetworkSelector,
+  PortedNumberBypass,
   ProductCard,
 } from "@/components/purchase";
 import { PinPadModal } from "@/components/security/PinPadModal";
@@ -458,6 +459,8 @@ export function ProductPurchaseScreen({
         useCashback,
         markupPercent: markup,
         userCashbackBalance: cashbackBalance,
+        allowOperatorMismatch: !isAutoDetectionEnabled,
+        selectedOperatorCode: selectedNetwork?.toUpperCase(),
       });
 
       if (result.success) {
@@ -473,6 +476,8 @@ export function ProductPurchaseScreen({
           phoneNumber: normalizedPhone,
           useCashback,
           markupPercent: markup,
+          allowOperatorMismatch: !isAutoDetectionEnabled,
+          selectedOperatorCode: selectedNetwork?.toUpperCase(),
         });
         // Wait for BottomSheet close animation (350ms) + buffer
         setTimeout(() => {
@@ -498,7 +503,7 @@ export function ProductPurchaseScreen({
         checkoutSheetRef.current?.expand();
       }, 400);
     }
-  }, [selectedProduct, normalizedPhone, useCashback, cashbackBalance, processPayment, markupMap]);
+  }, [selectedProduct, normalizedPhone, useCashback, cashbackBalance, processPayment, markupMap, isAutoDetectionEnabled, selectedNetwork]);
 
   const handlePinSubmit = useCallback(
     async (pin: string) => {
@@ -513,6 +518,8 @@ export function ProductPurchaseScreen({
           phoneNumber: pendingPaymentData.phoneNumber,
           useCashback: pendingPaymentData.useCashback,
           markupPercent: pendingPaymentData.markupPercent,
+          allowOperatorMismatch: pendingPaymentData.allowOperatorMismatch,
+          selectedOperatorCode: pendingPaymentData.selectedOperatorCode,
           pin: pin,
           userCashbackBalance: cashbackBalance,
         });
@@ -678,7 +685,12 @@ export function ProductPurchaseScreen({
             onChangeText={setPhoneNumber}
             onNetworkDetected={handleNetworkDetected}
             autoDetectEnabled={isAutoDetectionEnabled}
-            onAutoDetectChange={setIsAutoDetectionEnabled}
+          />
+          <PortedNumberBypass
+            enabled={!isAutoDetectionEnabled}
+            onChange={(bypassEnabled) => {
+              setIsAutoDetectionEnabled(!bypassEnabled);
+            }}
           />
         </View>
 

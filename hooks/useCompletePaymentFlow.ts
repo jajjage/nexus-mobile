@@ -58,6 +58,8 @@ export function useCompletePaymentFlow(
       markupPercent?: number; // Supplier markup percentage
       pin?: string; // If user provided PIN
       userCashbackBalance?: number;
+      allowOperatorMismatch?: boolean;
+      selectedOperatorCode?: string;
     }): Promise<PaymentFlowResult> => {
       try {
         setIsProcessing(true);
@@ -70,6 +72,8 @@ export function useCompletePaymentFlow(
           markupPercent = 0,
           pin,
           userCashbackBalance = 0,
+          allowOperatorMismatch = false,
+          selectedOperatorCode,
         } = args;
 
         const validation = validatePurchase(
@@ -139,6 +143,11 @@ export function useCompletePaymentFlow(
           useCashback: useCashback,
         };
 
+        if (allowOperatorMismatch && selectedOperatorCode) {
+          topupRequest.allowOperatorMismatch = true;
+          topupRequest.selectedOperatorCode = selectedOperatorCode;
+        }
+
         // Add authentication - PIN or biometric token (never both)
         if (verificationToken) {
           topupRequest.verificationToken = verificationToken;
@@ -197,6 +206,8 @@ export function useCompletePaymentFlow(
       markupPercent?: number;
       pin: string;
       userCashbackBalance?: number;
+      allowOperatorMismatch?: boolean;
+      selectedOperatorCode?: string;
     }) => {
       return processPayment(args);
     },

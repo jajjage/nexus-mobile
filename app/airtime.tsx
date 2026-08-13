@@ -31,6 +31,7 @@ import {
   CheckoutModal,
   CheckoutMode,
   NetworkDetectorInput,
+  PortedNumberBypass,
   NetworkSelector
 } from "@/components/purchase";
 import { PinPadModal } from "@/components/security/PinPadModal";
@@ -121,6 +122,7 @@ export default function AirtimeScreen() {
   const cashbackBalance = user?.cashback?.availableBalance || 0;
   const normalizedPhone = normalizePhoneNumber(phoneNumber);
   const isPhoneValid = isValidNigerianPhone(normalizedPhone);
+  const selectedOperatorCode = selectedNetwork?.toUpperCase();
 
   // Validate Amount
   const numericAmount = parseFloat(amount.replace(/[^0-9.]/g, "") || "0");
@@ -245,6 +247,8 @@ export default function AirtimeScreen() {
         useCashback,
         markupPercent: markup,
         userCashbackBalance: cashbackBalance,
+        allowOperatorMismatch: !isAutoDetectionEnabled,
+        selectedOperatorCode,
       });
 
       if (result.success) {
@@ -259,6 +263,8 @@ export default function AirtimeScreen() {
           phoneNumber: normalizedPhone,
           useCashback,
           markupPercent: markup,
+          allowOperatorMismatch: !isAutoDetectionEnabled,
+          selectedOperatorCode,
         });
         // Wait for BottomSheet close animation (350ms) + buffer
         setTimeout(() => setShowPinModal(true), 450);
@@ -275,7 +281,15 @@ export default function AirtimeScreen() {
       setLastErrorMessage(getUserFriendlyError(error.message || "Payment failed"));
       setTimeout(() => setCheckoutMode("failed"), 400);
     }
-  }, [selectedProduct, normalizedPhone, useCashback, cashbackBalance, processPayment]);
+  }, [
+    selectedProduct,
+    normalizedPhone,
+    useCashback,
+    cashbackBalance,
+    processPayment,
+    isAutoDetectionEnabled,
+    selectedOperatorCode,
+  ]);
 
   const handlePinSubmit = useCallback(async (pin: string) => {
     if (!pendingPaymentData) return;
@@ -384,7 +398,12 @@ export default function AirtimeScreen() {
               onNetworkDetected={handleNetworkDetected}
               placeholder="0803 000 0000"
               autoDetectEnabled={isAutoDetectionEnabled}
-              onAutoDetectChange={setIsAutoDetectionEnabled}
+            />
+            <PortedNumberBypass
+              enabled={!isAutoDetectionEnabled}
+              onChange={(bypassEnabled) => {
+                setIsAutoDetectionEnabled(!bypassEnabled);
+              }}
             />
           </View>
 

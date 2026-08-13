@@ -8,6 +8,8 @@ export interface TopupRequest {
   supplierMappingId?: string;
   useCashback?: boolean;
   offerId?: string; // Optional - offer ID if applying a discount
+  allowOperatorMismatch?: boolean;
+  selectedOperatorCode?: string;
 }
 
 export interface TopupResponse {

@@ -21,7 +21,6 @@ import {
     Modal,
     Pressable,
     StyleSheet,
-    Switch,
     Text,
     TextInput,
     TouchableOpacity,
@@ -37,7 +36,6 @@ interface NetworkDetectorInputProps {
   recentNumbers?: RecentNumber[];
   disabled?: boolean;
   autoDetectEnabled?: boolean;
-  onAutoDetectChange?: (enabled: boolean) => void;
 }
 
 export function NetworkDetectorInput({
@@ -48,7 +46,6 @@ export function NetworkDetectorInput({
   recentNumbers: propRecentNumbers,
   disabled = false,
   autoDetectEnabled = true,
-  onAutoDetectChange,
 }: NetworkDetectorInputProps) {
   const colorScheme = useColorScheme();
   const colors = colorScheme === "dark" ? darkColors : lightColors;
@@ -196,26 +193,6 @@ export function NetworkDetectorInput({
         </Text>
       )}
 
-      {onAutoDetectChange && (
-        <View style={[styles.autoDetectRow, { borderColor: colors.border }]}>
-          <View style={styles.autoDetectTextGroup}>
-            <Text style={[styles.autoDetectTitle, { color: colors.foreground }]}>
-              Auto-detect network
-            </Text>
-            <Text style={[styles.autoDetectDescription, { color: colors.textSecondary }]}>
-              Turn off for ported numbers and choose the network manually.
-            </Text>
-          </View>
-          <Switch
-            value={autoDetectEnabled}
-            onValueChange={onAutoDetectChange}
-            trackColor={{ false: colors.border, true: colors.primary }}
-            thumbColor={autoDetectEnabled ? colors.card : colors.textSecondary}
-            disabled={disabled}
-          />
-        </View>
-      )}
-
       {/* Recent Numbers Modal */}
       <Modal
         visible={showRecentNumbers}
@@ -326,27 +303,6 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: designTokens.fontSize.xs,
     marginTop: designTokens.spacing.xs,
-  },
-  autoDetectRow: {
-    marginTop: designTokens.spacing.sm,
-    paddingTop: designTokens.spacing.sm,
-    borderTopWidth: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: designTokens.spacing.md,
-  },
-  autoDetectTextGroup: {
-    flex: 1,
-  },
-  autoDetectTitle: {
-    fontSize: designTokens.fontSize.sm,
-    fontWeight: "600",
-  },
-  autoDetectDescription: {
-    fontSize: designTokens.fontSize.xs,
-    marginTop: 2,
-    lineHeight: 16,
   },
   modalOverlay: {
     flex: 1,
