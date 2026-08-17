@@ -45,25 +45,11 @@ export function useBiometricTransaction() {
         }
 
         // Step 1: Get authentication challenge from backend
-
         const authOptions = await biometricService.getAuthenticationOptions();
 
-
-
-        // Step 2: Perform local biometric (device-only - NO backend call yet)
-
-        const biometricSuccess = await authenticate();
-
-        if (!biometricSuccess) {
-
-          throw new Error("Biometric verification was cancelled or failed");
-        }
-
-
-
-        // Step 3: Build WebAuthn assertion response
-
+        // Step 2: Build WebAuthn assertion response (invokes native OS Passkey / Biometric prompt)
         const assertion = await buildWebAuthnAssertion(authOptions.challenge);
+
 
 
         // Step 4: Send to backend for verification

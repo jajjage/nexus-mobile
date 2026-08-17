@@ -1,10 +1,15 @@
 // hooks/useBiometric.ts
 import * as LocalAuthentication from "expo-local-authentication";
 
+let cachedSupport: {
+  hasHardware: boolean;
+  isEnrolled: boolean;
+  supportedTypes: LocalAuthentication.AuthenticationType[];
+} | null = null;
+
 export function useBiometricAuth() {
   const authenticate = async (): Promise<boolean> => {
-    const hasHardware = await LocalAuthentication.hasHardwareAsync();
-    const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+    const { hasHardware, isEnrolled } = await checkBiometricSupport();
 
     if (!hasHardware || !isEnrolled) return false;
 
@@ -17,16 +22,23 @@ export function useBiometricAuth() {
     return result.success;
   };
 
-  const checkBiometricSupport = async (): Promise<{
+  const checkBiometricSupport = async (forceRefresh = false): Promise<{
     hasHardware: boolean;
     isEnrolled: boolean;
     supportedTypes: LocalAuthentication.AuthenticationType[];
   }> => {
-    const hasHardware = await LocalAuthentication.hasHardwareAsync();
-    const isEnrolled = await LocalAuthentication.isEnrolledAsync();
-    const supportedTypes = await LocalAuthentication.supportedAuthenticationTypesAsync();
+    if (cachedSupport && !forceRefresh) {
+      return cachedSupport;
+    }
 
-    return { hasHardware, isEnrolled, supportedTypes };
+    const [hasHardware, isEnrolled, supportedTypes] = await Promise.all([
+      LocalAuthentication.hasHardwareAsync(),
+      LocalAuthentication.isEnrolledAsync(),
+      LocalAuthentication.supportedAuthenticationTypesAsync(),
+    ]);
+
+    cachedSupport = { hasHardware, isEnrolled, supportedTypes };
+    return cachedSupport;
   };
 
   return { authenticate, checkBiometricSupport };
