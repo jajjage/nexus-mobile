@@ -1,6 +1,7 @@
 /**
  * CheckoutModal - Multi-state checkout bottom sheet
  * Per mobile-airtime-data-guide.md Section 4 - Payment Waterfall
+ * Updated to modern card-grouped UI reference design
  */
 
 import { ShareTransactionSheet } from "@/components/ShareTransactionSheet";
@@ -10,21 +11,29 @@ import { Transaction } from "@/types/wallet.types";
 import BottomSheet, { BottomSheetView } from "@gorhom/bottom-sheet";
 import * as Haptics from "expo-haptics";
 import {
-    CheckCircle,
-    RefreshCw,
-    Share2,
-    XCircle
+  AlertCircle,
+  Ban,
+  CheckCircle,
+  Gift,
+  Phone,
+  RefreshCw,
+  Share2,
+  ShoppingCart,
+  Tv,
+  XCircle,
+  Zap,
 } from "lucide-react-native";
 import React, { forwardRef, useCallback, useMemo } from "react";
 import {
-    ActivityIndicator,
-    Image,
-    Pressable,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
-    useColorScheme
+  ActivityIndicator,
+  Image,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  useColorScheme,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -40,6 +49,7 @@ export interface CheckoutData {
   transactionId?: string;
   errorMessage?: string;
   bonusToEarn?: number;
+  validity?: string;
   // Price breakdown details
   supplierCost?: number;
   markup?: number;
@@ -82,9 +92,8 @@ export const CheckoutModal = forwardRef<BottomSheet, CheckoutModalProps>(
     const colors = isDark ? darkColors : lightColors;
 
     const snapPoints = useMemo(() => {
-      // Keep snapPoints stable to prevent view hierarchy crashes
-      // Always use 75% height to avoid layout restructuring when mode changes
-      return ["75%"];
+      // 85% height to ensure plenty of room for all card components & scroll
+      return ["85%"];
     }, []);
 
     const [showShareSheet, setShowShareSheet] = React.useState(false);
@@ -94,29 +103,28 @@ export const CheckoutModal = forwardRef<BottomSheet, CheckoutModalProps>(
       ? Math.min(cashbackBalance, data?.amount || 0)
       : 0;
     const totalToPay = (data?.amount || 0) - cashbackToUse;
-    
+
     // Add small tolerance (0.01) for floating point precision issues
-    const insufficientBalance = totalToPay > (walletBalance + 0.01);
-    const insufficientBalanceExact = totalToPay > walletBalance; // used for text feedback if needed
+    const insufficientBalance = totalToPay > walletBalance + 0.01;
 
     // Helper to create a Transaction object from checkout data for the receipt
     const createTransactionFromCheckoutData = useCallback((): Transaction | null => {
       if (!data) return null;
 
-      // Determine product type based on explicit checkout metadata, with name fallback.
-      const isData = data.productType === "data" ||
-                     data.productType === "subscription" ||
-                     data.productName.toLowerCase().includes("data") || 
-                     data.productName.toLowerCase().includes("gb") || 
-                     data.productName.toLowerCase().includes("mb");
+      const isData =
+        data.productType === "data" ||
+        data.productType === "subscription" ||
+        data.productName.toLowerCase().includes("data") ||
+        data.productName.toLowerCase().includes("gb") ||
+        data.productName.toLowerCase().includes("mb");
 
       return {
         id: data.transactionId || `REF-${Date.now()}`,
-        walletId: "current-wallet", // Placeholder
-        userId: "current-user", // Placeholder
+        walletId: "current-wallet",
+        userId: "current-user",
         direction: "debit",
-        amount: data.amount, // This is the amount paid
-        balanceAfter: walletBalance - totalToPay, // Approximate
+        amount: data.amount,
+        balanceAfter: walletBalance - totalToPay,
         method: "wallet",
         relatedType: "topup_request",
         cashbackUsed: cashbackToUse,
@@ -128,11 +136,11 @@ export const CheckoutModal = forwardRef<BottomSheet, CheckoutModalProps>(
           recipient_phone: data.recipientPhone,
           operatorCode: data.network,
           type: data.productType || (isData ? "data" : "airtime"),
-        }
+        },
       } as Transaction;
     }, [data, cashbackToUse, walletBalance, totalToPay]);
 
-    // Memoize transaction to prevent re-rendering and view hierarchy issues
+    // Memoize transaction to prevent re-rendering issues
     const cachedTransaction = useMemo(
       () => createTransactionFromCheckoutData(),
       [createTransactionFromCheckoutData]
@@ -149,17 +157,95 @@ export const CheckoutModal = forwardRef<BottomSheet, CheckoutModalProps>(
 
     const networkInfo = data.network ? NETWORK_PROVIDERS[data.network] : null;
 
-    // Render based on mode
-    const renderContent = () => {
-      const contentStyle = [
-        styles.content,
-        { paddingBottom: Math.max(insets.bottom, 24) } // Add safe area padding
-      ];
+    // Helper for deriving validity string if not explicitly passed
+    const getValidityText = (): string | null => {
+      if (data.validity) return data.validity;
+      const lower = data.productName.toLowerCase();
+      if (
+        lower.includes("daily") ||
+        lower.includes("1 day") ||
+        lower.includes("24 hrs") ||
+        lower.includes("24hrs")
+      )
+        return "1 Day";
+      if (
+        lower.includes("weekly") ||
+        lower.includes("7 day") ||
+        lower.includes("7 days")
+      )
+        return "7 Days";
+      if (
+        lower.includes("monthly") ||
+        lower.includes("30 day") ||
+        lower.includes("30 days") ||
+        lower.includes("1 month")
+      )
+        return "30 Days";
+      if (lower.includes("yearly") || lower.includes("1 year")) return "1 Year";
+      return null;
+    };
 
+    // Determine header iconography and title
+    const isDataProduct =
+      data.productType === "data" ||
+      data.productName.toLowerCase().includes("data") ||
+      data.productName.toLowerCase().includes("gb") ||
+      data.productName.toLowerCase().includes("mb");
+
+    const isAirtimeProduct =
+      data.productType === "airtime" ||
+      data.productName.toLowerCase().includes("airtime");
+
+    const isElectricityProduct =
+      data.productType === "electricity" ||
+      data.productName.toLowerCase().includes("electricity") ||
+      data.productName.toLowerCase().includes("meter");
+
+    const isCableProduct =
+      data.productType === "cable" ||
+      data.productName.toLowerCase().includes("dstv") ||
+      data.productName.toLowerCase().includes("gotv") ||
+      data.productName.toLowerCase().includes("startimes");
+
+    let titleText = "Confirm Purchase";
+    let HeaderIcon = ShoppingCart;
+    let tileBgColor = isDark ? "#1E293B" : "#E0F2FE";
+    let iconColor = isDark ? "#38BDF8" : "#0284C7";
+
+    if (isDataProduct) {
+      titleText = "Data Purchase";
+      HeaderIcon = ShoppingCart;
+      tileBgColor = isDark ? "#1E293B" : "#E0F2FE";
+      iconColor = isDark ? "#38BDF8" : "#0284C7";
+    } else if (isAirtimeProduct) {
+      titleText = "Airtime Purchase";
+      HeaderIcon = Phone;
+      tileBgColor = isDark ? "#1E293B" : "#E0F2FE";
+      iconColor = isDark ? "#38BDF8" : "#0284C7";
+    } else if (isElectricityProduct) {
+      titleText = "Electricity Payment";
+      HeaderIcon = Zap;
+      tileBgColor = isDark ? "#312E81" : "#EEF2FF";
+      iconColor = isDark ? "#818CF8" : "#4F46E5";
+    } else if (isCableProduct) {
+      titleText = "Cable Subscription";
+      HeaderIcon = Tv;
+      tileBgColor = isDark ? "#312E81" : "#EEF2FF";
+      iconColor = isDark ? "#818CF8" : "#4F46E5";
+    }
+
+    // Render content based on mode
+    const renderContent = () => {
       switch (mode) {
         case "success":
           return (
-            <View style={contentStyle}>
+            <ScrollView
+              contentContainerStyle={[
+                styles.scrollContent,
+                { paddingBottom: Math.max(insets.bottom + 24, 32) },
+              ]}
+              showsVerticalScrollIndicator={false}
+            >
               <View
                 style={[
                   styles.statusIcon,
@@ -213,7 +299,10 @@ export const CheckoutModal = forwardRef<BottomSheet, CheckoutModalProps>(
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={[styles.doneButton, { backgroundColor: colors.primary }]}
+                  style={[
+                    styles.doneButton,
+                    { backgroundColor: colors.primary },
+                  ]}
                   onPress={onClose}
                 >
                   <Text
@@ -226,12 +315,18 @@ export const CheckoutModal = forwardRef<BottomSheet, CheckoutModalProps>(
                   </Text>
                 </TouchableOpacity>
               </View>
-            </View>
+            </ScrollView>
           );
 
         case "failed":
           return (
-            <View style={contentStyle}>
+            <ScrollView
+              contentContainerStyle={[
+                styles.scrollContent,
+                { paddingBottom: Math.max(insets.bottom + 24, 32) },
+              ]}
+              showsVerticalScrollIndicator={false}
+            >
               <View
                 style={[
                   styles.statusIcon,
@@ -281,195 +376,318 @@ export const CheckoutModal = forwardRef<BottomSheet, CheckoutModalProps>(
                   </Text>
                 </TouchableOpacity>
               </View>
-            </View>
+            </ScrollView>
           );
 
         default:
-          // Checkout mode
+          // Checkout mode (Modern Card-Grouped Reference Layout)
           return (
-            <View style={contentStyle}>
-              <Text style={[styles.title, { color: colors.foreground }]}>
-                Confirm Purchase
-              </Text>
-
-              {/* Hero Amount */}
-              <View style={styles.heroSection}>
-                <Text style={[styles.heroAmount, { color: colors.foreground }]}>
-                  ₦{(totalToPay).toLocaleString()}
+            <ScrollView
+              contentContainerStyle={[
+                styles.scrollContent,
+                { paddingBottom: Math.max(insets.bottom + 24, 32) },
+              ]}
+              showsVerticalScrollIndicator={false}
+            >
+              {/* Header Section with Icon Badge */}
+              <View style={styles.headerRow}>
+                <View style={[styles.headerIconTile, { backgroundColor: tileBgColor }]}>
+                  <HeaderIcon size={22} color={iconColor} />
+                </View>
+                <Text style={[styles.headerTitle, { color: colors.foreground }]}>
+                  {titleText}
                 </Text>
-                {data.originalAmount && data.originalAmount > data.amount && (
-                  <Text style={[styles.heroStrikethrough, { color: colors.textTertiary }]}>
-                    ₦{data.originalAmount.toLocaleString()}
-                  </Text>
-                )}
               </View>
 
-              {/* Details List */}
-              <View style={styles.detailsList}>
-                <View style={styles.detailRow}>
-                  <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>
-                    Product Name
+              {/* Card 1: Details Grouped Box */}
+              <View
+                style={[
+                  styles.groupedCard,
+                  {
+                    backgroundColor: isDark ? "#1E293B" : "#F8FAFC",
+                    borderColor: isDark ? "#334155" : "#E2E8F0",
+                  },
+                ]}
+              >
+                {/* Phone Row */}
+                <View style={styles.cardRow}>
+                  <Text style={[styles.cardRowLabel, { color: colors.textSecondary }]}>
+                    Phone
                   </Text>
-                  <View style={styles.detailValueContainer}>
-                     {networkInfo && (
-                       <View style={[styles.miniLogo, { backgroundColor: "transparent" }]}>
-                          <Image 
-                            source={networkInfo.logo} 
-                            style={{ width: 16, height: 16, borderRadius: 8 }} 
-                            resizeMode="cover"
-                          />
-                       </View>
-                     )}
-                    <Text style={[styles.detailValue, { color: colors.foreground }]}>
-                      {data.productType === "subscription"
-                        ? "Subscription"
-                        : data.productName.includes("Airtime")
-                          ? "Airtime"
-                          : "Mobile Data"}
-                    </Text>
-                  </View>
-                </View>
-
-                <View style={styles.detailRow}>
-                  <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>
-                    Recipient Mobile
-                  </Text>
-                  <Text style={[styles.detailValue, { color: colors.foreground }]}>
+                  <Text style={[styles.cardRowValue, { color: colors.foreground }]}>
                     {data.recipientPhone}
                   </Text>
                 </View>
 
-                <View style={styles.detailRow}>
-                  <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>
-                    Details
+                <View
+                  style={[
+                    styles.rowDivider,
+                    { backgroundColor: isDark ? "#334155" : "#E2E8F0" },
+                  ]}
+                />
+
+                {/* Network Row */}
+                <View style={styles.cardRow}>
+                  <Text style={[styles.cardRowLabel, { color: colors.textSecondary }]}>
+                    Network
                   </Text>
-                  <Text style={[styles.detailValue, { color: colors.foreground }]}>
+
+                  <View style={styles.detailValueContainer}>
+                    {networkInfo && (
+                      <View style={styles.miniLogo}>
+                        <Image
+                          source={networkInfo.logo}
+                          style={{ width: 16, height: 16, borderRadius: 8 }}
+                          resizeMode="cover"
+                        />
+                      </View>
+                    )}
+                    <Text style={[styles.cardRowValue, { color: colors.foreground }]}>
+                      {data.network ? data.network.toUpperCase() : "N/A"}
+                    </Text>
+                  </View>
+                </View>
+
+                <View
+                  style={[
+                    styles.rowDivider,
+                    { backgroundColor: isDark ? "#334155" : "#E2E8F0" },
+                  ]}
+                />
+
+                {/* Plan / Product Row */}
+                <View style={styles.cardRow}>
+                  <Text style={[styles.cardRowLabel, { color: colors.textSecondary }]}>
+                    Plan
+                  </Text>
+                  <Text
+                    style={[
+                      styles.cardRowValue,
+                      { color: colors.foreground, flex: 1, textAlign: "right" },
+                    ]}
+                  >
                     {data.productName}
                   </Text>
                 </View>
 
-                 <View style={styles.detailRow}>
-                  <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>
-                    Amount to Pay
+                {/* Validity Row (if applicable) */}
+                {getValidityText() ? (
+                  <>
+                    <View
+                      style={[
+                        styles.rowDivider,
+                        { backgroundColor: isDark ? "#334155" : "#E2E8F0" },
+                      ]}
+                    />
+                    <View style={styles.cardRow}>
+                      <Text
+                        style={[styles.cardRowLabel, { color: colors.textSecondary }]}
+                      >
+                        Validity
+                      </Text>
+                      <Text style={[styles.cardRowValue, { color: colors.foreground }]}>
+                        {getValidityText()}
+                      </Text>
+                    </View>
+                  </>
+                ) : null}
+              </View>
+
+              {/* Card 2: Cashback Card */}
+              <View
+                style={[
+                  styles.cashbackCard,
+                  {
+                    backgroundColor: isDark ? "#064E3B20" : "#ECFDF5",
+                    borderColor: isDark ? "#047857" : "#A7F3D0",
+                  },
+                ]}
+              >
+                <View style={styles.cashbackLeft}>
+                  <View
+                    style={[
+                      styles.cashbackIconTile,
+                      { backgroundColor: isDark ? "#065F46" : "#D1FAE5" },
+                    ]}
+                  >
+                    <Gift size={18} color="#059669" />
+                  </View>
+                  <View>
+                    <Text style={[styles.cashbackTitle, { color: colors.foreground }]}>
+                      Use Cashback
+                    </Text>
+                    <Text style={[styles.cashbackSubtext, { color: "#059669" }]}>
+                      Available: ₦{cashbackBalance.toLocaleString()}
+                    </Text>
+                  </View>
+                </View>
+
+                <Pressable
+                  onPress={() => {
+                    Haptics.selectionAsync();
+                    onUseCashbackChange(!useCashback);
+                  }}
+                  style={[
+                    styles.customToggleTrack,
+                    {
+                      backgroundColor: useCashback
+                        ? "#10B981"
+                        : isDark
+                        ? "#334155"
+                        : "#CBD5E1",
+                    },
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.customToggleDot,
+                      {
+                        transform: [{ translateX: useCashback ? 16 : 0 }],
+                        backgroundColor: "#FFFFFF",
+                      },
+                    ]}
+                  />
+                </Pressable>
+              </View>
+
+              {/* Card 3: Total Amount Card */}
+              <View
+                style={[
+                  styles.totalAmountCard,
+                  {
+                    backgroundColor: isDark ? "#1E293B" : "#F8FAFC",
+                    borderColor: insufficientBalance
+                      ? "#FCA5A5"
+                      : isDark
+                      ? "#334155"
+                      : "#E2E8F0",
+                  },
+                ]}
+              >
+                <View>
+                  <Text style={[styles.totalAmountTitle, { color: colors.foreground }]}>
+                    Total Amount
                   </Text>
-                  <Text style={[styles.detailValue, { color: colors.foreground, fontWeight: '700' }]}>
-                    ₦{totalToPay.toLocaleString()}
+                  <Text style={[styles.walletSubtext, { color: colors.textSecondary }]}>
+                    Wallet: ₦{walletBalance.toLocaleString()}
                   </Text>
                 </View>
 
-                 {cashbackBalance > 0 && (
-                    <View style={[styles.detailRow, { marginTop: 4 }]}>
-                       <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>
-                          Use Cashback (₦{cashbackBalance.toLocaleString()})
-                       </Text>
-                      <Pressable 
-                        onPress={() => {
-                          Haptics.selectionAsync();
-                          onUseCashbackChange(!useCashback);
-                        }}
-                        style={[
-                          styles.customToggleTrack,
-                          { backgroundColor: useCashback ? colors.success : (isDark ? colors.border : '#E2E8F0') }
-                        ]}
-                      >
-                        <View 
-                          style={[
-                            styles.customToggleDot,
-                            { 
-                              transform: [{ translateX: useCashback ? 16 : 0 }],
-                              backgroundColor: '#FFFFFF' 
-                            }
-                          ]} 
-                        />
-                      </Pressable>
-                    </View>
-                 )}
-
-                 {/* Bonus to Earn */}
-                 {data.bonusToEarn !== undefined && data.bonusToEarn > 0 && (
-                    <View style={styles.detailRow}>
-                       <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>
-                          Bonus to Earn
-                       </Text>
-                       <Text style={{ color: colors.success, fontSize: 14, fontWeight: '600' }}>
-                          +₦{data.bonusToEarn.toFixed(2)} Cashback
-                       </Text>
-                    </View>
-                 )}
-              </View>
-
-              {/* Payment Method Section */}
-              <View style={styles.paymentSection}>
-                 <Text style={[styles.paymentTitle, { color: colors.foreground }]}>Payment Method</Text>
-                 <View style={[styles.paymentCard, { borderColor: colors.primary, backgroundColor: `${colors.primary}05` }]}>
-                    <View style={styles.paymentCardContent}>
-                       <Text style={[styles.paymentBalance, { color: colors.foreground }]}>
-                          Available Balance (₦{walletBalance.toLocaleString()})
-                       </Text>
-                       <Text style={[styles.paymentDeduction, { color: colors.textSecondary }]}>
-                          Wallet -₦{totalToPay.toLocaleString()}
-                       </Text>
-                    </View>
-                    <View style={[styles.checkCircle, { backgroundColor: colors.primary }]}>
-                       <CheckCircle size={14} color="#FFF" />
-                    </View>
-                 </View>
-              </View>
-
-              {/* Insufficient Balance Warning */}
-              {insufficientBalance && (
-                <Text style={[styles.warningText, { color: colors.destructive }]}>
-                  Insufficient balance. Please add funds.
+                <Text
+                  style={[
+                    styles.totalAmountPrice,
+                    { color: insufficientBalance ? "#EF4444" : "#0EA5E9" },
+                  ]}
+                >
+                  ₦{totalToPay.toLocaleString()}
                 </Text>
+              </View>
+
+              {/* Insufficient Balance Notice Banner */}
+              {insufficientBalance && (
+                <View
+                  style={[
+                    styles.warningBanner,
+                    {
+                      backgroundColor: isDark ? "#451A1A" : "#FEF2F2",
+                      borderColor: isDark ? "#7F1D1D" : "#FCA5A5",
+                    },
+                  ]}
+                >
+                  <AlertCircle size={18} color="#DC2626" />
+                  <Text style={[styles.warningBannerText, { color: "#DC2626" }]}>
+                    Insufficient balance. Fund your wallet to continue.
+                  </Text>
+                </View>
               )}
 
-              {/* Pay Button */}
-              <TouchableOpacity
-                style={[
-                  styles.confirmButton,
-                  {
-                    backgroundColor:
-                      insufficientBalance || isLoading
-                        ? colors.muted
+              {/* Bonus to Earn Notice */}
+              {data.bonusToEarn !== undefined && data.bonusToEarn > 0 && (
+                <View style={styles.bonusRow}>
+                  <Text style={{ color: colors.success, fontSize: 13, fontWeight: "600" }}>
+                    +₦{data.bonusToEarn.toFixed(2)} Cashback will be earned
+                  </Text>
+                </View>
+              )}
+
+              {/* Action Buttons Container */}
+              <View style={styles.buttonStack}>
+                {/* Primary Action Button */}
+                <TouchableOpacity
+                  style={[
+                    styles.primaryButton,
+                    {
+                      backgroundColor: insufficientBalance
+                        ? isDark
+                          ? "#334155"
+                          : "#CBD5E1"
                         : colors.primary,
-                    opacity: isLoading ? 0.8 : 1,
-                  },
-                ]}
-                onPress={onConfirm}
-                disabled={insufficientBalance || isLoading}
-                activeOpacity={0.8}
-              >
-                {isLoading ? (
-                  <>
-                    <ActivityIndicator color={colors.primaryForeground} size="small" />
+                      opacity: isLoading ? 0.8 : 1,
+                    },
+                  ]}
+                  onPress={onConfirm}
+                  disabled={insufficientBalance || isLoading}
+                  activeOpacity={0.8}
+                >
+                  {isLoading ? (
+                    <>
+                      <ActivityIndicator color={colors.primaryForeground} size="small" />
+                      <Text
+                        style={[
+                          styles.primaryButtonText,
+                          {
+                            color: colors.primaryForeground,
+                            marginLeft: 8,
+                          },
+                        ]}
+                      >
+                        Processing...
+                      </Text>
+                    </>
+                  ) : insufficientBalance ? (
+                    <>
+                      <Ban size={18} color={isDark ? "#94A3B8" : "#64748B"} />
+                      <Text
+                        style={[
+                          styles.primaryButtonText,
+                          { color: isDark ? "#94A3B8" : "#64748B", marginLeft: 6 },
+                        ]}
+                      >
+                        Insufficient Balance
+                      </Text>
+                    </>
+                  ) : (
                     <Text
                       style={[
-                        styles.confirmText,
-                        {
-                          color: colors.primaryForeground,
-                          marginLeft: 8,
-                        },
+                        styles.primaryButtonText,
+                        { color: colors.primaryForeground },
                       ]}
                     >
-                      Processing...
+                      Pay ₦{totalToPay.toLocaleString()}
                     </Text>
-                  </>
-                ) : (
+                  )}
+                </TouchableOpacity>
+
+                {/* Secondary Cancel Button */}
+                <TouchableOpacity
+                  style={[
+                    styles.cancelOutlineButton,
+                    { borderColor: isDark ? "#334155" : "#CBD5E1" },
+                  ]}
+                  onPress={onClose}
+                  activeOpacity={0.7}
+                >
                   <Text
                     style={[
-                      styles.confirmText,
-                      {
-                        color: insufficientBalance
-                          ? colors.textDisabled
-                          : colors.primaryForeground,
-                      },
+                      styles.cancelOutlineButtonText,
+                      { color: isDark ? "#F8FAFC" : "#334155" },
                     ]}
                   >
-                    Pay ₦{(totalToPay).toLocaleString()}
+                    Cancel
                   </Text>
-                )}
-              </TouchableOpacity>
-            </View>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
           );
       }
     };
@@ -492,12 +710,10 @@ export const CheckoutModal = forwardRef<BottomSheet, CheckoutModalProps>(
             width: 40,
           }}
         >
-          <BottomSheetView style={styles.container}>
-            {renderContent()}
-          </BottomSheetView>
+          <BottomSheetView style={styles.container}>{renderContent()}</BottomSheetView>
         </BottomSheet>
 
-        {/* Share Receipt Sheet - rendered at top level to avoid view hierarchy issues */}
+        {/* Share Receipt Sheet */}
         {cachedTransaction && (
           <ShareTransactionSheet
             visible={showShareSheet}
@@ -514,103 +730,191 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  content: {
-    padding: designTokens.spacing.lg,
-    flex: 1,
+  scrollContent: {
+    paddingHorizontal: designTokens.spacing.lg,
+    paddingTop: designTokens.spacing.md,
   },
-  title: {
-    fontSize: designTokens.fontSize.xl,
-    fontWeight: "700",
+
+  // Header Row
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
     marginBottom: designTokens.spacing.lg,
-    textAlign: "center",
   },
-  summaryCard: {
-    borderRadius: designTokens.radius.lg,
-    padding: designTokens.spacing.md,
-    marginBottom: designTokens.spacing.md,
-  },
-  summaryRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: designTokens.spacing.xs,
-  },
-  summaryLabel: {
-    fontSize: designTokens.fontSize.sm,
-  },
-  summaryValue: {
-    fontSize: designTokens.fontSize.sm,
-    fontWeight: "500",
-  },
-  recipientRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: designTokens.spacing.xs,
-  },
-  networkTag: {
-    fontSize: designTokens.fontSize.xs,
-    fontWeight: "600",
-  },
-  divider: {
-    height: 1,
-    marginVertical: designTokens.spacing.sm,
-  },
-  amountText: {
-    fontSize: designTokens.fontSize.lg,
-    fontWeight: "700",
-  },
-  cashbackRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: designTokens.spacing.md,
-    borderRadius: designTokens.radius.lg,
-    marginBottom: designTokens.spacing.md,
-  },
-  cashbackInfo: {
-    flex: 1,
-  },
-  cashbackLabel: {
-    fontSize: designTokens.fontSize.sm,
-    fontWeight: "500",
-  },
-  cashbackAmount: {
-    fontSize: designTokens.fontSize.xs,
-    marginTop: 2,
-  },
-  totalRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: designTokens.spacing.md,
-  },
-  totalLabel: {
-    fontSize: designTokens.fontSize.base,
-    fontWeight: "600",
-  },
-  totalValue: {
-    fontSize: designTokens.fontSize["2xl"],
-    fontWeight: "700",
-  },
-  warningText: {
-    fontSize: designTokens.fontSize.sm,
-    textAlign: "center",
-    marginBottom: designTokens.spacing.md,
-  },
-  confirmButton: {
-    flexDirection: "row",
+  headerIconTile: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
-    paddingVertical: designTokens.spacing.md,
-    borderRadius: designTokens.radius.lg,
-    gap: designTokens.spacing.sm,
-    marginTop: "auto",
   },
-  confirmText: {
-    fontSize: designTokens.fontSize.lg,
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+  },
+
+  // Grouped Card 1: Details
+  groupedCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginBottom: 16,
+  },
+  cardRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 10,
+  },
+  cardRowLabel: {
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  cardRowValue: {
+    fontSize: 14,
     fontWeight: "600",
   },
-  // Success/Failed styles
+  detailValueContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  miniLogo: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    overflow: "hidden",
+  },
+  rowDivider: {
+    height: 1,
+    width: "100%",
+  },
+
+  // Grouped Card 2: Cashback
+  cashbackCard: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 14,
+    marginBottom: 16,
+  },
+  cashbackLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  cashbackIconTile: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  cashbackTitle: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  cashbackSubtext: {
+    fontSize: 12,
+    fontWeight: "500",
+    marginTop: 2,
+  },
+  customToggleTrack: {
+    width: 40,
+    height: 22,
+    borderRadius: 11,
+    padding: 2,
+    justifyContent: "center",
+  },
+  customToggleDot: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 1.5,
+    elevation: 2,
+  },
+
+  // Grouped Card 3: Total Amount
+  totalAmountCard: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 16,
+    marginBottom: 16,
+  },
+  totalAmountTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  walletSubtext: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  totalAmountPrice: {
+    fontSize: 22,
+    fontWeight: "800",
+  },
+
+  // Insufficient Balance Warning Banner
+  warningBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginBottom: 16,
+  },
+  warningBannerText: {
+    fontSize: 13,
+    fontWeight: "600",
+    flex: 1,
+  },
+
+  // Bonus Row
+  bonusRow: {
+    marginBottom: 16,
+    alignItems: "center",
+  },
+
+  // Action Buttons Stack
+  buttonStack: {
+    gap: 10,
+    marginTop: 8,
+  },
+  primaryButton: {
+    flexDirection: "row",
+    height: 52,
+    borderRadius: 14,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  primaryButtonText: {
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  cancelOutlineButton: {
+    height: 48,
+    borderRadius: 14,
+    borderWidth: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  cancelOutlineButtonText: {
+    fontSize: 15,
+    fontWeight: "600",
+  },
+
+  // Success / Failed status styles
   statusIcon: {
     width: 80,
     height: 80,
@@ -619,6 +923,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     alignSelf: "center",
     marginBottom: designTokens.spacing.lg,
+    marginTop: designTokens.spacing.md,
   },
   statusTitle: {
     fontSize: designTokens.fontSize.xl,
@@ -653,14 +958,14 @@ const styles = StyleSheet.create({
   actions: {
     flexDirection: "row",
     gap: designTokens.spacing.md,
-    marginTop: "auto",
+    marginTop: designTokens.spacing.md,
   },
   shareButton: {
     flex: 1,
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
-    paddingVertical: designTokens.spacing.md,
+    height: 48,
     borderRadius: designTokens.radius.lg,
     borderWidth: 1.5,
     gap: designTokens.spacing.sm,
@@ -673,7 +978,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    paddingVertical: designTokens.spacing.md,
+    height: 48,
     borderRadius: designTokens.radius.lg,
   },
   doneText: {
@@ -685,7 +990,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
-    paddingVertical: designTokens.spacing.md,
+    height: 48,
     borderRadius: designTokens.radius.lg,
     gap: designTokens.spacing.sm,
   },
@@ -697,112 +1002,12 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    paddingVertical: designTokens.spacing.md,
+    height: 48,
     borderRadius: designTokens.radius.lg,
     borderWidth: 1,
   },
   cancelText: {
     fontSize: designTokens.fontSize.base,
     fontWeight: "500",
-  },
-  // New Styles
-  heroSection: {
-    alignItems: "center",
-    marginBottom: designTokens.spacing.lg,
-  },
-  heroAmount: {
-    fontSize: 32, // Large font per screenshot
-    fontWeight: "700",
-  },
-  heroStrikethrough: {
-    fontSize: designTokens.fontSize.sm,
-    textDecorationLine: "line-through",
-    marginTop: 2,
-  },
-  detailsList: {
-    marginBottom: designTokens.spacing.lg,
-    gap: designTokens.spacing.md,
-  },
-  detailRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  detailLabel: {
-    fontSize: designTokens.fontSize.sm,
-    flex: 1,
-  },
-  detailValueContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: designTokens.spacing.xs,
-  },
-  detailValue: {
-    fontSize: designTokens.fontSize.sm,
-    fontWeight: "600",
-    textAlign: "right",
-  },
-  miniLogo: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  miniLogoText: {
-    fontSize: 8,
-    color: "#FFF",
-    fontWeight: "700",
-  },
-  paymentSection: {
-    marginTop: "auto",
-    marginBottom: designTokens.spacing.lg,
-  },
-  paymentTitle: {
-    fontSize: designTokens.fontSize.sm,
-    fontWeight: "600",
-    marginBottom: designTokens.spacing.sm,
-  },
-  paymentCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: designTokens.spacing.md,
-    borderRadius: designTokens.radius.md,
-    borderWidth: 1,
-    justifyContent: "space-between",
-  },
-  paymentCardContent: {
-    gap: 2,
-  },
-  paymentBalance: {
-    fontSize: designTokens.fontSize.sm,
-    fontWeight: "600",
-  },
-  paymentDeduction: {
-    fontSize: designTokens.fontSize.xs,
-  },
-  checkCircle: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  customToggleTrack: {
-    width: 36,
-    height: 20,
-    borderRadius: 10,
-    padding: 2,
-    justifyContent: 'center',
-  },
-  customToggleDot: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 1.5,
-    elevation: 2,
   },
 });
