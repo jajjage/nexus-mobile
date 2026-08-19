@@ -427,7 +427,13 @@ export function ProductPurchaseScreen({
   const handleProductSelect = useCallback((product: Product) => {
     Haptics.selectionAsync();
     setSelectedProduct(product);
-  }, []);
+
+    if (isPhoneValid) {
+      Keyboard.dismiss();
+      setCheckoutMode("checkout");
+      checkoutSheetRef.current?.expand();
+    }
+  }, [isPhoneValid]);
 
   // Proceed to checkout
   const handleProceedToCheckout = useCallback(() => {
@@ -775,45 +781,6 @@ export function ProductPurchaseScreen({
             />
           )}
         </View>
-
-        {/* Footer with Continue Button */}
-        <View style={[styles.footer, { borderTopColor: colors.border }]}>
-          <View style={styles.footerInfo}>
-            <Text style={[styles.balanceLabel, { color: colors.textSecondary }]}>
-              Balance
-            </Text>
-            <Text style={[styles.balanceAmount, { color: colors.foreground }]}>
-              ₦{walletBalance.toLocaleString()}
-            </Text>
-          </View>
-
-          <TouchableOpacity
-            style={[
-              styles.continueButton,
-              {
-                backgroundColor: canProceed ? colors.primary : colors.muted,
-              },
-            ]}
-            onPress={handleProceedToCheckout}
-            disabled={!canProceed}
-            activeOpacity={0.8}
-          >
-            <Text
-              style={[
-                styles.continueText,
-                {
-                  color: canProceed
-                    ? colors.primaryForeground
-                    : colors.textDisabled,
-                },
-              ]}
-            >
-              {selectedProduct
-                ? `Continue - ₦${getDisplayPrice(selectedProduct).toLocaleString()}`
-                : "Select a Plan"}
-            </Text>
-          </TouchableOpacity>
-        </View>
       </KeyboardAvoidingView>
 
       {/* Checkout Modal */}
@@ -893,19 +860,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: designTokens.spacing.md,
     marginTop: designTokens.spacing.lg,
     marginBottom: designTokens.spacing.sm,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    gap: designTokens.spacing.md,
-  },
-  loadingText: {
-    fontSize: designTokens.fontSize.sm,
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: "center",
     alignItems: "center",
     gap: designTokens.spacing.md,
     padding: designTokens.spacing.xl,
