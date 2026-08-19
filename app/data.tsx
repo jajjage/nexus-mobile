@@ -64,7 +64,8 @@ import { getUserFriendlyError } from "@/utils/errors";
 const { width } = Dimensions.get("window");
 const NUM_COLUMNS = 2;
 const CARD_GAP = 12;
-const CARD_WIDTH = (width - 32 - CARD_GAP) / NUM_COLUMNS;
+const HORIZONTAL_PADDING = 16;
+const CARD_WIDTH = (width - (HORIZONTAL_PADDING * 2) - CARD_GAP) / NUM_COLUMNS;
 
 type ProductPurchaseScreenProps = {
   productType?: string;
@@ -73,43 +74,6 @@ type ProductPurchaseScreenProps = {
   processingMessage?: string;
   EmptyIcon?: React.ComponentType<{ size: number; color: string }>;
 };
-
-type ProductItemProps = {
-  item: Product;
-  isSelected: boolean;
-  onSelect: (product: Product) => void;
-  markupPercent: number;
-  isEligible: boolean;
-  isGuest: boolean;
-  cardWidth: number;
-};
-
-const MemoizedProductItem = React.memo(
-  ({
-    item,
-    isSelected,
-    onSelect,
-    markupPercent,
-    isEligible,
-    isGuest,
-    cardWidth,
-  }: ProductItemProps) => (
-    <View style={{ width: cardWidth }}>
-      <ProductCard
-        product={item}
-        isSelected={isSelected}
-        onSelect={onSelect}
-        markupPercent={markupPercent}
-        isEligibleForOffer={isEligible}
-        isGuest={isGuest}
-      />
-    </View>
-  ),
-  (prevProps, nextProps) =>
-    prevProps.isSelected === nextProps.isSelected &&
-    prevProps.item.id === nextProps.item.id &&
-    prevProps.isEligible === nextProps.isEligible
-);
 
 export function ProductPurchaseScreen({
   productType = "data",
@@ -152,8 +116,6 @@ export function ProductPurchaseScreen({
       isMountedRef.current = false;
       // Imperatively close the bottom sheet before unmount to prevent
       // Android NullPointerException in ViewGroup.dispatchGetDisplayList().
-      // The native BottomSheet view must not be mid-animation when
-      // the screen is removed from the view hierarchy.
       checkoutSheetRef.current?.close();
     };
   }, []);
@@ -190,14 +152,12 @@ export function ProductPurchaseScreen({
       setLastTransactionId(transactionId);
       setLastErrorMessage(null);
       setCheckoutMode("success");
-      // Expand sheet directly to show success (sheet is already closed from handleConfirmPayment)
       checkoutSheetRef.current?.expand();
     },
     onError: (error) => {
       if (!isMountedRef.current) return;
       setLastErrorMessage(error);
       setCheckoutMode("failed");
-      // Expand sheet to show failure
       checkoutSheetRef.current?.expand();
     },
   });
@@ -214,7 +174,6 @@ export function ProductPurchaseScreen({
 
     productsData.products.forEach((p: Product) => {
       if (p.operator && p.operator.name) {
-        // Ensure strictly typed slug
         const rawName = p.operator.name.toLowerCase();
         let slug: NetworkProvider;
         
@@ -222,17 +181,16 @@ export function ProductPurchaseScreen({
         else if (rawName.includes("glo")) slug = "glo";
         else if (rawName.includes("airtel")) slug = "airtel";
         else if (rawName.includes("9mobile") || rawName.includes("etisalat")) slug = "9mobile";
-        else return; // Skip unknown operators
+        else return;
 
         if (!uniqueNetworks.has(slug)) {
-          // Use API data, fallback to local constant for color/logo if missing
           const localInfo = NETWORK_PROVIDERS[slug];
           uniqueNetworks.set(slug, {
             name: p.operator.name,
             slug: slug,
             color: localInfo?.color || "#000000",
             logoUrl: p.operator.logoUrl || localInfo?.logoUrl,
-            logo: localInfo?.logo || p.operator.logoUrl // Prioritize local asset
+            logo: localInfo?.logo || p.operator.logoUrl
           });
         }
       }
@@ -254,12 +212,10 @@ export function ProductPurchaseScreen({
   }, [networks, selectedNetwork]);
 
   // === CATEGORY FILTERING BY SELECTED NETWORK & PRODUCT AVAILABILITY ===
-  // Only show a category tab if there is at least 1 active product for the currently selected network
   const visibleCategories = useMemo(() => {
     if (!categories.length) return [];
     if (!productsData?.products?.length) return categories;
 
-    // Filter products for current productType and selectedNetwork
     const productsForNetwork = productsData.products.filter((p: Product) => {
       if (p.productType?.toLowerCase() !== productType?.toLowerCase()) return false;
       if (p.isActive === false) return false;
@@ -279,7 +235,6 @@ export function ProductPurchaseScreen({
       return true;
     });
 
-    // Gather set of categories that have products for this network
     const activeCategoryIdentifiers = new Set<string>();
     productsForNetwork.forEach((p: Product) => {
       if (p.category?.slug) activeCategoryIdentifiers.add(p.category.slug.toLowerCase());
@@ -287,7 +242,6 @@ export function ProductPurchaseScreen({
       if (p.categoryId) activeCategoryIdentifiers.add(p.categoryId.toLowerCase());
     });
 
-    // Filter DB categories to ONLY those present in activeCategoryIdentifiers for this network
     const filtered = categories.filter((c: ProductCategory) =>
       activeCategoryIdentifiers.has(c.slug.toLowerCase()) ||
       activeCategoryIdentifiers.has(c.name.toLowerCase()) ||
@@ -332,7 +286,7 @@ export function ProductPurchaseScreen({
       }
     }
 
-    // Step 2: Filter by selected category when this product type uses categories.
+    // Step 2: Filter by selected category
     if (showCategories && selectedCategory) {
       products = products.filter(
         (p: Product) =>
@@ -359,7 +313,6 @@ export function ProductPurchaseScreen({
     return products;
   }, [productsData, productType, selectedNetwork, selectedCategory, showCategories]);
 
-  // Get markup percent for a product
   const getMarkupPercent = useCallback(
     (product: Product) => {
       if (!product?.supplierOffers?.[0]) return 0;
@@ -369,7 +322,6 @@ export function ProductPurchaseScreen({
     [markupMap]
   );
 
-  // Check if user is eligible for an offer
   const isEligibleForOffer = useCallback(
     (product: Product) => {
       if (!product.activeOffer?.id) return false;
@@ -378,34 +330,17 @@ export function ProductPurchaseScreen({
     [eligibleIds]
   );
 
-  // Calculate display price for a product - SIMPLIFIED (no markup)
-  // Priority: discountedPrice from backend > offer calculation > base price
-  const getDisplayPrice = useCallback(
-    (product: Product) => {
-      const priceDetails = calculateFinalPrice(
-        product,
-        false,
-        0,
-        0
-      );
-
-      return priceDetails.finalSellingPrice;
-    },
-    []
-  );
-
   // === HANDLERS ===
   const handleNetworkDetected = useCallback(
     (network: NetworkProvider | null) => {
-      setDetectedNetwork(network); // Updates state
+      setDetectedNetwork(network);
 
       if (isAutoDetectionEnabled && network) {
-        // Smart Switch: If detected network exists in our available networks list, select it
         const isAvailable = networks.some(n => n.slug === network);
         if (isAvailable && selectedNetwork !== network) {
           setSelectedNetwork(network);
-          setSelectedProduct(null); // Reset product
-          Haptics.selectionAsync();
+          setSelectedProduct(null);
+          Haptics.selectionAsync().catch(() => {});
         }
       }
     },
@@ -413,25 +348,29 @@ export function ProductPurchaseScreen({
   );
 
   const handleNetworkSelect = useCallback((network: NetworkProvider) => {
-    Haptics.selectionAsync();
+    Haptics.selectionAsync().catch(() => {});
     setSelectedNetwork(network);
-    setSelectedProduct(null); // Reset product on network change
+    setSelectedProduct(null);
   }, []);
 
   const handleCategorySelect = useCallback((category: string) => {
-    Haptics.selectionAsync();
+    Haptics.selectionAsync().catch(() => {});
     setSelectedCategory(category);
-    setSelectedProduct(null); // Reset product on category change
+    setSelectedProduct(null);
   }, []);
 
   const handleProductSelect = useCallback((product: Product) => {
-    Haptics.selectionAsync();
+    Haptics.selectionAsync().catch(() => {});
     setSelectedProduct(product);
 
     if (isPhoneValid) {
       Keyboard.dismiss();
       setCheckoutMode("checkout");
-      checkoutSheetRef.current?.expand();
+      setTimeout(() => {
+        if (isMountedRef.current) {
+          checkoutSheetRef.current?.expand();
+        }
+      }, 50);
     }
   }, [isPhoneValid]);
 
@@ -439,26 +378,22 @@ export function ProductPurchaseScreen({
   const handleProceedToCheckout = useCallback(() => {
     if (!isPhoneValid || !selectedNetwork || !selectedProduct) return;
     Keyboard.dismiss();
-    Haptics.selectionAsync();
+    Haptics.selectionAsync().catch(() => {});
     setCheckoutMode("checkout");
     checkoutSheetRef.current?.expand();
   }, [isPhoneValid, selectedNetwork, selectedProduct]);
 
-  // === PAYMENT WATERFALL (GUIDE SECTION 4) ===
+  // === PAYMENT WATERFALL ===
   const handleConfirmPayment = useCallback(async () => {
     if (!selectedProduct || !normalizedPhone) return;
 
     try {
       Keyboard.dismiss();
-      // Close the checkout sheet immediately - loading overlay will show instead
-      // This prevents the checkout modal from showing during payment processing
       checkoutSheetRef.current?.close();
       
-      // Get markup for this product
       const supplierId = selectedProduct.supplierOffers?.[0]?.supplierId || "";
       const markup = markupMap.get(supplierId) || 0;
 
-      // Initiate payment flow (handles biometric → PIN → transaction)
       const result = await processPayment({
         product: selectedProduct,
         phoneNumber: normalizedPhone,
@@ -470,12 +405,9 @@ export function ProductPurchaseScreen({
       });
 
       if (result.success) {
-        // Success - the onSuccess callback from useCompletePaymentFlow will handle
-        // expanding the sheet and showing the success modal
         return;
       }
 
-      // If biometric failed or PIN required, show PIN modal
       if (result.error?.includes("PIN")) {
         setPendingPaymentData({
           product: selectedProduct,
@@ -485,15 +417,12 @@ export function ProductPurchaseScreen({
           allowOperatorMismatch: !isAutoDetectionEnabled,
           selectedOperatorCode: selectedNetwork?.toUpperCase(),
         });
-        // Wait for BottomSheet close animation (350ms) + buffer
         setTimeout(() => {
           if (!isMountedRef.current) return;
           setShowPinModal(true);
         }, 450);
       } else {
-        // Handle validation errors - expand sheet to show error
         setLastErrorMessage(getUserFriendlyError(result.error || "Payment failed"));
-        // Wait for Reanimated animation to finish before changing state (400ms)
         setTimeout(() => {
           if (!isMountedRef.current) return;
           setCheckoutMode("failed");
@@ -515,14 +444,12 @@ export function ProductPurchaseScreen({
     async (pin: string) => {
       if (!pendingPaymentData) return;
       try {
-        setPinError(undefined); // Clear previous error
+        setPinError(undefined);
 
-
-        // Submit PIN through the complete payment flow
         const result = await submitPIN({
           product: pendingPaymentData.product,
           phoneNumber: pendingPaymentData.phoneNumber,
-          useCashback: pendingPaymentData.useCashback,
+          useCashback,
           markupPercent: pendingPaymentData.markupPercent,
           allowOperatorMismatch: pendingPaymentData.allowOperatorMismatch,
           selectedOperatorCode: pendingPaymentData.selectedOperatorCode,
@@ -531,53 +458,37 @@ export function ProductPurchaseScreen({
         });
 
         if (!result.success) {
-          // Show error in PIN modal instead of closing it
           const friendlyError = getUserFriendlyError(result.error || "PIN verification failed");
           setPinError(friendlyError);
-          // Keep modal open so user can retry
         } else {
-          // Success - close modal
           setShowPinModal(false);
           setPinError(undefined);
         }
       } catch (error) {
-
         const errorMsg = error instanceof Error ? error.message : "PIN submission failed";
         const friendlyError = getUserFriendlyError(errorMsg);
         setPinError(friendlyError);
-        // Keep modal open so user can retry
       }
     },
-    [pendingPaymentData, submitPIN, cashbackBalance]
+    [pendingPaymentData, submitPIN, cashbackBalance, useCashback]
   );
 
-  // Retry after failure
   const handleRetry = useCallback(() => {
-    // Wait for animation to complete before state change
     setTimeout(() => {
       if (!isMountedRef.current) return;
       setCheckoutMode("checkout");
     }, 250);
   }, []);
 
-  // Close and reset
   const handleClose = useCallback(() => {
     checkoutSheetRef.current?.close();
     if (checkoutMode === "success") {
-      // Reset form after success
-      // Reset form after success - Keep phone/network for easier repeat transactions
-      // setPhoneNumber("");
-      // setSelectedNetwork(null); 
-      // setDetectedNetwork(null);
       setSelectedProduct(null);
       
-      // Check if user wants auto-redirect
       const prefs = getAppPreferences();
       if (prefs.autoRedirectAfterPurchase) {
         setTimeout(() => {
           if (!isMountedRef.current) return;
-          // Use replace instead of push to remove the data screen from the
-          // navigation stack, preventing orphaned native views
           router.replace("/(tabs)");
         }, 400);
       }
@@ -601,9 +512,7 @@ export function ProductPurchaseScreen({
             productName: selectedProduct.name,
             productType: selectedProduct.productType,
             recipientPhone: normalizedPhone,
-            // Use finalSellingPrice (after offer discount) as the display amount
             amount: priceDetails.finalSellingPrice,
-            // Only show originalAmount (strikethrough) if there's an offer discount
             originalAmount: priceDetails.hasOfferDiscount 
               ? priceDetails.baseSellingPrice 
               : undefined,
@@ -619,7 +528,6 @@ export function ProductPurchaseScreen({
         })()
       : null;
 
-  const canProceed = isPhoneValid && selectedNetwork && selectedProduct;
   const productsLoadErrorMessage = useMemo(() => {
     const status = (productsLoadError as any)?.response?.status;
 
@@ -634,19 +542,22 @@ export function ProductPurchaseScreen({
     );
   }, [productsLoadError]);
 
+  const selectedProductId = selectedProduct?.id;
+
   const renderProductItem = useCallback(
     ({ item }: { item: Product }) => (
-      <MemoizedProductItem
-        item={item}
-        isSelected={selectedProduct?.id === item.id}
-        onSelect={handleProductSelect}
-        markupPercent={getMarkupPercent(item)}
-        isEligible={isEligibleForOffer(item)}
-        isGuest={!user}
-        cardWidth={CARD_WIDTH}
-      />
+      <View style={{ width: CARD_WIDTH }}>
+        <ProductCard
+          product={item}
+          isSelected={selectedProductId === item.id}
+          onSelect={handleProductSelect}
+          markupPercent={getMarkupPercent(item)}
+          isEligibleForOffer={isEligibleForOffer(item)}
+          isGuest={!user}
+        />
+      </View>
     ),
-    [selectedProduct, handleProductSelect, getMarkupPercent, isEligibleForOffer, user]
+    [selectedProductId, handleProductSelect, getMarkupPercent, isEligibleForOffer, user]
   );
 
   return (
@@ -660,9 +571,7 @@ export function ProductPurchaseScreen({
           headerLeft: () => (
             <TouchableOpacity
               onPress={() => {
-                // Close bottom sheet first to prevent Android view hierarchy crash
                 checkoutSheetRef.current?.close();
-                // Give BottomSheet animation time to finish (~300ms)
                 setTimeout(() => {
                   if (isMountedRef.current) {
                     router.back();
@@ -682,9 +591,7 @@ export function ProductPurchaseScreen({
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         keyboardVerticalOffset={100}
       >
-
-
-        {/* Phone Number Input */}
+        {/* Phone Number Input & Ported Number Option */}
         <View style={styles.section}>
           <NetworkDetectorInput
             value={phoneNumber}
@@ -774,10 +681,14 @@ export function ProductPurchaseScreen({
               renderItem={renderProductItem}
               keyExtractor={(item) => item.id}
               numColumns={NUM_COLUMNS}
+              extraData={selectedProductId}
               contentContainerStyle={styles.gridContent}
               columnWrapperStyle={styles.gridRow}
               showsVerticalScrollIndicator={false}
-              removeClippedSubviews={false}
+              initialNumToRender={12}
+              maxToRenderPerBatch={10}
+              windowSize={5}
+              removeClippedSubviews={Platform.OS === "android"}
             />
           )}
         </View>
@@ -834,35 +745,27 @@ const styles = StyleSheet.create({
     padding: designTokens.spacing.xs,
     marginLeft: -designTokens.spacing.xs,
   },
-  header: {
-    alignItems: "center",
-    paddingVertical: designTokens.spacing.md,
-    paddingHorizontal: designTokens.spacing.md,
+  section: {
+    paddingHorizontal: HORIZONTAL_PADDING,
+    marginTop: 10,
+    marginBottom: 4,
   },
-  iconCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+  loadingContainer: {
+    flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: designTokens.spacing.sm,
+    paddingVertical: designTokens.spacing.xxl,
   },
-  headerTitle: {
-    fontSize: designTokens.fontSize.xl,
-    fontWeight: "700",
-    marginBottom: designTokens.spacing.xs,
-  },
-  headerSubtitle: {
+  loadingText: {
+    marginTop: designTokens.spacing.md,
     fontSize: designTokens.fontSize.sm,
-    textAlign: "center",
   },
-  section: {
-    paddingHorizontal: designTokens.spacing.md,
-    marginTop: designTokens.spacing.lg,
-    marginBottom: designTokens.spacing.sm,
+  emptyContainer: {
+    flex: 1,
+    justifyContent: "center",
     alignItems: "center",
-    gap: designTokens.spacing.md,
     padding: designTokens.spacing.xl,
+    gap: designTokens.spacing.md,
   },
   emptyText: {
     fontSize: designTokens.fontSize.base,
@@ -888,38 +791,12 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   gridContent: {
-    padding: designTokens.spacing.md,
+    paddingHorizontal: HORIZONTAL_PADDING,
+    paddingTop: 4,
+    paddingBottom: 32,
   },
   gridRow: {
     gap: CARD_GAP,
     marginBottom: CARD_GAP,
-  },
-  footer: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: designTokens.spacing.md,
-    borderTopWidth: 1,
-    gap: designTokens.spacing.md,
-  },
-  footerInfo: {
-    alignItems: "flex-start",
-  },
-  balanceLabel: {
-    fontSize: designTokens.fontSize.xs,
-  },
-  balanceAmount: {
-    fontSize: designTokens.fontSize.lg,
-    fontWeight: "600",
-  },
-  continueButton: {
-    flex: 1,
-    paddingVertical: designTokens.spacing.md,
-    borderRadius: designTokens.radius.lg,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  continueText: {
-    fontSize: designTokens.fontSize.base,
-    fontWeight: "600",
   },
 });

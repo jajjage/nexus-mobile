@@ -1,25 +1,24 @@
 /**
  * NetworkSelector - Horizontal scrollable network selector
- * Per mobile-airtime-data-guide.md Section 3.B
- * Updated to support DYNAMIC network lists derived from API (Section 2.B)
+ * Per mobile-airtime-data-guide Section 3.B
  */
 
-import { darkColors, designTokens, lightColors } from "@/constants/palette";
+import { darkColors, lightColors } from "@/constants/palette";
 import { NetworkInfo, NetworkProvider } from "@/lib/detectNetwork";
 import * as Haptics from "expo-haptics";
 import React from "react";
 import {
-    Image,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
-    useColorScheme,
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  useColorScheme,
 } from "react-native";
 
-interface NetworkSelectorProps {
-  networks: NetworkInfo[]; // Changed from hardcoded to prop
+export interface NetworkSelectorProps {
+  networks: NetworkInfo[];
   selectedNetwork: NetworkProvider | null;
   onSelect: (network: NetworkProvider) => void;
   detectedNetwork?: NetworkProvider | null;
@@ -35,13 +34,12 @@ export function NetworkSelector({
   const colors = colorScheme === "dark" ? darkColors : lightColors;
 
   const handleSelect = (network: NetworkProvider) => {
-    Haptics.selectionAsync();
+    Haptics.selectionAsync().catch(() => {});
     onSelect(network);
   };
 
-  // If no networks available yet (loading), show nothing or skeleton
   if (!networks || networks.length === 0) {
-    return null; 
+    return null;
   }
 
   return (
@@ -65,7 +63,6 @@ export function NetworkSelector({
               style={[
                 styles.networkItem,
                 {
-                  // Per guide: Active = inverted (bg-foreground, text-background)
                   backgroundColor: isActive
                     ? colors.foreground
                     : "transparent",
@@ -87,7 +84,6 @@ export function NetworkSelector({
                   },
                 ]}
               >
-                {/* Use logo (alias) or logoUrl as fallback, handling local assets vs remote URLs */}
                 <Image
                   source={
                     typeof (info.logo || info.logoUrl) === "string"
@@ -104,7 +100,6 @@ export function NetworkSelector({
                   style={[
                     styles.networkName,
                     {
-                      // Inverted text color when active
                       color: colors.background,
                     },
                   ]}
@@ -114,7 +109,6 @@ export function NetworkSelector({
                 </Text>
               )}
 
-              {/* Auto-detected indicator */}
               {isDetected && !isActive && (
                 <View
                   style={[
@@ -135,51 +129,51 @@ export function NetworkSelector({
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: designTokens.spacing.md,
+    marginBottom: 10,
+    paddingHorizontal: 16,
   },
   label: {
-    fontSize: designTokens.fontSize.sm,
-    fontWeight: "500",
-    marginBottom: designTokens.spacing.sm,
-    paddingHorizontal: designTokens.spacing.md,
+    fontSize: 13,
+    fontWeight: "700",
+    marginBottom: 6,
   },
   scrollContent: {
-    paddingHorizontal: designTokens.spacing.md,
-    gap: designTokens.spacing.sm,
+    gap: 8,
   },
   networkItem: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: designTokens.spacing.xs, // Reduced vertical padding
-    paddingHorizontal: designTokens.spacing.sm, // Reduced horizontal padding
-    borderRadius: designTokens.radius.full,
-    borderWidth: 1.5,
-    gap: designTokens.spacing.xs,
-    // minWidth: 100, // Removed fixed minWidth to allow shrinking to logo only
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    gap: 6,
+    height: 34,
   },
   logoContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     justifyContent: "center",
-    overflow: "hidden", // Crop image to circle
+    alignItems: "center",
+    overflow: "hidden",
   },
   logo: {
-    width: "100%", // Fill container
+    width: "100%",
     height: "100%",
   },
   networkName: {
-    fontSize: designTokens.fontSize.sm,
-    fontWeight: "600",
+    fontSize: 12,
+    fontWeight: "700",
   },
   detectedBadge: {
-    paddingHorizontal: designTokens.spacing.xs,
-    paddingVertical: 2,
-    borderRadius: designTokens.radius.sm,
-    marginLeft: designTokens.spacing.xs,
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    borderRadius: 4,
+    marginLeft: 2,
   },
   detectedText: {
-    fontSize: 9,
+    fontSize: 8.5,
     fontWeight: "700",
     color: "#FFFFFF",
     textTransform: "uppercase",

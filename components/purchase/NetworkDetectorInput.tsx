@@ -1,31 +1,32 @@
 /**
  * NetworkDetectorInput - Phone input with network auto-detection
- * Per mobile-airtime-data-guide.md Section 3.A
+ * Per mobile-airtime-data-guide Section 3.A
+ * Ultra-Compact Version
  */
 
 import { darkColors, designTokens, lightColors } from "@/constants/palette";
 import { useAuth } from "@/hooks/useAuth";
 import {
-    NETWORK_PROVIDERS,
-    NetworkProvider,
-    detectNetworkProvider,
-    isValidNigerianPhone
+  NETWORK_PROVIDERS,
+  NetworkProvider,
+  detectNetworkProvider,
+  isValidNigerianPhone,
 } from "@/lib/detectNetwork";
 import { RecentNumber } from "@/types/api.types";
 import * as Haptics from "expo-haptics";
 import { ChevronDown, Phone, User, X } from "lucide-react-native";
 import React, { useCallback, useState } from "react";
 import {
-    FlatList,
-    Image,
-    Modal,
-    Pressable,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
-    useColorScheme,
+  FlatList,
+  Image,
+  Modal,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+  useColorScheme,
 } from "react-native";
 
 interface NetworkDetectorInputProps {
@@ -54,20 +55,14 @@ export function NetworkDetectorInput({
   const [isFocused, setIsFocused] = useState(false);
   const [showRecentNumbers, setShowRecentNumbers] = useState(false);
 
-  // Use prop if provided, otherwise fallback to user profile
-  // Limit to 5 most recent numbers
   const recentNumbers = (propRecentNumbers || user?.recentlyUsedNumbers || []).slice(0, 5);
 
-  // Handle text input with paste logic
   const handleChangeText = useCallback(
     (text: string) => {
       const raw = text.trim();
-
-      // Allow only digits and an optional leading plus sign.
       let cleaned = raw.replace(/[^\d+]/g, "");
       cleaned = cleaned.replace(/\+/g, (match, offset) => (offset === 0 ? match : ""));
 
-      // Preserve pasted country code when keyboard quick-paste drops the prefix visually.
       const rawPlus2340 = raw.startsWith("+2340");
       const raw2340 = raw.startsWith("2340");
       if (rawPlus2340 && !cleaned.startsWith("+2340")) {
@@ -76,9 +71,7 @@ export function NetworkDetectorInput({
         cleaned = "2340" + cleaned.replace(/^(\+?2340)/, "");
       }
 
-      // Soft cap to avoid accidental very long pastes.
       cleaned = cleaned.slice(0, 20);
-
       onChangeText(cleaned);
 
       if (autoDetectEnabled) {
@@ -91,14 +84,12 @@ export function NetworkDetectorInput({
     [autoDetectEnabled, onChangeText, onNetworkDetected]
   );
 
-  // Handle clear button
   const handleClear = useCallback(() => {
     Haptics.selectionAsync();
     onChangeText("");
     onNetworkDetected(null);
   }, [onChangeText, onNetworkDetected]);
 
-  // Handle recent number selection
   const handleSelectRecent = useCallback(
     (phoneNumber: string) => {
       Haptics.selectionAsync();
@@ -108,16 +99,12 @@ export function NetworkDetectorInput({
     [handleChangeText]
   );
 
-  // Get network logo if detected
   const detectedNetwork = autoDetectEnabled ? detectNetworkProvider(value) : null;
   const networkInfo = detectedNetwork ? NETWORK_PROVIDERS[detectedNetwork] : null;
-
   const isValid = value.length === 0 || isValidNigerianPhone(value);
 
   return (
     <View style={[styles.container, { opacity: disabled ? 0.6 : 1 }]}>
-
-
       <View
         style={[
           styles.inputContainer,
@@ -138,8 +125,8 @@ export function NetworkDetectorInput({
             onPress={() => !disabled && setShowRecentNumbers(true)}
             disabled={disabled}
           >
-            <User size={18} color={colors.textSecondary} />
-            <ChevronDown size={14} color={colors.textSecondary} />
+            <User size={15} color={colors.textSecondary} />
+            <ChevronDown size={12} color={colors.textSecondary} />
           </TouchableOpacity>
         )}
 
@@ -156,16 +143,13 @@ export function NetworkDetectorInput({
               resizeMode="contain"
             />
           ) : (
-            <Phone size={20} color={colors.textDisabled} />
+            <Phone size={16} color={colors.textDisabled} />
           )}
         </View>
 
         {/* Phone Input */}
         <TextInput
-          style={[
-            styles.input,
-            { color: colors.foreground },
-          ]}
+          style={[styles.input, { color: colors.foreground }]}
           value={value}
           onChangeText={handleChangeText}
           placeholder={placeholder}
@@ -181,7 +165,7 @@ export function NetworkDetectorInput({
         {/* Right Side: Clear button */}
         {value.length > 0 && (
           <TouchableOpacity onPress={handleClear} style={styles.clearButton}>
-            <X size={18} color={colors.textSecondary} />
+            <X size={15} color={colors.textSecondary} />
           </TouchableOpacity>
         )}
       </View>
@@ -225,7 +209,7 @@ export function NetworkDetectorInput({
                   ]}
                   onPress={() => handleSelectRecent(item.phoneNumber)}
                 >
-                  <Phone size={16} color={colors.textSecondary} />
+                  <Phone size={14} color={colors.textSecondary} />
                   <Text
                     style={[styles.recentPhone, { color: colors.foreground }]}
                   >
@@ -255,92 +239,85 @@ export function NetworkDetectorInput({
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: designTokens.spacing.md,
-  },
-  label: {
-    fontSize: designTokens.fontSize.sm,
-    fontWeight: "500",
-    marginBottom: designTokens.spacing.xs,
+    marginBottom: 6,
   },
   inputContainer: {
     flexDirection: "row",
     alignItems: "center",
-    borderWidth: 1.5,
-    borderRadius: designTokens.radius.lg,
-    paddingHorizontal: designTokens.spacing.md,
-    height: 52,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    height: 48,
   },
   recentButton: {
     flexDirection: "row",
     alignItems: "center",
-    paddingRight: designTokens.spacing.sm,
+    paddingRight: 8,
     borderRightWidth: 1,
     borderRightColor: "rgba(0,0,0,0.1)",
-    marginRight: designTokens.spacing.sm,
+    marginRight: 8,
+    gap: 3,
   },
   input: {
     flex: 1,
-    fontSize: designTokens.fontSize.lg,
+    fontSize: 15,
     fontWeight: "500",
   },
-  inputWithRecent: {
-    paddingLeft: 0,
-  },
   leftIconContainer: {
-    marginRight: designTokens.spacing.sm,
+    marginRight: 8,
     justifyContent: "center",
     alignItems: "center",
-    width: 24, // Fixed width to prevent jumping
+    width: 24,
   },
   networkLogo: {
     width: 24,
     height: 24,
-    borderRadius: 12, // Make it circular
+    borderRadius: 12,
   },
   clearButton: {
-    padding: designTokens.spacing.xs,
+    padding: 6,
   },
   errorText: {
-    fontSize: designTokens.fontSize.xs,
-    marginTop: designTokens.spacing.xs,
+    fontSize: 10,
+    marginTop: 2,
   },
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "center",
     alignItems: "center",
-    padding: designTokens.spacing.lg,
+    padding: 16,
   },
   recentModal: {
     width: "100%",
     maxWidth: 320,
-    borderRadius: designTokens.radius.xl,
+    borderRadius: 14,
     borderWidth: 1,
-    padding: designTokens.spacing.md,
-    maxHeight: 300,
+    padding: 14,
+    maxHeight: 280,
   },
   recentTitle: {
-    fontSize: designTokens.fontSize.base,
+    fontSize: 14,
     fontWeight: "600",
-    marginBottom: designTokens.spacing.md,
+    marginBottom: 8,
   },
   recentItem: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: designTokens.spacing.sm,
+    paddingVertical: 8,
     borderBottomWidth: 1,
-    gap: designTokens.spacing.sm,
+    gap: 8,
   },
   recentPhone: {
     flex: 1,
-    fontSize: designTokens.fontSize.base,
+    fontSize: 13,
     fontWeight: "500",
   },
   recentCount: {
-    fontSize: designTokens.fontSize.xs,
+    fontSize: 10,
   },
   emptyText: {
     textAlign: "center",
-    paddingVertical: designTokens.spacing.lg,
+    paddingVertical: 12,
   },
 });

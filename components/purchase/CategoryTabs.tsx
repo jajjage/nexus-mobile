@@ -1,15 +1,15 @@
 /**
- * CategoryTabs - Compact wrapped category selector
+ * CategoryTabs - Horizontal Scrollable Category Selector
  * Per mobile-airtime-data-guide & user-activity-and-mobile-catalog-experience spec
  */
 
-import { darkColors, designTokens, lightColors } from "@/constants/palette";
+import { darkColors, lightColors } from "@/constants/palette";
 import { ProductCategory } from "@/types/product.types";
 import * as Haptics from "expo-haptics";
 import React from "react";
 import {
   ActivityIndicator,
-  Dimensions,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -17,11 +17,7 @@ import {
   useColorScheme,
 } from "react-native";
 
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
-const HORIZONTAL_PADDING = designTokens.spacing.md * 2; // 16 * 2 = 32
-const GAP = designTokens.spacing.sm; // 8
-
-interface CategoryTabsProps {
+export interface CategoryTabsProps {
   categories: ProductCategory[];
   selectedCategory: string;
   onSelect: (categorySlug: string) => void;
@@ -37,7 +33,6 @@ export function CategoryTabs({
   const colorScheme = useColorScheme();
   const colors = colorScheme === "dark" ? darkColors : lightColors;
 
-  // Sort categories by priority first, then name
   const sortedCategories = [...categories].sort((a, b) => {
     const priorityDiff = (a.priority || 0) - (b.priority || 0);
     if (priorityDiff !== 0) return priorityDiff;
@@ -51,7 +46,7 @@ export function CategoryTabs({
   }));
 
   const handleSelect = (slug: string) => {
-    Haptics.selectionAsync();
+    Haptics.selectionAsync().catch(() => {});
     onSelect(slug);
   };
 
@@ -64,16 +59,16 @@ export function CategoryTabs({
   }
 
   if (allTabs.length === 0) {
-    return null; // Graceful empty state without breaking layout
+    return null;
   }
-
-  // Calculate width for 3 items per row (3 columns)
-  const usableWidth = SCREEN_WIDTH - HORIZONTAL_PADDING;
-  const itemWidth = Math.floor((usableWidth - GAP * 2) / 3 - 1);
 
   return (
     <View style={styles.container}>
-      <View style={styles.wrapContainer}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContainer}
+      >
         {allTabs.map((tab) => {
           const isActive = selectedCategory === tab.slug;
 
@@ -82,19 +77,16 @@ export function CategoryTabs({
               key={tab.id}
               style={[
                 styles.tab,
-                { width: itemWidth },
                 {
                   backgroundColor: isActive ? colors.primary : "transparent",
                   borderColor: isActive ? colors.primary : colors.border,
                 },
-                isActive && styles.activeTab,
               ]}
               onPress={() => handleSelect(tab.slug)}
               activeOpacity={0.7}
             >
               <Text
                 numberOfLines={1}
-                ellipsizeMode="tail"
                 style={[
                   styles.tabText,
                   {
@@ -102,7 +94,6 @@ export function CategoryTabs({
                       ? colors.primaryForeground
                       : colors.textSecondary,
                   },
-                  isActive && styles.activeTabText,
                 ]}
               >
                 {tab.name}
@@ -110,47 +101,34 @@ export function CategoryTabs({
             </TouchableOpacity>
           );
         })}
-      </View>
+      </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: designTokens.spacing.md,
-    marginBottom: designTokens.spacing.md,
+    marginBottom: 10,
+    paddingHorizontal: 16,
   },
   loadingContainer: {
-    height: 44,
+    height: 32,
     justifyContent: "center",
     alignItems: "center",
   },
-  wrapContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: GAP,
+  scrollContainer: {
+    gap: 8,
   },
   tab: {
-    paddingVertical: designTokens.spacing.sm,
-    paddingHorizontal: designTokens.spacing.sm,
-    borderRadius: designTokens.radius.full,
+    height: 32,
+    paddingHorizontal: 14,
+    borderRadius: 16,
     borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
   },
-  activeTab: {
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
   tabText: {
-    fontSize: designTokens.fontSize.sm,
-    fontWeight: "500",
-    textAlign: "center",
-  },
-  activeTabText: {
+    fontSize: 12,
     fontWeight: "600",
   },
 });

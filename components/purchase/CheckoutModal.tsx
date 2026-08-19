@@ -153,12 +153,11 @@ export const CheckoutModal = forwardRef<BottomSheet, CheckoutModalProps>(
       setShowShareSheet(true);
     }, [data]);
 
-    if (!data) return null;
-
-    const networkInfo = data.network ? NETWORK_PROVIDERS[data.network] : null;
+    const networkInfo = data?.network ? NETWORK_PROVIDERS[data.network] : null;
 
     // Helper for deriving validity string if not explicitly passed
     const getValidityText = (): string | null => {
+      if (!data) return null;
       if (data.validity) return data.validity;
       const lower = data.productName.toLowerCase();
       if (
@@ -187,25 +186,25 @@ export const CheckoutModal = forwardRef<BottomSheet, CheckoutModalProps>(
 
     // Determine header iconography and title
     const isDataProduct =
-      data.productType === "data" ||
-      data.productName.toLowerCase().includes("data") ||
-      data.productName.toLowerCase().includes("gb") ||
-      data.productName.toLowerCase().includes("mb");
+      data?.productType === "data" ||
+      data?.productName?.toLowerCase().includes("data") ||
+      data?.productName?.toLowerCase().includes("gb") ||
+      data?.productName?.toLowerCase().includes("mb");
 
     const isAirtimeProduct =
-      data.productType === "airtime" ||
-      data.productName.toLowerCase().includes("airtime");
+      data?.productType === "airtime" ||
+      data?.productName?.toLowerCase().includes("airtime");
 
     const isElectricityProduct =
-      data.productType === "electricity" ||
-      data.productName.toLowerCase().includes("electricity") ||
-      data.productName.toLowerCase().includes("meter");
+      data?.productType === "electricity" ||
+      data?.productName?.toLowerCase().includes("electricity") ||
+      data?.productName?.toLowerCase().includes("meter");
 
     const isCableProduct =
-      data.productType === "cable" ||
-      data.productName.toLowerCase().includes("dstv") ||
-      data.productName.toLowerCase().includes("gotv") ||
-      data.productName.toLowerCase().includes("startimes");
+      data?.productType === "cable" ||
+      data?.productName?.toLowerCase().includes("dstv") ||
+      data?.productName?.toLowerCase().includes("gotv") ||
+      data?.productName?.toLowerCase().includes("startimes");
 
     let titleText = "Confirm Purchase";
     let HeaderIcon = ShoppingCart;
@@ -236,6 +235,7 @@ export const CheckoutModal = forwardRef<BottomSheet, CheckoutModalProps>(
 
     // Render content based on mode
     const renderContent = () => {
+      if (!data) return null;
       switch (mode) {
         case "success":
           return (
