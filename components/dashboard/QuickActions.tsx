@@ -1,14 +1,15 @@
 // components/dashboard/QuickActions.tsx
 // Following HOME_PAGE_GUIDE.md specifications
 import { useTheme } from "@/context/ThemeContext";
+import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { BadgeCheck, FileText, GraduationCap, MoreHorizontal, Phone, Tv, Wifi, Zap } from "lucide-react-native";
 import React from "react";
 import {
-    Pressable,
-    StyleSheet,
-    Text,
-    View,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
 interface QuickAction {
@@ -74,7 +75,7 @@ export function QuickActions() {
   const { colors, isDark } = useTheme();
 
   const handlePress = (route: string) => {
-    console.log("Navigate to:", route);
+    Haptics.selectionAsync().catch(() => {});
     router.push(route as any);
   };
 
@@ -84,17 +85,18 @@ export function QuickActions() {
       
       <View style={[styles.actionsCard, { backgroundColor: colors.card }]}>
         {actions.map((action) => (
-          <Pressable
+          <TouchableOpacity
             key={action.id}
             style={styles.actionItem}
             onPress={() => handlePress(action.route)}
+            activeOpacity={0.65}
           >
             {/* Icon Container */}
             <View style={[styles.iconContainer, { backgroundColor: `${colors.primary}20` }]}>
               <action.Icon size={24} color={colors.primary} />
             </View>
             <Text style={[styles.actionLabel, { color: colors.foreground }]}>{action.label}</Text>
-          </Pressable>
+          </TouchableOpacity>
         ))}
       </View>
     </View>
@@ -146,4 +148,3 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
 });
-

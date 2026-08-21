@@ -489,8 +489,8 @@ export function ProductPurchaseScreen({
       if (prefs.autoRedirectAfterPurchase) {
         setTimeout(() => {
           if (!isMountedRef.current) return;
-          router.replace("/(tabs)");
-        }, 400);
+          router.back();
+        }, 300);
       }
     }
   }, [checkoutMode, router]);
@@ -564,27 +564,28 @@ export function ProductPurchaseScreen({
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <Stack.Screen
         options={{
-          headerShown: true,
-          title,
-          headerStyle: { backgroundColor: colors.background },
-          headerTintColor: colors.foreground,
-          headerLeft: () => (
-            <TouchableOpacity
-              onPress={() => {
-                checkoutSheetRef.current?.close();
-                setTimeout(() => {
-                  if (isMountedRef.current) {
-                    router.back();
-                  }
-                }, 350);
-              }}
-              style={styles.backButton}
-            >
-              <ArrowLeft size={24} color={colors.foreground} />
-            </TouchableOpacity>
-          ),
+          headerShown: false,
         }}
       />
+
+      {/* Clean Custom Header (Slides in/out seamlessly with the screen) */}
+      <View style={[styles.header, { paddingTop: insets.top + 6 }]}>
+        <TouchableOpacity
+          onPress={() => {
+            checkoutSheetRef.current?.close();
+            router.back();
+          }}
+          style={styles.backButton}
+          activeOpacity={0.7}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+        >
+          <ArrowLeft size={24} color={colors.foreground} />
+        </TouchableOpacity>
+        <Text style={[styles.headerTitle, { color: colors.foreground }]}>
+          {title}
+        </Text>
+        <View style={styles.headerRightSpacer} />
+      </View>
 
       <KeyboardAvoidingView
         style={styles.flex}
@@ -740,6 +741,21 @@ const styles = StyleSheet.create({
   },
   flex: {
     flex: 1,
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: HORIZONTAL_PADDING,
+    paddingBottom: 8,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    letterSpacing: -0.3,
+  },
+  headerRightSpacer: {
+    width: 24,
   },
   backButton: {
     padding: designTokens.spacing.xs,

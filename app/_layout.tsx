@@ -183,7 +183,7 @@ function RootLayoutNav() {
                         <Stack.Screen name="(setup)" options={{ headerShown: false }} />
                         <Stack.Screen name="(onboarding)" options={{ headerShown: false }} />
                         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-                        <Stack.Screen name="(tabs)" options={{ headerShown: false, animation: 'none' }} />
+                        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
                         <Stack.Screen name="transactions" options={{ headerShown: false }} />
                         <Stack.Screen name="notifications" options={{ headerShown: false }} />
                         <Stack.Screen name="airtime" options={{ headerShown: false }} />

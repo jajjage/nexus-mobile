@@ -27,6 +27,10 @@ import {
     getTransactionTitle,
     isDataTransaction,
 } from "@/lib/transactionUtils";
+import { productKeys } from "@/hooks/useProducts";
+import { categoryService } from "@/services/category.service";
+import { productService } from "@/services/product.service";
+import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import { InteractionManager, RefreshControl, ScrollView, StyleSheet, View } from "react-native";
@@ -72,6 +76,24 @@ export default function HomeScreen() {
   const fullName = user?.fullName || "User";
   const userInitials = getInitials(fullName);
   const phoneNumber = user?.phoneNumber || "08000000000";
+
+  const queryClient = useQueryClient();
+
+  // Prefetch data products and categories in background so data screen opens instantly (0ms)
+  useEffect(() => {
+    InteractionManager.runAfterInteractions(() => {
+      void queryClient.prefetchQuery({
+        queryKey: productKeys.list({ productType: "data", isActive: true, perPage: 100, limit: 100 }),
+        queryFn: () => productService.getProducts({ productType: "data", isActive: true, perPage: 100, limit: 100 }),
+        staleTime: 1000 * 60 * 5,
+      });
+      void queryClient.prefetchQuery({
+        queryKey: ["categories", "data"],
+        queryFn: () => categoryService.getAll("data"),
+        staleTime: 1000 * 60 * 60,
+      });
+    });
+  }, [queryClient]);
 
   // 1. Auto-show modal once per 24 hours for each announcement
   // Defer modal display until after navigation screen transitions complete to prevent Android dispatchGetDisplayList crashes
