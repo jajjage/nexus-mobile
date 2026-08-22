@@ -9,7 +9,7 @@ import { StatusBar } from 'expo-status-bar';
 import * as SystemUI from 'expo-system-ui';
 import { useEffect, useState } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { View } from 'react-native';
+import { Platform, View } from 'react-native';
 import 'react-native-reanimated';
 import { Toaster } from 'sonner-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';

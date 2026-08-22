@@ -67,6 +67,13 @@ const CARD_GAP = 12;
 const HORIZONTAL_PADDING = 16;
 const CARD_WIDTH = (width - (HORIZONTAL_PADDING * 2) - CARD_GAP) / NUM_COLUMNS;
 
+const DEFAULT_NETWORKS: NetworkInfo[] = [
+  NETWORK_PROVIDERS.mtn,
+  NETWORK_PROVIDERS.airtel,
+  NETWORK_PROVIDERS.glo,
+  NETWORK_PROVIDERS["9mobile"],
+].filter(Boolean) as NetworkInfo[];
+
 type ProductPurchaseScreenProps = {
   productType?: string;
   title?: string;
@@ -88,9 +95,9 @@ export function ProductPurchaseScreen({
   const showCategories = productType === "data";
 
   // === STATE PER GUIDE SECTION 4 ===
-  // Shared
+  // Shared - pre-initialize with default MTN so initial frame renders immediately (0ms)
   const [phoneNumber, setPhoneNumber] = useState("");
-  const [selectedNetwork, setSelectedNetwork] = useState<NetworkProvider | null>(null);
+  const [selectedNetwork, setSelectedNetwork] = useState<NetworkProvider | null>("mtn");
   const [detectedNetwork, setDetectedNetwork] = useState<NetworkProvider | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -114,9 +121,6 @@ export function ProductPurchaseScreen({
     isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
-      // Imperatively close the bottom sheet before unmount to prevent
-      // Android NullPointerException in ViewGroup.dispatchGetDisplayList().
-      checkoutSheetRef.current?.close();
     };
   }, []);
 
@@ -166,9 +170,9 @@ export function ProductPurchaseScreen({
   const normalizedPhone = normalizePhoneNumber(phoneNumber);
   const isPhoneValid = isValidNigerianPhone(normalizedPhone);
 
-  // Derive unique networks from products
+  // Derive unique networks from products (falls back to DEFAULT_NETWORKS instantly)
   const networks = useMemo(() => {
-    if (!productsData?.products) return [];
+    if (!productsData?.products?.length) return DEFAULT_NETWORKS;
 
     const uniqueNetworks = new Map<string, NetworkInfo>();
 
@@ -196,6 +200,8 @@ export function ProductPurchaseScreen({
       }
     });
 
+    if (uniqueNetworks.size === 0) return DEFAULT_NETWORKS;
+
     // Sort: MTN first, then alphabetical
     return Array.from(uniqueNetworks.values()).sort((a, b) => {
       if (a.slug === "mtn") return -1;
@@ -204,7 +210,7 @@ export function ProductPurchaseScreen({
     });
   }, [productsData]);
 
-  // Auto-select first network on load
+  // Auto-select first network on load if not selected
   useEffect(() => {
     if (!selectedNetwork && networks.length > 0) {
       setSelectedNetwork(networks[0].slug);
@@ -340,7 +346,6 @@ export function ProductPurchaseScreen({
         if (isAvailable && selectedNetwork !== network) {
           setSelectedNetwork(network);
           setSelectedProduct(null);
-          Haptics.selectionAsync().catch(() => {});
         }
       }
     },
@@ -348,19 +353,16 @@ export function ProductPurchaseScreen({
   );
 
   const handleNetworkSelect = useCallback((network: NetworkProvider) => {
-    Haptics.selectionAsync().catch(() => {});
     setSelectedNetwork(network);
     setSelectedProduct(null);
   }, []);
 
   const handleCategorySelect = useCallback((category: string) => {
-    Haptics.selectionAsync().catch(() => {});
     setSelectedCategory(category);
     setSelectedProduct(null);
   }, []);
 
   const handleProductSelect = useCallback((product: Product) => {
-    Haptics.selectionAsync().catch(() => {});
     setSelectedProduct(product);
   }, []);
 
@@ -368,7 +370,6 @@ export function ProductPurchaseScreen({
   const handleProceedToCheckout = useCallback(() => {
     if (!isPhoneValid || !selectedNetwork || !selectedProduct) return;
     Keyboard.dismiss();
-    Haptics.selectionAsync().catch(() => {});
     setCheckoutMode("checkout");
     setTimeout(() => {
       if (isMountedRef.current) {
@@ -581,7 +582,6 @@ export function ProductPurchaseScreen({
       <View style={[styles.header, { paddingTop: insets.top + 6 }]}>
         <TouchableOpacity
           onPress={() => {
-            checkoutSheetRef.current?.close();
             router.back();
           }}
           style={styles.backButton}

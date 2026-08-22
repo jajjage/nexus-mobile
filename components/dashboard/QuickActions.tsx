@@ -75,7 +75,6 @@ export function QuickActions() {
   const { colors, isDark } = useTheme();
 
   const handlePress = (route: string) => {
-    Haptics.selectionAsync().catch(() => {});
     router.push(route as any);
   };
 
