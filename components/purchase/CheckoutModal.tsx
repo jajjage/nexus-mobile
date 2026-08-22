@@ -9,11 +9,14 @@ import { darkColors, designTokens, lightColors } from "@/constants/palette";
 import { NETWORK_PROVIDERS, NetworkProvider } from "@/lib/detectNetwork";
 import { Transaction } from "@/types/wallet.types";
 import BottomSheet, { BottomSheetView } from "@gorhom/bottom-sheet";
+import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
 import {
   AlertCircle,
   Ban,
+  Check,
   CheckCircle,
+  Copy,
   Gift,
   Phone,
   RefreshCw,
@@ -92,11 +95,13 @@ export const CheckoutModal = forwardRef<BottomSheet, CheckoutModalProps>(
     const colors = isDark ? darkColors : lightColors;
 
     const snapPoints = useMemo(() => {
-      // 85% height to ensure plenty of room for all card components & scroll
+      if (mode === "success") return ["72%"];
+      if (mode === "failed") return ["55%"];
       return ["85%"];
-    }, []);
+    }, [mode]);
 
     const [showShareSheet, setShowShareSheet] = React.useState(false);
+    const [copiedRef, setCopiedRef] = React.useState(false);
 
     // Calculate payable amount
     const cashbackToUse = useCashback
@@ -233,6 +238,15 @@ export const CheckoutModal = forwardRef<BottomSheet, CheckoutModalProps>(
       iconColor = isDark ? "#818CF8" : "#4F46E5";
     }
 
+    // Copy transaction reference
+    const handleCopyRef = useCallback(async () => {
+      if (!data?.transactionId) return;
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      await Clipboard.setStringAsync(data.transactionId);
+      setCopiedRef(true);
+      setTimeout(() => setCopiedRef(false), 2000);
+    }, [data?.transactionId]);
+
     // Render content based on mode
     const renderContent = () => {
       if (!data) return null;
@@ -241,76 +255,165 @@ export const CheckoutModal = forwardRef<BottomSheet, CheckoutModalProps>(
           return (
             <ScrollView
               contentContainerStyle={[
-                styles.scrollContent,
-                { paddingBottom: Math.max(insets.bottom + 24, 32) },
+                styles.successScrollContent,
+                { paddingBottom: Math.max(insets.bottom + 16, 24) },
               ]}
               showsVerticalScrollIndicator={false}
             >
+              {/* Success Header Icon & Title */}
+              <View style={styles.successHeader}>
+                <View style={[styles.successIconOuter, { backgroundColor: `${colors.success}18` }]}>
+                  <View style={[styles.successIconInner, { backgroundColor: colors.success }]}>
+                    <Check size={24} color="#FFFFFF" strokeWidth={3.5} />
+                  </View>
+                </View>
+                <Text style={[styles.successTitle, { color: colors.foreground }]}>
+                  Payment Successful!
+                </Text>
+                <Text style={[styles.successSubtitle, { color: colors.textSecondary }]}>
+                  Your data bundle is active & credited
+                </Text>
+              </View>
+
+              {/* Amount Paid Hero Banner */}
               <View
                 style={[
-                  styles.statusIcon,
-                  { backgroundColor: `${colors.success}20` },
+                  styles.successAmountBanner,
+                  {
+                    backgroundColor: isDark ? "#1E293B" : "#F8FAFC",
+                    borderColor: isDark ? "#334155" : "#E2E8F0",
+                  },
                 ]}
               >
-                <CheckCircle size={48} color={colors.success} />
+                <Text style={[styles.successAmountLabel, { color: colors.textSecondary }]}>
+                  Total Paid
+                </Text>
+                <Text style={[styles.successAmountValue, { color: colors.foreground }]}>
+                  ₦{data.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </Text>
+                <View style={[styles.successPaymentMethodPill, { backgroundColor: `${colors.primary}18` }]}>
+                  <Text style={[styles.successPaymentMethodText, { color: colors.primary }]}>
+                    Debited from Wallet
+                  </Text>
+                </View>
               </View>
 
-              <Text style={[styles.statusTitle, { color: colors.foreground }]}>
-                Transaction Successful!
-              </Text>
-
-              <Text
-                style={[styles.statusSubtitle, { color: colors.textSecondary }]}
-              >
-                {data.productName} sent to {data.recipientPhone}
-              </Text>
-
+              {/* Grouped Receipt Card */}
               <View
-                style={[styles.amountCard, { backgroundColor: colors.muted }]}
+                style={[
+                  styles.successReceiptCard,
+                  {
+                    backgroundColor: isDark ? "#1E293B" : "#F8FAFC",
+                    borderColor: isDark ? "#334155" : "#E2E8F0",
+                  },
+                ]}
               >
-                <Text
-                  style={[styles.amountLabel, { color: colors.textSecondary }]}
-                >
-                  Amount
-                </Text>
-                <Text style={[styles.amountValue, { color: colors.success }]}>
-                  ₦{data.amount.toLocaleString()}
-                </Text>
+                {/* Plan Row */}
+                <View style={styles.receiptRow}>
+                  <Text style={[styles.receiptRowLabel, { color: colors.textSecondary }]}>
+                    Plan
+                  </Text>
+                  <Text style={[styles.receiptRowValue, { color: colors.foreground, flex: 1, textAlign: "right" }]}>
+                    {data.productName}
+                  </Text>
+                </View>
+
+                <View style={[styles.receiptDivider, { backgroundColor: isDark ? "#334155" : "#E2E8F0" }]} />
+
+                {/* Recipient Phone Row */}
+                <View style={styles.receiptRow}>
+                  <Text style={[styles.receiptRowLabel, { color: colors.textSecondary }]}>
+                    Recipient
+                  </Text>
+                  <View style={styles.recipientRowRight}>
+                    {networkInfo && (
+                      <View style={styles.miniLogo}>
+                        <Image
+                          source={networkInfo.logo}
+                          style={{ width: 16, height: 16, borderRadius: 8 }}
+                          resizeMode="cover"
+                        />
+                      </View>
+                    )}
+                    <Text style={[styles.receiptRowValue, { color: colors.foreground }]}>
+                      {data.recipientPhone}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Reference Row with One-Tap Copy */}
+                {data.transactionId && (
+                  <>
+                    <View style={[styles.receiptDivider, { backgroundColor: isDark ? "#334155" : "#E2E8F0" }]} />
+                    <View style={styles.receiptRow}>
+                      <Text style={[styles.receiptRowLabel, { color: colors.textSecondary }]}>
+                        Reference
+                      </Text>
+                      <TouchableOpacity
+                        style={styles.copyRefButton}
+                        onPress={handleCopyRef}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={[styles.refCodeText, { color: colors.foreground }]} numberOfLines={1}>
+                          {data.transactionId}
+                        </Text>
+                        {copiedRef ? (
+                          <Text style={[styles.copiedBadgeText, { color: colors.success }]}>Copied!</Text>
+                        ) : (
+                          <Copy size={13} color={colors.textSecondary} />
+                        )}
+                      </TouchableOpacity>
+                    </View>
+                  </>
+                )}
+
+                {/* Bonus / Cashback Earned Row */}
+                {data.bonusToEarn && data.bonusToEarn > 0 ? (
+                  <>
+                    <View style={[styles.receiptDivider, { backgroundColor: isDark ? "#334155" : "#E2E8F0" }]} />
+                    <View style={styles.receiptRow}>
+                      <Text style={[styles.receiptRowLabel, { color: colors.textSecondary }]}>
+                        Cashback Earned
+                      </Text>
+                      <View style={[styles.cashbackEarnedBadge, { backgroundColor: `${colors.success}18` }]}>
+                        <Zap size={11} color={colors.success} />
+                        <Text style={[styles.cashbackEarnedText, { color: colors.success }]}>
+                          +₦{data.bonusToEarn.toFixed(2)}
+                        </Text>
+                      </View>
+                    </View>
+                  </>
+                ) : null}
               </View>
 
-              {data.transactionId && (
-                <Text style={[styles.refText, { color: colors.textTertiary }]}>
-                  Ref: {data.transactionId}
-                </Text>
-              )}
-
-              <View style={styles.actions}>
+              {/* Action Buttons */}
+              <View style={styles.successActionsRow}>
                 <TouchableOpacity
                   style={[
-                    styles.shareButton,
-                    { borderColor: colors.primary },
+                    styles.successShareButton,
+                    {
+                      borderColor: colors.primary,
+                      backgroundColor: `${colors.primary}12`,
+                    },
                   ]}
                   onPress={handleShare}
+                  activeOpacity={0.7}
                 >
-                  <Share2 size={18} color={colors.primary} />
-                  <Text style={[styles.shareText, { color: colors.primary }]}>
+                  <Share2 size={16} color={colors.primary} />
+                  <Text style={[styles.successShareButtonText, { color: colors.primary }]}>
                     Share
                   </Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
                   style={[
-                    styles.doneButton,
+                    styles.successDoneButton,
                     { backgroundColor: colors.primary },
                   ]}
                   onPress={onClose}
+                  activeOpacity={0.85}
                 >
-                  <Text
-                    style={[
-                      styles.doneText,
-                      { color: colors.primaryForeground },
-                    ]}
-                  >
+                  <Text style={[styles.successDoneButtonText, { color: colors.primaryForeground }]}>
                     Done
                   </Text>
                 </TouchableOpacity>
@@ -322,57 +425,44 @@ export const CheckoutModal = forwardRef<BottomSheet, CheckoutModalProps>(
           return (
             <ScrollView
               contentContainerStyle={[
-                styles.scrollContent,
-                { paddingBottom: Math.max(insets.bottom + 24, 32) },
+                styles.successScrollContent,
+                { paddingBottom: Math.max(insets.bottom + 16, 24) },
               ]}
               showsVerticalScrollIndicator={false}
             >
-              <View
-                style={[
-                  styles.statusIcon,
-                  { backgroundColor: `${colors.destructive}20` },
-                ]}
-              >
-                <XCircle size={48} color={colors.destructive} />
+              <View style={styles.successHeader}>
+                <View style={[styles.successIconOuter, { backgroundColor: `${colors.destructive}18` }]}>
+                  <View style={[styles.successIconInner, { backgroundColor: colors.destructive }]}>
+                    <XCircle size={24} color="#FFFFFF" strokeWidth={2.5} />
+                  </View>
+                </View>
+                <Text style={[styles.successTitle, { color: colors.foreground }]}>
+                  Transaction Failed
+                </Text>
+                <Text style={[styles.successSubtitle, { color: colors.textSecondary }]}>
+                  {data.errorMessage || "Something went wrong. Please check your balance or try again."}
+                </Text>
               </View>
 
-              <Text style={[styles.statusTitle, { color: colors.foreground }]}>
-                Transaction Failed
-              </Text>
-
-              <Text
-                style={[styles.statusSubtitle, { color: colors.textSecondary }]}
-              >
-                {data.errorMessage || "Something went wrong. Please try again."}
-              </Text>
-
-              <View style={styles.actions}>
+              <View style={styles.successActionsRow}>
                 <TouchableOpacity
-                  style={[
-                    styles.retryButton,
-                    { backgroundColor: colors.primary },
-                  ]}
-                  onPress={onRetry}
+                  style={[styles.successShareButton, { borderColor: colors.border, backgroundColor: "transparent" }]}
+                  onPress={onClose}
+                  activeOpacity={0.7}
                 >
-                  <RefreshCw size={18} color={colors.primaryForeground} />
-                  <Text
-                    style={[
-                      styles.retryText,
-                      { color: colors.primaryForeground },
-                    ]}
-                  >
-                    Try Again
+                  <Text style={[styles.successShareButtonText, { color: colors.textSecondary }]}>
+                    Cancel
                   </Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={[styles.cancelButton, { borderColor: colors.border }]}
-                  onPress={onClose}
+                  style={[styles.successDoneButton, { backgroundColor: colors.primary }]}
+                  onPress={onRetry}
+                  activeOpacity={0.85}
                 >
-                  <Text
-                    style={[styles.cancelText, { color: colors.textSecondary }]}
-                  >
-                    Cancel
+                  <RefreshCw size={16} color={colors.primaryForeground} />
+                  <Text style={[styles.successDoneButtonText, { color: colors.primaryForeground }]}>
+                    Try Again
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -914,100 +1004,162 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 
-  // Success / Failed status styles
-  statusIcon: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+  // Success / Failed View Modern Styles
+  successScrollContent: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+  },
+  successHeader: {
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  successIconOuter: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     justifyContent: "center",
     alignItems: "center",
-    alignSelf: "center",
-    marginBottom: designTokens.spacing.lg,
-    marginTop: designTokens.spacing.md,
+    marginBottom: 10,
   },
-  statusTitle: {
-    fontSize: designTokens.fontSize.xl,
-    fontWeight: "700",
+  successIconInner: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#10B981",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  successTitle: {
+    fontSize: 20,
+    fontWeight: "800",
     textAlign: "center",
-    marginBottom: designTokens.spacing.xs,
+    letterSpacing: -0.3,
   },
-  statusSubtitle: {
-    fontSize: designTokens.fontSize.sm,
-    textAlign: "center",
-    marginBottom: designTokens.spacing.lg,
-  },
-  amountCard: {
-    alignItems: "center",
-    padding: designTokens.spacing.lg,
-    borderRadius: designTokens.radius.lg,
-    marginBottom: designTokens.spacing.md,
-  },
-  amountLabel: {
-    fontSize: designTokens.fontSize.sm,
-    marginBottom: designTokens.spacing.xs,
-  },
-  amountValue: {
-    fontSize: designTokens.fontSize["3xl"],
-    fontWeight: "700",
-  },
-  refText: {
-    fontSize: designTokens.fontSize.xs,
-    textAlign: "center",
-    marginBottom: designTokens.spacing.lg,
-  },
-  actions: {
-    flexDirection: "row",
-    gap: designTokens.spacing.md,
-    marginTop: designTokens.spacing.md,
-  },
-  shareButton: {
-    flex: 1,
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    height: 48,
-    borderRadius: designTokens.radius.lg,
-    borderWidth: 1.5,
-    gap: designTokens.spacing.sm,
-  },
-  shareText: {
-    fontSize: designTokens.fontSize.base,
-    fontWeight: "600",
-  },
-  doneButton: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    height: 48,
-    borderRadius: designTokens.radius.lg,
-  },
-  doneText: {
-    fontSize: designTokens.fontSize.base,
-    fontWeight: "600",
-  },
-  retryButton: {
-    flex: 1,
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    height: 48,
-    borderRadius: designTokens.radius.lg,
-    gap: designTokens.spacing.sm,
-  },
-  retryText: {
-    fontSize: designTokens.fontSize.base,
-    fontWeight: "600",
-  },
-  cancelButton: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    height: 48,
-    borderRadius: designTokens.radius.lg,
-    borderWidth: 1,
-  },
-  cancelText: {
-    fontSize: designTokens.fontSize.base,
+  successSubtitle: {
+    fontSize: 13,
     fontWeight: "500",
+    textAlign: "center",
+    marginTop: 3,
+  },
+  successAmountBanner: {
+    alignItems: "center",
+    borderRadius: 14,
+    borderWidth: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginBottom: 12,
+  },
+  successAmountLabel: {
+    fontSize: 12,
+    fontWeight: "500",
+    marginBottom: 2,
+  },
+  successAmountValue: {
+    fontSize: 26,
+    fontWeight: "800",
+    letterSpacing: -0.5,
+  },
+  successPaymentMethodPill: {
+    marginTop: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 12,
+  },
+  successPaymentMethodText: {
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  successReceiptCard: {
+    borderRadius: 14,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 4,
+    marginBottom: 16,
+  },
+  receiptRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 10,
+  },
+  receiptRowLabel: {
+    fontSize: 13,
+    fontWeight: "500",
+  },
+  receiptRowValue: {
+    fontSize: 13.5,
+    fontWeight: "600",
+  },
+  recipientRowRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  receiptDivider: {
+    height: 1,
+    width: "100%",
+  },
+  copyRefButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    maxWidth: "65%",
+  },
+  refCodeText: {
+    fontSize: 12,
+    fontWeight: "600",
+    fontVariant: ["tabular-nums"],
+  },
+  copiedBadgeText: {
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  cashbackEarnedBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+  },
+  cashbackEarnedText: {
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  successActionsRow: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 4,
+  },
+  successShareButton: {
+    flex: 1,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    height: 48,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    gap: 6,
+  },
+  successShareButtonText: {
+    fontSize: 14.5,
+    fontWeight: "700",
+  },
+  successDoneButton: {
+    flex: 1.4,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    height: 48,
+    borderRadius: 12,
+    gap: 6,
+  },
+  successDoneButtonText: {
+    fontSize: 14.5,
+    fontWeight: "700",
   },
 });

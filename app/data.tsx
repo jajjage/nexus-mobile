@@ -362,25 +362,19 @@ export function ProductPurchaseScreen({
   const handleProductSelect = useCallback((product: Product) => {
     Haptics.selectionAsync().catch(() => {});
     setSelectedProduct(product);
+  }, []);
 
-    if (isPhoneValid) {
-      Keyboard.dismiss();
-      setCheckoutMode("checkout");
-      setTimeout(() => {
-        if (isMountedRef.current) {
-          checkoutSheetRef.current?.expand();
-        }
-      }, 50);
-    }
-  }, [isPhoneValid]);
-
-  // Proceed to checkout
+  // Proceed to checkout (triggered when user touches the Continue button)
   const handleProceedToCheckout = useCallback(() => {
     if (!isPhoneValid || !selectedNetwork || !selectedProduct) return;
     Keyboard.dismiss();
     Haptics.selectionAsync().catch(() => {});
     setCheckoutMode("checkout");
-    checkoutSheetRef.current?.expand();
+    setTimeout(() => {
+      if (isMountedRef.current) {
+        checkoutSheetRef.current?.expand();
+      }
+    }, 50);
   }, [isPhoneValid, selectedNetwork, selectedProduct]);
 
   // === PAYMENT WATERFALL ===
@@ -542,6 +536,21 @@ export function ProductPurchaseScreen({
     );
   }, [productsLoadError]);
 
+  const selectedProductPrice = useMemo(() => {
+    if (!selectedProduct) return null;
+    const supplierId = selectedProduct.supplierOffers?.[0]?.supplierId || "";
+    const markup = markupMap.get(supplierId) || 0;
+    const priceDetails = calculateFinalPrice(
+      selectedProduct,
+      false,
+      0,
+      markup
+    );
+    return priceDetails.finalSellingPrice;
+  }, [selectedProduct, markupMap]);
+
+  const canProceed = Boolean(isPhoneValid && selectedNetwork && selectedProduct);
+
   const selectedProductId = selectedProduct?.id;
 
   const renderProductItem = useCallback(
@@ -695,6 +704,60 @@ export function ProductPurchaseScreen({
         </View>
       </KeyboardAvoidingView>
 
+      {/* Bottom Floating/Fixed Action Bar */}
+      <View
+        style={[
+          styles.bottomBar,
+          {
+            backgroundColor: colors.card,
+            borderTopColor: colors.border,
+            paddingBottom: Math.max(insets.bottom, 12),
+          },
+        ]}
+      >
+        {/* Balance Section */}
+        <View style={styles.balanceContainer}>
+          <Text style={[styles.balanceLabel, { color: colors.textSecondary }]}>
+            Balance
+          </Text>
+          <Text style={[styles.balanceValue, { color: colors.foreground }]}>
+            ₦{walletBalance.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+          </Text>
+        </View>
+
+        {/* Continue Button */}
+        <TouchableOpacity
+          style={[
+            styles.continueButton,
+            {
+              backgroundColor: canProceed
+                ? colors.primary
+                : isDark
+                ? "#334155"
+                : "#E2E8F0",
+            },
+          ]}
+          onPress={handleProceedToCheckout}
+          disabled={!canProceed}
+          activeOpacity={0.8}
+        >
+          <Text
+            style={[
+              styles.continueButtonText,
+              {
+                color: canProceed
+                  ? colors.primaryForeground
+                  : colors.textDisabled,
+              },
+            ]}
+          >
+            {selectedProduct && selectedProductPrice !== null
+              ? `Continue - ₦${Math.round(selectedProductPrice).toLocaleString()}`
+              : "Select a Plan"}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
       {/* Checkout Modal */}
       <CheckoutModal
         ref={checkoutSheetRef}
@@ -809,10 +872,43 @@ const styles = StyleSheet.create({
   gridContent: {
     paddingHorizontal: HORIZONTAL_PADDING,
     paddingTop: 4,
-    paddingBottom: 32,
+    paddingBottom: 24,
   },
   gridRow: {
     gap: CARD_GAP,
     marginBottom: CARD_GAP,
+  },
+  bottomBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: HORIZONTAL_PADDING,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    gap: 16,
+  },
+  balanceContainer: {
+    justifyContent: "center",
+  },
+  balanceLabel: {
+    fontSize: 11,
+    fontWeight: "500",
+    marginBottom: 2,
+  },
+  balanceValue: {
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  continueButton: {
+    flex: 1,
+    height: 48,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 16,
+  },
+  continueButtonText: {
+    fontSize: 15,
+    fontWeight: "700",
   },
 });
