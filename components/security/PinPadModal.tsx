@@ -1,10 +1,13 @@
 import { darkColors, designTokens, lightColors } from "@/constants/palette";
 import { useRouter } from "expo-router";
-import { Delete, Eye, EyeOff, ScanFace, X } from "lucide-react-native";
+import { Delete, Eye, EyeOff, ScanFace } from "lucide-react-native";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Animated,
+  Dimensions,
   Modal,
+  PanResponder,
   Pressable,
   StyleSheet,
   Text,
@@ -41,17 +44,82 @@ export function PinPadModal({
   const colorScheme = useColorScheme();
   const router = useRouter();
   const colors = colorScheme === "dark" ? darkColors : lightColors;
-  const keyBackgroundColor = colorScheme === "dark" ? "#343B3E" : "#e2e4e8";
+  const keyBackgroundColor = colorScheme === "dark" ? "#454a4d" : "#e7eaf0";
   const [pin, setPin] = useState("");
   const [isPinVisible, setIsPinVisible] = useState(false);
+  const translateY = React.useRef(new Animated.Value(0)).current;
+  const isDismissing = React.useRef(false);
+
+  const animateDismiss = useCallback(() => {
+    if (isLoading || isDismissing.current) return;
+
+    isDismissing.current = true;
+    Animated.timing(translateY, {
+      toValue: Dimensions.get("window").height,
+      duration: 220,
+      useNativeDriver: true,
+    }).start(({ finished }) => {
+      if (!finished) {
+        isDismissing.current = false;
+        return;
+      }
+
+      translateY.setValue(0);
+      isDismissing.current = false;
+      onClose();
+    });
+  }, [isLoading, onClose, translateY]);
+
+  const panResponder = React.useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => visible && !isLoading,
+        onMoveShouldSetPanResponder: (_, gestureState) =>
+          visible &&
+          !isLoading &&
+          gestureState.dy > 6 &&
+          Math.abs(gestureState.dy) > Math.abs(gestureState.dx),
+        onPanResponderMove: (_, gestureState) => {
+          if (gestureState.dy > 0) {
+            translateY.setValue(gestureState.dy);
+          }
+        },
+        onPanResponderRelease: (_, gestureState) => {
+          if (gestureState.dy > 120 || gestureState.vy > 0.8) {
+            animateDismiss();
+            return;
+          }
+
+          Animated.spring(translateY, {
+            toValue: 0,
+            useNativeDriver: true,
+            damping: 22,
+            stiffness: 260,
+            mass: 0.8,
+          }).start();
+        },
+        onPanResponderTerminate: () => {
+          Animated.spring(translateY, {
+            toValue: 0,
+            useNativeDriver: true,
+            damping: 22,
+            stiffness: 260,
+            mass: 0.8,
+          }).start();
+        },
+      }),
+    [animateDismiss, isLoading, translateY, visible]
+  );
 
   // Clear PIN when modal opens
   useEffect(() => {
     if (visible) {
       setPin("");
       setIsPinVisible(false);
+      translateY.setValue(0);
+      isDismissing.current = false;
     }
-  }, [visible]);
+  }, [translateY, visible]);
 
   // Handle number press
   const handleNumberPress = useCallback(
@@ -85,21 +153,20 @@ export function PinPadModal({
   const handleSubmit = useCallback(() => {
     if (pin.length === PIN_LENGTH && !isLoading) {
       onSubmit(pin);
-      onClose();
+      animateDismiss();
     }
-  }, [pin, isLoading, onSubmit, onClose]);
+  }, [animateDismiss, pin, isLoading, onSubmit]);
 
   const handleClose = useCallback(() => {
-    if (!isLoading) {
-      setPin("");
-      onClose();
-    }
-  }, [isLoading, onClose]);
+    if (isLoading) return;
+    setPin("");
+    animateDismiss();
+  }, [animateDismiss, isLoading]);
 
   const handleForgotPin = useCallback(() => {
     if (isLoading) return;
     setPin("");
-    onClose();
+    animateDismiss();
     setTimeout(() => {
       if (returnRoute) {
         router.replace({
@@ -110,7 +177,7 @@ export function PinPadModal({
         router.navigate("/(tabs)/profile/security/pin");
       }
     }, 300);
-  }, [isLoading, router, onClose, returnRoute]);
+  }, [animateDismiss, isLoading, router, returnRoute]);
 
   const renderPinField = () => (
     <View style={[styles.pinField, { borderColor: colors.border, backgroundColor: colors.card }]}>
@@ -172,29 +239,23 @@ export function PinPadModal({
         <Pressable style={StyleSheet.absoluteFill} onPress={handleClose} />
 
         {/* Modal content */}
-        <View
+        <Animated.View
           collapsable={false}
-          style={[styles.container, { backgroundColor: colors.background }]}
+          style={[
+            styles.container,
+            { backgroundColor: colors.background },
+            { transform: [{ translateY }] },
+          ]}
         >
-          <View style={[styles.sheetHandle, { backgroundColor: "#0B57D0" }]} />
+          <View {...panResponder.panHandlers} style={styles.handleHitArea}>
+            <View style={[styles.sheetHandle, { backgroundColor: "#E69E19" }]} />
+          </View>
 
           {/* Header */}
           <View style={styles.header}>
-            <View style={styles.headerContent}>
-              <Text style={[styles.title, { color: colors.foreground }]}> 
-                {title === "Enter PIN" ? "Enter Pin" : title}
-              </Text>
-            </View>
-            <Pressable
-              onPress={handleClose}
-              disabled={isLoading}
-              style={({ pressed }) => [
-                styles.closeButton,
-                pressed && { opacity: 0.7 },
-              ]}
-            >
-              <X size={24} color={colors.destructive} />
-            </Pressable>
+            <Text style={[styles.title, { color: colors.foreground }]}>
+              {title === "Enter PIN" ? "Enter Pin" : title}
+            </Text>
           </View>
 
           {/* PIN field */}
@@ -282,7 +343,7 @@ export function PinPadModal({
           </Pressable>
           
           <SafeAreaView edges={['bottom']} />
-        </View>
+        </Animated.View>
       </View>
     </Modal>
   );
@@ -304,28 +365,23 @@ const styles = StyleSheet.create({
     minHeight: 680,
   },
   sheetHandle: {
-    alignSelf: "center",
     width: 110,
     height: 8,
     borderRadius: 4,
-    marginBottom: designTokens.spacing.xl,
+  },
+  handleHitArea: {
+    height: 44,
+    alignItems: "center",
+    justifyContent: "center",
   },
   header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
+    alignItems: "center",
     marginBottom: designTokens.spacing.lg,
-  },
-  headerContent: {
-    flex: 1,
   },
   title: {
     fontSize: designTokens.fontSize["2xl"],
     fontWeight: "700",
     textAlign: "center",
-  },
-  closeButton: {
-    padding: designTokens.spacing.xs,
   },
   pinField: {
     height: 70,
