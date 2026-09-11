@@ -230,66 +230,23 @@ export default function AirtimeScreen() {
   }, [isPhoneValid, isAmountValid, selectedProduct]);
 
   // === PAYMENT CONFIRMATION ===
-  const handleConfirmPayment = useCallback(async () => {
+  const handleConfirmPayment = useCallback(() => {
     if (!selectedProduct || !normalizedPhone) return;
 
-    try {
-      // Close the checkout sheet immediately - loading overlay will show instead
-      // This prevents the checkout modal from showing during payment processing
-      checkoutSheetRef.current?.close();
-      
-      // General Airtime usually has 0 markup, but we keep the logic structure
-      const markup = 0; 
-
-      const result = await processPayment({
-        product: selectedProduct,
-        phoneNumber: normalizedPhone,
-        useCashback,
-        markupPercent: markup,
-        userCashbackBalance: cashbackBalance,
-        allowOperatorMismatch: !isAutoDetectionEnabled,
-        selectedOperatorCode,
-      });
-
-      if (result.success) {
-        // Success - the onSuccess callback from useCompletePaymentFlow will handle
-        // expanding the sheet and showing the success modal
-        return;
-      }
-
-      if (result.error?.includes("PIN")) {
-        setPendingPaymentData({
-          product: selectedProduct,
-          phoneNumber: normalizedPhone,
-          useCashback,
-          markupPercent: markup,
-          allowOperatorMismatch: !isAutoDetectionEnabled,
-          selectedOperatorCode,
-        });
-        // Wait for BottomSheet close animation (350ms) + buffer
-        setTimeout(() => setShowPinModal(true), 450);
-      } else {
-        // Handle validation errors - expand sheet to show error
-        setLastErrorMessage(getUserFriendlyError(result.error || "Payment failed"));
-        // Wait for Reanimated animation to finish before changing state (400ms)
-        setTimeout(() => {
-          setCheckoutMode("failed");
-          checkoutSheetRef.current?.expand();
-        }, 400);
-      }
-    } catch (error: any) {
-      setLastErrorMessage(getUserFriendlyError(error.message || "Payment failed"));
-      setTimeout(() => setCheckoutMode("failed"), 400);
-    }
-  }, [
-    selectedProduct,
-    normalizedPhone,
-    useCashback,
-    cashbackBalance,
-    processPayment,
-    isAutoDetectionEnabled,
-    selectedOperatorCode,
-  ]);
+    const markup = 0;
+    setPendingPaymentData({
+      product: selectedProduct,
+      phoneNumber: normalizedPhone,
+      useCashback,
+      markupPercent: markup,
+      userCashbackBalance: cashbackBalance,
+      allowOperatorMismatch: !isAutoDetectionEnabled,
+      selectedOperatorCode,
+    });
+    setPinError(undefined);
+    checkoutSheetRef.current?.close();
+    setShowPinModal(true);
+  }, [selectedProduct, normalizedPhone, useCashback, cashbackBalance, isAutoDetectionEnabled, selectedOperatorCode]);
 
   const handlePinSubmit = useCallback(async (pin: string) => {
     if (!pendingPaymentData) return;

@@ -268,25 +268,13 @@ export function BillPaymentScreen({ categoryType }: BillPaymentScreenProps) {
     ]
   );
 
-  const handleConfirmPayment = useCallback(async () => {
+  const handleConfirmPayment = useCallback(() => {
     const paymentData = buildPaymentData();
+    setPendingPaymentData(paymentData);
+    setPinError(undefined);
     checkoutSheetRef.current?.close();
-
-    const result = await processPayment(paymentData);
-    if (result.success) {
-      return;
-    }
-
-    if (result.error?.toLowerCase().includes("pin")) {
-      setPendingPaymentData(paymentData);
-      setTimeout(() => setShowPinModal(true), 450);
-      return;
-    }
-
-    setLastErrorMessage(getUserFriendlyError(result.error || ""));
-    setCheckoutMode("failed");
-    checkoutSheetRef.current?.expand();
-  }, [buildPaymentData, processPayment]);
+    setShowPinModal(true);
+  }, [buildPaymentData]);
 
   const handlePinSubmit = useCallback(
     async (pin: string) => {

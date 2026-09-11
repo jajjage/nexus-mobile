@@ -212,12 +212,11 @@ export function PinPadModal({
           {/* Loading indicator */}
           {isLoading && (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={colors.primary} />
-              <Text
-                style={[styles.loadingText, { color: colors.textSecondary }]}
-              >
-                Verifying PIN...
-              </Text>
+              <View style={[styles.loadingIcon, { backgroundColor: "#EAF2FF" }]}>
+                <ActivityIndicator size="large" color="#0B57D0" />
+              </View>
+              <Text style={[styles.loadingTitle, { color: colors.foreground }]}>Verifying your PIN</Text>
+              <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Please wait a moment...</Text>
             </View>
           )}
 
@@ -356,9 +355,21 @@ const styles = StyleSheet.create({
   loadingContainer: {
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: designTokens.spacing.xl,
-    gap: designTokens.spacing.md,
+    paddingVertical: designTokens.spacing.lg,
+    gap: 10,
     height: 300, // Approximate height of keypad to keep layout stable
+  },
+  loadingIcon: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 6,
+  },
+  loadingTitle: {
+    fontSize: 18,
+    fontWeight: "700",
   },
   loadingText: {
     fontSize: designTokens.fontSize.sm,

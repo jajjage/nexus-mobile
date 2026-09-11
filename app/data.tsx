@@ -374,61 +374,25 @@ export function ProductPurchaseScreen({
   }, [isPhoneValid, selectedNetwork, selectedProduct]);
 
   // === PAYMENT WATERFALL ===
-  const handleConfirmPayment = useCallback(async () => {
+  const handleConfirmPayment = useCallback(() => {
     if (!selectedProduct || !normalizedPhone) return;
 
-    try {
-      Keyboard.dismiss();
-      checkoutSheetRef.current?.close();
-      
-      const supplierId = selectedProduct.supplierOffers?.[0]?.supplierId || "";
-      const markup = markupMap.get(supplierId) || 0;
-
-      const result = await processPayment({
-        product: selectedProduct,
-        phoneNumber: normalizedPhone,
-        useCashback,
-        markupPercent: markup,
-        userCashbackBalance: cashbackBalance,
-        allowOperatorMismatch: !isAutoDetectionEnabled,
-        selectedOperatorCode: selectedNetwork?.toUpperCase(),
-      });
-
-      if (result.success) {
-        return;
-      }
-
-      if (result.error?.includes("PIN")) {
-        setPendingPaymentData({
-          product: selectedProduct,
-          phoneNumber: normalizedPhone,
-          useCashback,
-          markupPercent: markup,
-          allowOperatorMismatch: !isAutoDetectionEnabled,
-          selectedOperatorCode: selectedNetwork?.toUpperCase(),
-        });
-        setTimeout(() => {
-          if (!isMountedRef.current) return;
-          setShowPinModal(true);
-        }, 450);
-      } else {
-        setLastErrorMessage(getUserFriendlyError(result.error || "Payment failed"));
-        setTimeout(() => {
-          if (!isMountedRef.current) return;
-          setCheckoutMode("failed");
-          checkoutSheetRef.current?.expand();
-        }, 400);
-      }
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : "Payment processing failed";
-      setLastErrorMessage(getUserFriendlyError(errorMsg));
-      setTimeout(() => {
-        if (!isMountedRef.current) return;
-        setCheckoutMode("failed");
-        checkoutSheetRef.current?.expand();
-      }, 400);
-    }
-  }, [selectedProduct, normalizedPhone, useCashback, cashbackBalance, processPayment, markupMap, isAutoDetectionEnabled, selectedNetwork]);
+    Keyboard.dismiss();
+    const supplierId = selectedProduct.supplierOffers?.[0]?.supplierId || "";
+    const markup = markupMap.get(supplierId) || 0;
+    setPendingPaymentData({
+      product: selectedProduct,
+      phoneNumber: normalizedPhone,
+      useCashback,
+      markupPercent: markup,
+      userCashbackBalance: cashbackBalance,
+      allowOperatorMismatch: !isAutoDetectionEnabled,
+      selectedOperatorCode: selectedNetwork?.toUpperCase(),
+    });
+    setPinError(undefined);
+    checkoutSheetRef.current?.close();
+    setShowPinModal(true);
+  }, [selectedProduct, normalizedPhone, useCashback, cashbackBalance, markupMap, isAutoDetectionEnabled, selectedNetwork]);
 
   const handlePinSubmit = useCallback(
     async (pin: string) => {
