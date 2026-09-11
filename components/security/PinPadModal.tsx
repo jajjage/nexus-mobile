@@ -182,7 +182,7 @@ export function PinPadModal({
           <View style={styles.header}>
             <View style={styles.headerContent}>
               <Text style={[styles.title, { color: colors.foreground }]}> 
-                {title === "Enter PIN" ? "Input PIN to Pay" : title}
+                {title === "Enter PIN" ? "Enter Pin" : title}
               </Text>
             </View>
             <Pressable
@@ -323,6 +323,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: designTokens.fontSize["2xl"],
     fontWeight: "700",
+    textAlign: "center",
   },
   closeButton: {
     padding: designTokens.spacing.xs,

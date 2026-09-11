@@ -19,9 +19,11 @@ import { AuthProvider, useAuthContext } from '@/context/AuthContext';
 import { SoftLockProvider } from '@/context/SoftLockContext';
 import { ThemeProvider, useTheme } from '@/context/ThemeContext';
 import { useAppRating } from '@/hooks/useAppRating';
+import { useQueryClient } from '@tanstack/react-query';
 import { useMobileNotificationNavigation } from '@/hooks/useMobileNotificationNavigation';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { installReferrerService } from '@/services/install-referrer.service';
+import { warmDataCatalog } from '@/lib/dataCatalogCache';
 
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { RootAppVersionGuard } from '@/components/modals';
@@ -93,7 +95,16 @@ function AppInitializer() {
   useMobileNotificationNavigation();
   useAppRating();
   
-  const { isLoading } = useAuthContext();
+  const { isLoading, user } = useAuthContext();
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (isLoading || !user) return;
+
+    void warmDataCatalog(queryClient).catch((error) => {
+      console.warn('[DataCatalog] Warm-up failed:', error);
+    });
+  }, [isLoading, queryClient, user]);
 
   useEffect(() => {
     void installReferrerService.captureInstallReferrerOnce().catch((error) => {
