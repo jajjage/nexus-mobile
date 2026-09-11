@@ -1,9 +1,6 @@
 import { useAuth } from "@/hooks/useAuth";
 import { useWalletBalance } from "@/hooks/useWalletBalance";
-import {
-  determinePaymentMethod,
-  verifyBiometricAndGetToken,
-} from "@/lib/payment-flow";
+import { verifyBiometricAndGetToken } from "@/lib/payment-flow";
 import { billPaymentService } from "@/services/bill-payment.service";
 import {
   BillCategoryType,
@@ -126,6 +123,7 @@ export function useBillPaymentFlow(options: {
     async (
       data: Omit<BillPaymentRequest, "pin" | "verificationToken"> & {
         pin?: string;
+        useBiometric?: boolean;
       }
     ): Promise<BillPaymentFlowResult> => {
       try {
@@ -141,29 +139,15 @@ export function useBillPaymentFlow(options: {
         let verificationToken: string | undefined;
         let pinToUse = data.pin;
 
-        if (!pinToUse) {
-          const paymentMethod = await determinePaymentMethod(
-            user?.hasBiometric || false
-          );
-
-          if (paymentMethod === "biometric") {
-            setCurrentStep("biometric");
-            try {
-              verificationToken = await verifyBiometricAndGetToken();
-            } catch {
-              setCurrentStep("pin");
-              return {
-                success: false,
-                error: "Biometric verification failed. Please use PIN.",
-              };
-            }
-          } else {
-            setCurrentStep("pin");
-            return {
-              success: false,
-              error: "PIN verification required. Please enter your PIN.",
-            };
-          }
+        if (!pinToUse && data.useBiometric) {
+          setCurrentStep("biometric");
+          verificationToken = await verifyBiometricAndGetToken();
+        } else if (!pinToUse) {
+          setCurrentStep("pin");
+          return {
+            success: false,
+            error: "PIN verification required. Please enter your PIN.",
+          };
         }
 
         setCurrentStep("transaction");

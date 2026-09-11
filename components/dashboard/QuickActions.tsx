@@ -74,6 +74,13 @@ export function QuickActions() {
   const router = useRouter();
   const { colors, isDark } = useTheme();
 
+  // Load the Data route module while the dashboard is visible. Data is the
+  // heaviest purchase screen, so waiting until the tap makes it feel slower
+  // than the other quick actions.
+  React.useEffect(() => {
+    void router.prefetch("/data");
+  }, [router]);
+
   const handlePress = (route: string) => {
     router.push(route as any);
   };

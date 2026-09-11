@@ -7,10 +7,7 @@
 import { useAuth } from "@/hooks/useAuth";
 import { useTopup } from "@/hooks/useTopup";
 import { useWalletBalance } from "@/hooks/useWalletBalance";
-import {
-  determinePaymentMethod,
-  verifyBiometricAndGetToken
-} from "@/lib/payment-flow";
+import { verifyBiometricAndGetToken } from "@/lib/payment-flow";
 import {
   calculateFinalPrice,
   validatePurchase,
@@ -60,6 +57,7 @@ export function useCompletePaymentFlow(
       userCashbackBalance?: number;
       allowOperatorMismatch?: boolean;
       selectedOperatorCode?: string;
+      useBiometric?: boolean;
     }): Promise<PaymentFlowResult> => {
       try {
         setIsProcessing(true);
@@ -74,6 +72,7 @@ export function useCompletePaymentFlow(
           userCashbackBalance = 0,
           allowOperatorMismatch = false,
           selectedOperatorCode,
+          useBiometric = false,
         } = args;
 
         const validation = validatePurchase(
@@ -99,37 +98,19 @@ export function useCompletePaymentFlow(
           markupPercent
         );
 
-        // Step 3: Determine payment method (biometric → PIN fallback)
+        // Always show PIN first. Biometric is an explicit keypad action.
         let verificationToken: string | undefined;
         let pinToUse: string | undefined;
 
-        if (!pin) {
-          const paymentMethod = await determinePaymentMethod(
-            user?.hasBiometric || false
-          );
-
-          if (paymentMethod === "biometric") {
-            setCurrentStep("biometric");
-            try {
-              verificationToken = await verifyBiometricAndGetToken();
-            } catch (bioError) {
-              console.warn(
-                "[CompletePayment] Biometric failed, fallback to PIN required"
-              );
-              // Biometric failed - caller should show PIN modal
-              setCurrentStep("pin");
-              return {
-                success: false,
-                error: "Biometric verification failed. Please use PIN.",
-              };
-            }
-          } else {
-            setCurrentStep("pin");
-            return {
-              success: false,
-              error: "PIN verification required. Please enter your PIN.",
-            };
-          }
+        if (!pin && useBiometric) {
+          setCurrentStep("biometric");
+          verificationToken = await verifyBiometricAndGetToken();
+        } else if (!pin) {
+          setCurrentStep("pin");
+          return {
+            success: false,
+            error: "PIN verification required. Please enter your PIN.",
+          };
         } else {
           pinToUse = pin;
         }
@@ -192,7 +173,7 @@ export function useCompletePaymentFlow(
         setCurrentStep("idle");
       }
     },
-    [user, topupMutation, options]
+    [topupMutation, options]
   );
 
   /**

@@ -311,6 +311,20 @@ export default function AirtimeScreen() {
     }
   }, [pendingPaymentData, submitPIN, cashbackBalance]);
 
+  const handleBiometricPress = useCallback(async () => {
+    if (!pendingPaymentData) return;
+    setPinError(undefined);
+    const result = await processPayment({
+      ...pendingPaymentData,
+      useBiometric: true,
+    });
+    if (result.success) {
+      setShowPinModal(false);
+    } else {
+      setPinError(getUserFriendlyError(result.error || "Biometric verification failed"));
+    }
+  }, [pendingPaymentData, processPayment]);
+
   const handleClose = useCallback(() => {
     checkoutSheetRef.current?.close();
     if (checkoutMode === "success") {
@@ -520,9 +534,10 @@ export default function AirtimeScreen() {
         visible={showPinModal}
         onSubmit={handlePinSubmit}
         onClose={() => setShowPinModal(false)}
-        isLoading={isTopupPending}
+        isLoading={isTopupPending || isPaymentProcessing}
         error={pinError}
         returnRoute="/airtime"
+        onBiometricPress={handleBiometricPress}
       />
 
       <LoadingOverlay visible={isPaymentProcessing} message="Processing purchase..." />

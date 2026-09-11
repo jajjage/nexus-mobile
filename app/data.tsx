@@ -468,6 +468,20 @@ export function ProductPurchaseScreen({
     [pendingPaymentData, submitPIN, cashbackBalance, useCashback]
   );
 
+  const handleBiometricPress = useCallback(async () => {
+    if (!pendingPaymentData) return;
+    setPinError(undefined);
+    const result = await processPayment({
+      ...pendingPaymentData,
+      useBiometric: true,
+    });
+    if (result.success) {
+      setShowPinModal(false);
+    } else {
+      setPinError(getUserFriendlyError(result.error || "Biometric verification failed"));
+    }
+  }, [pendingPaymentData, processPayment]);
+
   const handleRetry = useCallback(() => {
     setTimeout(() => {
       if (!isMountedRef.current) return;
@@ -690,14 +704,15 @@ export function ProductPurchaseScreen({
               data={filteredProducts}
               renderItem={renderProductItem}
               keyExtractor={(item) => item.id}
+              keyboardShouldPersistTaps="handled"
               numColumns={NUM_COLUMNS}
               extraData={selectedProductId}
               contentContainerStyle={styles.gridContent}
               columnWrapperStyle={styles.gridRow}
               showsVerticalScrollIndicator={false}
-              initialNumToRender={12}
-              maxToRenderPerBatch={10}
-              windowSize={5}
+               initialNumToRender={6}
+               maxToRenderPerBatch={6}
+               windowSize={3}
               removeClippedSubviews={Platform.OS === "android"}
             />
           )}
@@ -781,9 +796,10 @@ export function ProductPurchaseScreen({
           setShowPinModal(false);
           setPinError(undefined);
         }}
-        isLoading={isTopupPending}
+        isLoading={isTopupPending || isPaymentProcessing}
         error={pinError}
         returnRoute={returnRoute}
+        onBiometricPress={handleBiometricPress}
       />
 
       <LoadingOverlay

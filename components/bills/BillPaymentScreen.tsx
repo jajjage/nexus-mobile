@@ -301,6 +301,20 @@ export function BillPaymentScreen({ categoryType }: BillPaymentScreenProps) {
     [pendingPaymentData, submitPIN]
   );
 
+  const handleBiometricPress = useCallback(async () => {
+    if (!pendingPaymentData) return;
+    setPinError(undefined);
+    const result = await processPayment({
+      ...pendingPaymentData,
+      useBiometric: true,
+    });
+    if (result.success) {
+      setShowPinModal(false);
+    } else {
+      setPinError(getUserFriendlyError(result.error || "Biometric verification failed"));
+    }
+  }, [pendingPaymentData, processPayment]);
+
   const handleVariationSelect = (variation: BillVariation) => {
     Haptics.selectionAsync();
     setVariationCode(variation.code);
@@ -835,9 +849,10 @@ export function BillPaymentScreen({ categoryType }: BillPaymentScreenProps) {
         onSubmit={handlePinSubmit}
         isLoading={isPaymentProcessing}
         error={pinError}
-        title="Authorize Payment"
+        title="Input PIN to Pay"
         subtitle={`Enter your PIN to pay ${formatMoney(numericAmount)}`}
         returnRoute={`/${categoryType}`}
+        onBiometricPress={handleBiometricPress}
       />
 
       <LoadingOverlay visible={isPaymentProcessing && !showPinModal} />

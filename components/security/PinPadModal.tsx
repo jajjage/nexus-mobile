@@ -1,7 +1,6 @@
 import { darkColors, designTokens, lightColors } from "@/constants/palette";
-import { triggerHaptic } from "@/utils/haptics";
 import { useRouter } from "expo-router";
-import { Delete, X } from "lucide-react-native";
+import { Delete, Eye, EyeOff, ScanFace, X } from "lucide-react-native";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -23,6 +22,7 @@ interface PinPadModalProps {
   isLoading?: boolean;
   error?: string;
   returnRoute?: string;
+  onBiometricPress?: () => void | Promise<void>;
 }
 
 const PIN_LENGTH = 4;
@@ -36,16 +36,20 @@ export function PinPadModal({
   isLoading = false,
   error,
   returnRoute,
+  onBiometricPress,
 }: PinPadModalProps) {
   const colorScheme = useColorScheme();
   const router = useRouter();
   const colors = colorScheme === "dark" ? darkColors : lightColors;
+  const keyBackgroundColor = colorScheme === "dark" ? "#343B3E" : "#e2e4e8";
   const [pin, setPin] = useState("");
+  const [isPinVisible, setIsPinVisible] = useState(false);
 
   // Clear PIN when modal opens
   useEffect(() => {
     if (visible) {
       setPin("");
+      setIsPinVisible(false);
     }
   }, [visible]);
 
@@ -56,11 +60,9 @@ export function PinPadModal({
 
       const newPin = pin + num;
       setPin(newPin);
-      triggerHaptic.impact();
 
       // Auto-submit when PIN is complete
       if (newPin.length === PIN_LENGTH) {
-        triggerHaptic.notification();
         setTimeout(() => {
           onSubmit(newPin);
           // Don't call onClose() here — let the parent control the modal
@@ -77,7 +79,6 @@ export function PinPadModal({
   const handleDelete = useCallback(() => {
     if (isLoading || pin.length === 0) return;
     setPin(pin.slice(0, -1));
-    triggerHaptic.impact();
   }, [pin, isLoading]);
 
   // Handle manual submit (if needed, though we auto-submit)
@@ -111,21 +112,23 @@ export function PinPadModal({
     }, 300);
   }, [isLoading, router, onClose, returnRoute]);
 
-  const renderDots = () => (
-    <View style={styles.dotsContainer}>
-      {Array.from({ length: PIN_LENGTH }).map((_, index) => (
-        <View
-          key={index}
-          style={[
-            styles.dot,
-            {
-              backgroundColor:
-                index < pin.length ? colors.primary : colors.border,
-              transform: [{ scale: index < pin.length ? 1.1 : 1 }],
-            },
-          ]}
-        />
-      ))}
+  const renderPinField = () => (
+    <View style={[styles.pinField, { borderColor: colors.border, backgroundColor: colors.card }]}>
+      <Text style={[styles.pinText, { color: colors.foreground }]}>
+        {isPinVisible ? pin : "•".repeat(pin.length)}
+      </Text>
+      <Pressable
+        onPress={() => setIsPinVisible((current) => !current)}
+        disabled={isLoading}
+        hitSlop={10}
+        style={styles.eyeButton}
+      >
+        {isPinVisible ? (
+          <EyeOff size={26} color={colors.textSecondary} />
+        ) : (
+          <Eye size={26} color={colors.textSecondary} />
+        )}
+      </Pressable>
     </View>
   );
 
@@ -144,14 +147,15 @@ export function PinPadModal({
       hitSlop={8} // Increase touch target
       style={({ pressed }) => [
         styles.keypadButton,
-        { backgroundColor: colors.card, borderColor: "transparent" }, // Transparent border for cleaner look
-        pressed && { opacity: 0.7, backgroundColor: colors.muted },
+        pressed && { opacity: 0.65 },
         style,
       ]}
     >
-      <Text style={[styles.keypadButtonText, { color: colors.foreground }]}>
-        {num}
-      </Text>
+      <View style={[styles.keyCircle, { backgroundColor: keyBackgroundColor }]}>
+        <Text style={[styles.keypadButtonText, { color: colors.foreground }]}>
+          {num}
+        </Text>
+      </View>
     </Pressable>
   );
 
@@ -172,14 +176,13 @@ export function PinPadModal({
           collapsable={false}
           style={[styles.container, { backgroundColor: colors.background }]}
         >
+          <View style={[styles.sheetHandle, { backgroundColor: "#0B57D0" }]} />
+
           {/* Header */}
           <View style={styles.header}>
             <View style={styles.headerContent}>
-              <Text style={[styles.title, { color: colors.foreground }]}>
-                {title}
-              </Text>
-              <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-                {subtitle}
+              <Text style={[styles.title, { color: colors.foreground }]}> 
+                {title === "Enter PIN" ? "Input PIN to Pay" : title}
               </Text>
             </View>
             <Pressable
@@ -190,12 +193,12 @@ export function PinPadModal({
                 pressed && { opacity: 0.7 },
               ]}
             >
-              <X size={24} color={colors.textSecondary} />
+              <X size={24} color={colors.destructive} />
             </Pressable>
           </View>
 
-          {/* PIN Dots */}
-          {renderDots()}
+          {/* PIN field */}
+          {renderPinField()}
 
           {/* Error Message */}
           {error ? (
@@ -244,19 +247,17 @@ export function PinPadModal({
 
               {/* Row 4: Forgot 0 Delete */}
               <View style={styles.keypadRow}>
-                {/* Forgot PIN Button (Bottom Left) */}
-                 <Pressable
-                  onPress={handleForgotPin}
-                  disabled={isLoading}
+                <Pressable
+                  onPress={onBiometricPress}
+                  disabled={isLoading || !onBiometricPress}
                    style={({ pressed }) => [
                     styles.keypadButton,
-                    { backgroundColor: "transparent" },
                     pressed && { opacity: 0.7 },
                   ]}
                 >
-                   <Text style={[styles.forgotText, { color: colors.primary, fontSize: 12, textAlign: 'center' }]}>
-                    Forgot?
-                  </Text>
+                  <View style={[styles.keyCircle, { backgroundColor: keyBackgroundColor }]}>
+                    <ScanFace size={30} color={colors.foreground} />
+                  </View>
                 </Pressable>
 
                 <KeypadButton num="0" onPress={() => handleNumberPress("0")} />
@@ -266,15 +267,20 @@ export function PinPadModal({
                   disabled={isLoading || pin.length === 0}
                   style={({ pressed }) => [
                     styles.keypadButton,
-                    { backgroundColor: "transparent" },
                     pressed && { opacity: 0.7 },
                   ]}
                 >
-                  <Delete size={28} color={colors.foreground} />
+                  <View style={[styles.keyCircle, { backgroundColor: keyBackgroundColor }]}>
+                    <Delete size={28} color={colors.foreground} />
+                  </View>
                 </Pressable>
               </View>
             </View>
           )}
+
+          <Pressable onPress={handleForgotPin} disabled={isLoading} style={styles.forgotButton}>
+          <Text style={[styles.forgotText, { color: colors.destructive }]}>Forgot Pin?</Text>
+          </Pressable>
           
           <SafeAreaView edges={['bottom']} />
         </View>
@@ -293,15 +299,23 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: designTokens.radius.xl,
     borderTopRightRadius: designTokens.radius.xl,
     paddingHorizontal: designTokens.spacing.lg,
-    paddingTop: designTokens.spacing.lg,
+    paddingTop: designTokens.spacing.md,
     // paddingBottom handled by SafeAreaView
-    minHeight: 450,
+    height: "66%",
+    minHeight: 680,
+  },
+  sheetHandle: {
+    alignSelf: "center",
+    width: 110,
+    height: 8,
+    borderRadius: 4,
+    marginBottom: designTokens.spacing.xl,
   },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    marginBottom: designTokens.spacing.xl,
+    marginBottom: designTokens.spacing.lg,
   },
   headerContent: {
     flex: 1,
@@ -310,24 +324,27 @@ const styles = StyleSheet.create({
     fontSize: designTokens.fontSize["2xl"],
     fontWeight: "700",
   },
-  subtitle: {
-    fontSize: designTokens.fontSize.sm,
-    marginTop: designTokens.spacing.xs,
-  },
   closeButton: {
     padding: designTokens.spacing.xs,
   },
-  dotsContainer: {
+  pinField: {
+    height: 70,
+    borderWidth: 2,
+    borderRadius: 18,
     flexDirection: "row",
+    alignItems: "center",
     justifyContent: "center",
-    gap: designTokens.spacing.lg,
+    marginHorizontal: designTokens.spacing.lg,
     marginBottom: designTokens.spacing.lg,
-    marginTop: designTokens.spacing.md,
   },
-  dot: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
+  pinText: {
+    fontSize: 34,
+    fontWeight: "600",
+    letterSpacing: 10,
+  },
+  eyeButton: {
+    position: "absolute",
+    right: 22,
   },
   errorText: {
     textAlign: "center",
@@ -346,30 +363,43 @@ const styles = StyleSheet.create({
     fontSize: designTokens.fontSize.sm,
   },
   keypadContainer: {
-    marginTop: designTokens.spacing.xl,
-    gap: designTokens.spacing.xl,
-    paddingBottom: designTokens.spacing.xl,
+    marginTop: 0,
+    gap: 20,
+    paddingBottom: designTokens.spacing.lg,
     alignItems: 'center', // Center the entire keypad
   },
   keypadRow: {
     flexDirection: "row",
     justifyContent: "center", // Center buttons row-wise
-    gap: 60, // Fixed gap to prevent scattering
+    gap: 20,
     width: '100%',
   },
   keypadButton: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 70,
+    height: 70,
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+  keyCircle: {
+    width: 70,
+    height: 70,
+    borderRadius: 56,
     alignItems: "center",
     justifyContent: "center",
   },
   keypadButtonText: {
-    fontSize: 28,
+    fontSize: 36,
     fontWeight: "600",
   },
   forgotText: {
-    fontSize: designTokens.fontSize.sm,
+    fontSize: 18,
     fontWeight: "600",
+  },
+  forgotButton: {
+    alignSelf: "center",
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    marginBottom: 8,
   },
 });

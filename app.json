@@ -61,7 +61,7 @@
     "web": {
       "bundler": "metro",
       "output": "static",
-      "favicon": "./assets/images/favicon.svg"
+    "favicon": "./assets/images/icon.png"
     },
     "assetBundlePatterns": [
       "assets/images/**/*",
