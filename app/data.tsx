@@ -4,7 +4,6 @@
  */
 
 import BottomSheet from "@gorhom/bottom-sheet";
-import * as Haptics from "expo-haptics";
 import { Stack, useRouter } from "expo-router";
 import { ArrowLeft, Wifi } from "lucide-react-native";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -37,14 +36,12 @@ import { PinPadModal } from "@/components/security/PinPadModal";
 import { designTokens } from "@/constants/palette";
 import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/hooks/useAuth";
-import { useBiometricAuth } from "@/hooks/useBiometric";
 import { useCategories } from "@/hooks/useCategories";
 import { useCompletePaymentFlow } from "@/hooks/useCompletePaymentFlow";
 import { getAppPreferences } from "@/hooks/useAppPreferences";
 import { useNetworkAutoDetectionPreference } from "@/hooks/useNetworkAutoDetectionPreference";
 import { useProducts } from "@/hooks/useProducts";
 import { useSupplierMarkupMap } from "@/hooks/useSupplierMarkup";
-import { useTopup } from "@/hooks/useTopup";
 import { useEligibleOffers } from "@/hooks/useUserOffers";
 import { useWalletBalance } from "@/hooks/useWalletBalance";
 import {
@@ -144,13 +141,11 @@ export function ProductPurchaseScreen({
   const { data: categories = [], isLoading: categoriesLoading } = useCategories(productType);
   const markupMap = useSupplierMarkupMap();
   const { eligibleIds } = useEligibleOffers();
-  const { mutateAsync: topup, isPending: isTopupPending } = useTopup();
   const { balance: walletBalance } = useWalletBalance();
   const { user } = useAuth();
   const { isAutoDetectionEnabled, setIsAutoDetectionEnabled } =
     useNetworkAutoDetectionPreference();
-  const { authenticate, checkBiometricSupport } = useBiometricAuth();
-  const { processPayment, submitPIN, reset: resetPaymentFlow, isLoading: isPaymentProcessing, currentStep: paymentStep, error: paymentError } = useCompletePaymentFlow({
+  const { processPayment, submitPIN, isLoading: isPaymentProcessing } = useCompletePaymentFlow({
     onSuccess: (transactionId) => {
       if (!isMountedRef.current) return;
       setLastTransactionId(transactionId);
@@ -785,7 +780,7 @@ export function ProductPurchaseScreen({
         onConfirm={handleConfirmPayment}
         onRetry={handleRetry}
         onClose={handleClose}
-        isLoading={isTopupPending}
+        isLoading={isPaymentProcessing}
       />
 
       {/* PIN Pad Modal */}
@@ -796,7 +791,7 @@ export function ProductPurchaseScreen({
           setShowPinModal(false);
           setPinError(undefined);
         }}
-        isLoading={isTopupPending || isPaymentProcessing}
+        isLoading={isPaymentProcessing}
         error={pinError}
         returnRoute={returnRoute}
         onBiometricPress={handleBiometricPress}
