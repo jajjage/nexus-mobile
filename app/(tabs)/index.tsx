@@ -93,6 +93,16 @@ export default function HomeScreen() {
       queryFn: () => categoryService.getAll("data"),
       staleTime: 1000 * 60 * 60,
     });
+    void queryClient.prefetchQuery({
+      queryKey: productKeys.list({ productType: "plan", isActive: true, perPage: 100, limit: 100 }),
+      queryFn: () => productService.getProducts({ productType: "plan", isActive: true, perPage: 100, limit: 100 }),
+      staleTime: 1000 * 60 * 5,
+    });
+    void queryClient.prefetchQuery({
+      queryKey: ["categories", "plan"],
+      queryFn: () => categoryService.getAll("plan"),
+      staleTime: 1000 * 60 * 60,
+    });
   }, [queryClient]);
 
   // 1. Auto-show modal once per 24 hours for each announcement

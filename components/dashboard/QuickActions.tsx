@@ -1,9 +1,8 @@
 // components/dashboard/QuickActions.tsx
 // Following HOME_PAGE_GUIDE.md specifications
 import { useTheme } from "@/context/ThemeContext";
-import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
-import { BadgeCheck, FileText, GraduationCap, MoreHorizontal, Phone, Tv, Wifi, Zap } from "lucide-react-native";
+import { BadgeCheck, GraduationCap, MoreHorizontal, Phone, Smile, Tv, Wifi, Zap } from "lucide-react-native";
 import React from "react";
 import {
   StyleSheet,
@@ -33,17 +32,23 @@ const actions: QuickAction[] = [
     route: "/airtime",
   },
   {
+    id: "smile",
+    label: "Smile",
+    Icon: Smile,
+    route: "/smile",
+  },
+  {
     id: "subscription",
     label: "Call Sub",
     Icon: BadgeCheck,
     route: "/subscription",
   },
-  {
-    id: "bills",
-    label: "Bills",
-    Icon: FileText,
-    route: "/pay-bills",
-  },
+  // {
+  //   id: "bills",
+  //   label: "Bills",
+  //   Icon: FileText,
+  //   route: "/pay-bills",
+  // },
   {
     id: "electricity",
     label: "Electricity",
@@ -79,6 +84,7 @@ export function QuickActions() {
   // than the other quick actions.
   React.useEffect(() => {
     void router.prefetch("/data");
+    void router.prefetch("/smile" as any);
   }, [router]);
 
   const handlePress = (route: string) => {

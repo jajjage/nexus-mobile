@@ -118,6 +118,7 @@ export const CheckoutModal = forwardRef<BottomSheet, CheckoutModalProps>(
 
       const isData =
         data.productType === "data" ||
+        data.productType === "plan" ||
         data.productType === "subscription" ||
         data.productName.toLowerCase().includes("data") ||
         data.productName.toLowerCase().includes("gb") ||
@@ -211,12 +212,21 @@ export const CheckoutModal = forwardRef<BottomSheet, CheckoutModalProps>(
       data?.productName?.toLowerCase().includes("gotv") ||
       data?.productName?.toLowerCase().includes("startimes");
 
+    const isPlanProduct =
+      data?.productType === "plan" ||
+      data?.productName?.toLowerCase().includes("smile");
+
     let titleText = "Confirm Purchase";
     let HeaderIcon = ShoppingCart;
     let tileBgColor = isDark ? "#1E293B" : "#E0F2FE";
     let iconColor = isDark ? "#38BDF8" : "#0284C7";
 
-    if (isDataProduct) {
+    if (isPlanProduct) {
+      titleText = "Plan Purchase";
+      HeaderIcon = ShoppingCart;
+      tileBgColor = isDark ? "#1E293B" : "#FEF3C7";
+      iconColor = isDark ? "#F59E0B" : "#D97706";
+    } else if (isDataProduct) {
       titleText = "Data Purchase";
       HeaderIcon = ShoppingCart;
       tileBgColor = isDark ? "#1E293B" : "#E0F2FE";
