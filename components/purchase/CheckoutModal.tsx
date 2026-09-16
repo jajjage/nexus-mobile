@@ -70,6 +70,7 @@ interface CheckoutModalProps {
   onConfirm: () => void;
   onRetry: () => void;
   onClose: () => void;
+  onSheetClose?: () => void;
   isLoading?: boolean;
 }
 
@@ -85,6 +86,7 @@ export const CheckoutModal = forwardRef<BottomSheet, CheckoutModalProps>(
       onConfirm,
       onRetry,
       onClose,
+      onSheetClose,
       isLoading = false,
     },
     ref
@@ -801,7 +803,7 @@ export const CheckoutModal = forwardRef<BottomSheet, CheckoutModalProps>(
           enablePanDownToClose={true}
           enableDynamicSizing={false}
           animateOnMount={false}
-          onClose={onClose}
+          onClose={onSheetClose}
           backgroundStyle={{
             backgroundColor: colors.card,
           }}

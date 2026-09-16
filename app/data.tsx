@@ -113,6 +113,7 @@ export function ProductPurchaseScreen({
   // Refs
   const checkoutSheetRef = useRef<BottomSheet>(null);
   const isMountedRef = useRef(true);
+  const navigateAfterSheetCloseRef = useRef(false);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -449,19 +450,18 @@ export function ProductPurchaseScreen({
   }, []);
 
   const handleClose = useCallback(() => {
-    checkoutSheetRef.current?.close();
     if (checkoutMode === "success") {
-      setSelectedProduct(null);
-      
       const prefs = getAppPreferences();
-      if (prefs.autoRedirectAfterPurchase) {
-        setTimeout(() => {
-          if (!isMountedRef.current) return;
-          router.back();
-        }, 300);
-      }
+      navigateAfterSheetCloseRef.current = prefs.autoRedirectAfterPurchase;
     }
-  }, [checkoutMode, router]);
+    checkoutSheetRef.current?.close();
+  }, [checkoutMode]);
+
+  const handleSheetClose = useCallback(() => {
+    if (!navigateAfterSheetCloseRef.current) return;
+    navigateAfterSheetCloseRef.current = false;
+    if (isMountedRef.current) router.back();
+  }, [router]);
 
   // === CHECKOUT DATA ===
   const checkoutData: CheckoutData | null =
@@ -672,7 +672,11 @@ export function ProductPurchaseScreen({
                initialNumToRender={6}
                maxToRenderPerBatch={6}
                windowSize={3}
-              removeClippedSubviews={Platform.OS === "android"}
+              // Samsung Android devices can crash in ViewGroup display-list
+              // rebuilding when clipped children are removed during navigation.
+              // The purchase screen is small enough that correctness is worth
+              // more than this optimization.
+              removeClippedSubviews={false}
             />
           )}
         </View>
@@ -744,6 +748,7 @@ export function ProductPurchaseScreen({
         onConfirm={handleConfirmPayment}
         onRetry={handleRetry}
         onClose={handleClose}
+        onSheetClose={handleSheetClose}
         isLoading={isPaymentProcessing}
       />
 
