@@ -13,7 +13,7 @@ import {
   ScanFace,
   ShieldCheck,
 } from 'lucide-react-native';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -45,7 +45,6 @@ export const LockScreen: React.FC<LockScreenProps> = ({ onUnlock }) => {
   const [isVerifyingPasscode, setIsVerifyingPasscode] = useState(false);
   const [canUseBiometrics, setCanUseBiometrics] = useState(true);
   const passcodeRef = useRef<TextInput>(null);
-  const hasAttemptedInitialBiometric = useRef(false);
 
   const {
     startVerification,
@@ -53,6 +52,7 @@ export const LockScreen: React.FC<LockScreenProps> = ({ onUnlock }) => {
     verificationError,
     setVerificationError,
   } = useSecurityVerification();
+  const PASSCODE_LENGTH = 6;
 
   const openPasscode = useCallback(() => {
     setActiveMode('passcode');
@@ -72,31 +72,26 @@ export const LockScreen: React.FC<LockScreenProps> = ({ onUnlock }) => {
       return;
     }
 
-    if (res.pin) {
-      try {
-        await verifyPasscode.mutateAsync({ passcode: res.pin, intent: 'unlock' });
-      } catch {
-        // Local device biometric verification is sufficient to unlock the app.
-      }
-    }
+    // Biometric authentication has already succeeded locally. Unlock the UI
+    // immediately; backend passcode synchronization must never keep the user
+    // trapped on the lock screen when the device biometric is valid.
     onUnlock();
+
+    if (res.pin) {
+      void verifyPasscode.mutateAsync({ passcode: res.pin, intent: 'unlock' }).catch(() => {
+        // Non-blocking best-effort backend synchronization.
+      });
+    }
   }, [onUnlock, openPasscode, setVerificationError, startVerification, verifyPasscode]);
 
-  useEffect(() => {
-    if (hasAttemptedInitialBiometric.current) return;
-
-    hasAttemptedInitialBiometric.current = true;
-    void handleTriggerBiometric();
-  }, [handleTriggerBiometric]);
-
   // Passcode submission handler
-  const handlePasscodeSubmit = async () => {
-    if (passcode.length !== 6 || isVerifyingPasscode) return;
+  const handlePasscodeSubmit = async (submittedPasscode = passcode) => {
+    if (submittedPasscode.length !== PASSCODE_LENGTH || isVerifyingPasscode) return;
     setIsVerifyingPasscode(true);
     setVerificationError(null);
 
     try {
-      await verifyPasscode.mutateAsync({ passcode, intent: 'unlock' });
+      await verifyPasscode.mutateAsync({ passcode: submittedPasscode, intent: 'unlock' });
       onUnlock();
     } catch (error) {
       setVerificationError('Invalid passcode. Please try again.');
@@ -106,7 +101,6 @@ export const LockScreen: React.FC<LockScreenProps> = ({ onUnlock }) => {
     }
   };
 
-  const PASSCODE_LENGTH = 6;
   const digitsArray = Array.from({ length: PASSCODE_LENGTH });
 
   const renderBiometricIcon = (size = 44) => {
@@ -376,9 +370,12 @@ export const LockScreen: React.FC<LockScreenProps> = ({ onUnlock }) => {
                       maxLength={PASSCODE_LENGTH}
                       value={passcode}
                       onChangeText={(text) => {
-                        const cleaned = text.replace(/[^0-9]/g, '');
-                        setPasscode(cleaned);
-                        setVerificationError(null);
+                       const cleaned = text.replace(/[^0-9]/g, '');
+                       setPasscode(cleaned);
+                       setVerificationError(null);
+                       if (cleaned.length === PASSCODE_LENGTH) {
+                         void handlePasscodeSubmit(cleaned);
+                       }
                       }}
                       editable={!isVerifyingPasscode}
                       autoFocus={true}
