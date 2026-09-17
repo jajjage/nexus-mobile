@@ -8,7 +8,7 @@ import { ActivityIndicator, View } from "react-native";
 const ONBOARDING_KEY = "@nexus_onboarding_complete";
 
 export default function Index() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, isSessionExpired } = useAuth();
   const [onboardingComplete, setOnboardingComplete] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -30,6 +30,10 @@ export default function Index() {
         <ActivityIndicator size="large" color="#E69E19" />
       </View>
     );
+  }
+
+  if (isSessionExpired) {
+    return <Redirect href="/session-expired" />;
   }
 
   // Priority 1: Onboarding not complete -> Go to Onboarding

@@ -24,7 +24,7 @@ export const authKeys = {
 // ============================================================================
 
 export function useAuth() {
-  const { user, setUser, isLoading, setIsLoading, isSessionExpired, isLocalBiometricSetup } = useAuthContext();
+  const { user, setUser, isLoading, setIsLoading, isSessionExpired, isLocalBiometricSetup, markSessionAsExpired } = useAuthContext();
   
   // Check if we have a token stored (enables the query)
   const [hasToken, setHasToken] = useState<boolean | null>(null);
@@ -32,13 +32,13 @@ export function useAuth() {
   // Register session expiry callback on mount
   useEffect(() => {
     setSessionExpiredCallback(() => {
-      console.warn("[useAuth] Ignoring automatic session-expired callback");
+      void markSessionAsExpired();
     });
     
     return () => {
       clearSessionExpiredCallback();
     };
-  }, []);
+  }, [markSessionAsExpired]);
 
   useEffect(() => {
     const checkToken = async () => {

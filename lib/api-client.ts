@@ -139,6 +139,14 @@ apiClient.interceptors.response.use(
         processQueue(refreshError);
         isRefreshing = false;
 
+        // Only a confirmed refresh-token rejection means the session is dead.
+        // Timeouts, offline errors, and DNS failures must preserve the cached
+        // user and allow the app to recover when connectivity returns.
+        const refreshStatus = refreshError?.response?.status;
+        if (refreshStatus === 401 || refreshStatus === 403) {
+          onSessionExpired?.();
+        }
+
         throw refreshError;
       }
     }

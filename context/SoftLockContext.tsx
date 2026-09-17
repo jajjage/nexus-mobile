@@ -132,7 +132,7 @@ export function SoftLockProvider({ children }: { children: React.ReactNode }) {
       <View style={{ flex: 1 }} collapsable={false}>
         {children}
       </View>
-      {isLocked && isEnabled && !isSessionExpired && user ? (
+      {isLocked && isEnabled && !isSessionExpired && !isAuthLoading && user ? (
         <View style={StyleSheet.absoluteFill} pointerEvents="box-none" collapsable={false}>
           <LockScreen onUnlock={unlock} />
         </View>

@@ -11,7 +11,7 @@ import { WhatsAppFAB } from '@/components/WhatsAppFAB';
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
-  const { isAuthenticated, isLoading, user, isLocalBiometricSetup } = useAuth();
+  const { isAuthenticated, isLoading, isSessionExpired, user, isLocalBiometricSetup } = useAuth();
   const { colors, isDark } = useTheme();
   const isReseller = user?.role === 'reseller';
   const segments = useSegments();
@@ -26,6 +26,10 @@ export default function TabLayout() {
         <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
+  }
+
+  if (isSessionExpired) {
+    return <Redirect href="/session-expired" />;
   }
 
   // Redirect to login if not authenticated
